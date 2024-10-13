@@ -12,6 +12,7 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController usernameController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
+  bool _obscureText = true; // Track password visibility
   String? errorMessage;
 
   Future<void> login() async {
@@ -28,7 +29,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://10.0.2.2:8000/api/login/'),  // Adjust this for the actual address
+        Uri.parse('http://10.0.2.2:8000/api/login/'),  
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'username': username,
@@ -38,15 +39,17 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        print('Login successful: ${data['message']}');
+        String firstName = data['first_name']; // API returns the first name
         setState(() {
           errorMessage = null;  // Clear error if login is successful
         });
-        // Navigate to the next page or do something else
+        
+        // Navigate to the Home Page and pass the first name
+        Navigator.pushReplacementNamed(context, '/home', arguments: firstName); 
       } else {
         final data = json.decode(response.body);
         setState(() {
-          errorMessage = data['error'];
+          errorMessage = data['error'] ?? 'Login failed. Please try again.';
         });
       }
     } catch (e) {
@@ -59,34 +62,127 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Login')),
-      body: Padding(
-        padding: EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            TextField(
-              controller: usernameController,
-              decoration: InputDecoration(labelText: 'Username'),
-            ),
-            TextField(
-              controller: passwordController,
-              decoration: InputDecoration(labelText: 'Password'),
-              obscureText: true,
-            ),
-            SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: login,
-              child: Text('Login'),
-            ),
-            if (errorMessage != null)
-              Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Text(
-                  errorMessage!,
-                  style: TextStyle(color: Colors.red),
+      backgroundColor: Colors.lightBlue[50],
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // App Logo
+                Image.asset(
+                  'assets/logos/glycolog_logo.png', 
+                  height: 100,
                 ),
-              ),
-          ],
+                const SizedBox(height: 20),
+                // Card Container for login form
+                Card(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16.0),
+                  ),
+                  elevation: 8.0,
+                  child: Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Column(
+                      children: [
+                        Text(
+                          'Login',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blue[800],
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        // Username Field
+                        TextField(
+                          controller: usernameController,
+                          decoration: InputDecoration(
+                            labelText: 'Username',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12.0),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        // Password Field with show/hide option
+                        TextField(
+                          controller: passwordController,
+                          obscureText: _obscureText,
+                          decoration: InputDecoration(
+                            labelText: 'Password',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12.0),
+                            ),
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _obscureText
+                                    ? Icons.visibility_off
+                                    : Icons.visibility,
+                                color: Colors.blue[800],
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _obscureText = !_obscureText;
+                                });
+                              },
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        // Error Message Display
+                        if (errorMessage != null)
+                          Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Text(
+                              errorMessage!,
+                              style: const TextStyle(color: Colors.red),
+                            ),
+                          ),
+                        const SizedBox(height: 20),
+                        // Login Button
+                        ElevatedButton(
+                          onPressed: login,
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 50, vertical: 15),
+                            backgroundColor: Colors.blue[800],
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12.0),
+                            ),
+                          ),
+                          child: const Text(
+                            'Login',
+                            style: TextStyle(
+                              color: Colors.white, 
+                              fontSize: 18, 
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                // Register Link
+                GestureDetector(
+                  onTap: () {
+                    Navigator.pushNamed(context, '/register');
+                  },
+                  child: Text(
+                    "Don't have an account? Register",
+                    style: TextStyle(
+                      color: Colors.blue[800],
+                      fontSize: 16,
+                      decoration: TextDecoration.underline,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

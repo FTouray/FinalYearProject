@@ -36,7 +36,11 @@ def login_user(request):
         user = authenticate(request, username=username, password=password)
 
         if user is not None:
-            return Response({"message": "Login successful", "username": user.username}, status=status.HTTP_200_OK)
+           return Response({
+                "message": "Login successful",
+                "first_name": user.first_name,  # Include the first name in the response
+                "username": user.username
+            }, status=status.HTTP_200_OK)
         else:
             return Response({"error": "Username or password is incorrect."}, status=status.HTTP_401_UNAUTHORIZED)
     else:
