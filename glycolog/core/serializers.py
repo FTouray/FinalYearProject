@@ -2,6 +2,7 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
+from .models import GlycaemicResponseTracker, Meal, GlucoseLog  # Import your models
 
 # Get the custom user model
 User = get_user_model()
@@ -37,5 +38,44 @@ class RegisterSerializer(serializers.ModelSerializer):
 
 # Serializer for user login
 class LoginSerializer(serializers.Serializer):
-    username = serializers.CharField(required=True)  # Use username instead of email to match the view
+    username = serializers.CharField(required=True)
     password = serializers.CharField(write_only=True, required=True)
+
+# Glycaemic Response Tracker Serializer
+class GlycaemicResponseTrackerSerializer(serializers.ModelSerializer):
+    user_data = serializers.JSONField()  # Handle the user data as JSON
+
+    class Meta:
+        model = GlycaemicResponseTracker
+        fields = ['trackerID', 'userID', 'user_data', 'responsePatterns', 'mealLog']
+
+    
+    def validate_user_data(self, value):
+        # Custom validation logic for user_data if needed
+        return value
+
+# Meal Serializer
+class MealSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Meal
+        fields = ['mealID', 'trackerID', 'foodItems', 'glycaemicIndex', 'carbs', 'timestamp']
+
+    # Validation or methods???
+    def validate_foodItems(self, value):
+        # Ensure foodItems is not empty
+        if not value:
+            raise serializers.ValidationError("Food items cannot be empty.")
+        return value
+
+# Glucose Log Serializer
+class GlucoseLogSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = GlucoseLog
+        fields = ['logID', 'userID', 'glucoseLevel', 'timestamp', 'mealContext']
+
+    # Validations
+    def validate_glucoseLevel(self, value):
+        # Ensure glucose level is within a reasonable range
+        if value < 0:
+            raise serializers.ValidationError("Glucose level must be a positive number.")
+        return value
