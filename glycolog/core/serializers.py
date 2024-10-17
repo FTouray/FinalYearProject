@@ -73,9 +73,20 @@ class GlucoseLogSerializer(serializers.ModelSerializer):
         model = GlucoseLog
         fields = ['logID', 'userID', 'glucoseLevel', 'timestamp', 'mealContext']
 
+    def create(self, validated_data):
+        # Automatically set the user from the request
+        request = self.context.get('request')
+        validated_data['user'] = request.user  # Set the logged-in user
+        return super().create(validated_data)
+
     # Validations
     def validate_glucoseLevel(self, value):
         # Ensure glucose level is within a reasonable range
         if value < 0:
             raise serializers.ValidationError("Glucose level must be a positive number.")
         return value
+    
+class SettingsSerializer(serializers.Serializer):
+    selectedUnit = serializers.ChoiceField(choices=['mmol/L', 'mg/dL'])  # Limit choices for units
+    notificationsEnabled = serializers.BooleanField(required=False)  # Optional field
+    darkModeEnabled = serializers.BooleanField(required=False)  # Optional field

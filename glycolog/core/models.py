@@ -17,13 +17,19 @@ class GlucoseLog(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='glucose_logs')  # Foreign key linking to CustomUser
     glucose_level = models.FloatField()  # Field to store glucose level
     timestamp = models.DateTimeField(auto_now_add=True)  # Automatically set timestamp when log is created
-    meal_context = models.CharField(max_length=100, blank=True, null=True)  # Context (pre/post meal or fasting)
-
+    mealContext = models.CharField(max_length=50, choices=[
+        ('fasting', 'Fasting'),
+        ('pre_meal', 'Pre-Meal'),
+        ('post_meal', 'Post-Meal'),
+    ])  # Context of glucose level logging    
     class Meta:
         indexes = [models.Index(fields=['user']),]  # Index for faster lookups by user
         constraints = [
             models.CheckConstraint(check=Q(glucose_level__gte=0), name='glucose_level_gte_0'),  # Constraint to ensure glucose level is non-negative
         ]
+        
+    def __str__(self):
+        return f"{self.user} - {self.glucoseLevel} at {self.timestamp}"
 
 # Model to store meal details linked to the glycaemic response tracker
 class Meal(models.Model):

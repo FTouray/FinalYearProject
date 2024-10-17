@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'base_screen.dart'; // Import BaseScreen
+import 'package:Glycolog/services/auth_service.dart'; // Import AuthServiceScreen
 
 class HomePage extends StatefulWidget {
   final String firstName; // Pass the first name to this page
@@ -23,83 +25,44 @@ class _HomePageState extends State<HomePage> {
       // Home
       Navigator.pushReplacementNamed(context, '/home');
     } else if (index == 1) {
-      // Glucose Log
-      Navigator.pushNamed(context, '/glucose-log');
+      // Community Forum
+      Navigator.pushNamed(context, '/community');
     } else if (index == 2) {
       // Profile
       Navigator.pushNamed(context, '/profile');
     }
   }
 
-  // Logout Function
-  void _logout() {
-    // Handle logout logic here
-    Navigator.pushReplacementNamed(context, '/login');
+  Future<void> _checkAuthentication() async {
+    AuthService authService = AuthService();
+    String? token = await authService.getAccessToken();
+
+    if (token == null) {
+      // If no token, redirect to login
+      Navigator.pushReplacementNamed(context, '/login');
+    } else {
+      // Optionally refresh token if close to expiration
+      await authService.refreshAccessToken();
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _checkAuthentication(); // Check if the user is authenticated when the page initialises
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.lightBlue[50], // Matching background color
-      appBar: AppBar(
-        title: Image.asset(
-          'assets/logos/glycolog_logo.png',
-          height: 40,
-        ),
-        centerTitle: true,
-        backgroundColor: Colors.blue[800], // Matching app bar color
-        actions: [
-          IconButton(
-            icon: Icon(Icons.logout),
-            onPressed: _logout,
-          ),
-        ],
-      ),
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: <Widget>[
-            DrawerHeader(
-              decoration: BoxDecoration(
-                color: Colors.blue[800],
-              ),
-              child: Text(
-                'Menu',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 24,
-                ),
-              ),
-            ),
-            ListTile(
-              leading: Icon(Icons.home, color: Colors.blue[800]),
-              title: Text('Home'),
-              onTap: () {
-                Navigator.pushReplacementNamed(context, '/home');
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.analytics, color: Colors.blue[800]),
-              title: Text('Glucose Log'),
-              onTap: () {
-                Navigator.pushNamed(context, '/glucose-log');
-              },
-            ),
-            // Future features can be added here
-            ListTile(
-              leading: Icon(Icons.logout, color: Colors.blue[800]),
-              title: Text('Logout'),
-              onTap: _logout,
-            ),
-          ],
-        ),
-      ),
+    return BaseScreen(
+      selectedIndex: _selectedIndex,
+      onItemTapped: _onItemTapped,
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
             children: [
-              SizedBox(height: 20),
+              const SizedBox(height: 20),
               // Welcome message
               Text(
                 'Welcome, ${widget.firstName}!',
@@ -109,14 +72,14 @@ class _HomePageState extends State<HomePage> {
                   color: Colors.blue[800],
                 ),
               ),
-              SizedBox(height: 30),
+              const SizedBox(height: 30),
               // Feature Icons
               GridView.count(
                 shrinkWrap: true,
                 crossAxisCount: 2, // Two icons per row
                 crossAxisSpacing: 10,
                 mainAxisSpacing: 10,
-                physics: NeverScrollableScrollPhysics(),
+                physics: const NeverScrollableScrollPhysics(),
                 children: [
                   FeatureIcon(
                     icon: Icons.analytics,
@@ -125,14 +88,14 @@ class _HomePageState extends State<HomePage> {
                       Navigator.pushNamed(context, '/glucose-log');
                     },
                   ),
-                  // Placeholder for future features
                   FeatureIcon(
                     icon: Icons.settings,
                     label: 'Settings',
                     onTap: () {
-                      // Navigate to settings page
+                      Navigator.pushNamed(context, '/settings');
                     },
                   ),
+                  // Additional feature icons can be added here
                   FeatureIcon(
                     icon: Icons.help,
                     label: 'Help',
@@ -152,27 +115,6 @@ class _HomePageState extends State<HomePage> {
             ],
           ),
         ),
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        backgroundColor: Colors.blue[800],
-        selectedItemColor: Colors.white,
-        unselectedItemColor: Colors.blue[200],
-        currentIndex: _selectedIndex, // Highlight the current selected tab
-        onTap: _onItemTapped, // Handle tab navigation
-        items: const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.analytics),
-            label: 'Log',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.account_circle),
-            label: 'Profile',
-          ),
-        ],
       ),
     );
   }
@@ -208,7 +150,7 @@ class FeatureIcon extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(icon, size: 50, color: Colors.blue[800]),
-              SizedBox(height: 10),
+              const SizedBox(height: 10),
               Text(
                 label,
                 style: TextStyle(

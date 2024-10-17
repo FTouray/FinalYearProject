@@ -1,4 +1,4 @@
-name: glycolog_flutter
+name: Glycolog
 description: "A new Flutter project."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
@@ -32,6 +32,9 @@ dependencies:
     sdk: flutter
   http: ^1.2.2
   provider: ^6.0.1
+  shared_preferences: ^2.0.15
+  fl_chart: ^0.69.0
+  jaguar_jwt: ^3.0.0
 
 
   # The following adds the Cupertino Icons font to your application.
@@ -41,7 +44,7 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_launcher_icons: ^0.12.0
+  flutter_launcher_icons: ^0.14.1
 
 
   # The "flutter_lints" package below contains a set of recommended lints to
