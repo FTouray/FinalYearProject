@@ -85,6 +85,7 @@ class GlucoseLogSerializer(serializers.ModelSerializer):
         if value < 0:
             raise serializers.ValidationError("Glucose level must be a positive number.")
         return value
+
     
 class SettingsSerializer(serializers.Serializer):
     selectedUnit = serializers.ChoiceField(choices=['mmol/L', 'mg/dL'])  # Limit choices for units

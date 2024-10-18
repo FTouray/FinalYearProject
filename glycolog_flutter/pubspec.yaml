@@ -30,11 +30,15 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  http: ^1.2.2
-  provider: ^6.0.1
-  shared_preferences: ^2.0.15
+  http: ^1.2.2  
+  provider: ^6.0.0 
+  shared_preferences: ^2.1.0  
   fl_chart: ^0.69.0
-  jaguar_jwt: ^3.0.0
+  jaguar_jwt: ^3.0.0  
+  image_picker: ^1.1.2  
+  google_mlkit_text_recognition: ^0.14.0 
+  google_mlkit_commons: ^0.9.0  
+  permission_handler: ^11.3.1
 
 
   # The following adds the Cupertino Icons font to your application.

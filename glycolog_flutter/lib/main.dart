@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
-import 'screens/glucoselog_screen.dart';
-import 'screens/login_screen.dart';
-import 'screens/homepage_screen.dart';
-import 'screens/register_screen.dart';
-import 'screens/settings_screen.dart';
+import 'glucoseLog/add_glucose_log_screen.dart';
+import 'glucoseLog/gL_history_screen.dart';
+import 'glucoseLog/gl_detail_screen.dart';
+import 'glucoseLog/glucose_log_screen.dart';
+import 'loginRegister/login_screen.dart';
+import 'home/homepage_screen.dart';
+import 'loginRegister/register_screen.dart';
+import 'home/settings_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -111,6 +114,12 @@ class _MyAppState extends State<MyApp> {
         '/settings': (context) => SettingsScreen(
               onToggleDarkMode: _toggleDarkMode, // Pass the toggle dark mode function to SettingsScreen
             ),
+        '/add-log': (context) => const AddGlucoseLevelScreen(),
+        '/log-history': (context) => const GlucoseLogHistoryScreen(),
+         '/log-details': (context) {
+          final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+          return LogDetailsScreen(logDetails: args ?? {}); // Pass log details or an empty map
+        },
       },
     );
   }

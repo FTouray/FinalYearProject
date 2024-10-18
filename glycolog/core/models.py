@@ -17,7 +17,7 @@ class GlucoseLog(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='glucose_logs')  # Foreign key linking to CustomUser
     glucose_level = models.FloatField()  # Field to store glucose level
     timestamp = models.DateTimeField(auto_now_add=True)  # Automatically set timestamp when log is created
-    mealContext = models.CharField(max_length=50, choices=[
+    meal_context = models.CharField(max_length=50, choices=[
         ('fasting', 'Fasting'),
         ('pre_meal', 'Pre-Meal'),
         ('post_meal', 'Post-Meal'),
@@ -29,7 +29,7 @@ class GlucoseLog(models.Model):
         ]
         
     def __str__(self):
-        return f"{self.user} - {self.glucoseLevel} at {self.timestamp}"
+        return f"{self.user.username} - {self.glucose_level} at {self.timestamp}"
 
 # Model to store meal details linked to the glycaemic response tracker
 class Meal(models.Model):
@@ -52,7 +52,7 @@ class GlycaemicResponseTracker(models.Model):
 # Virtual health coach model to provide personalized health guidance
 class VirtualHealthCoach(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='health_coach')  # Foreign key linking to user
-    user_patterns = models.TextField()  # Field to store patterns from user activity logs
+    user_patterns =models.TextField(default='', blank=True)  # Field to store patterns from user activity logs
     motivational_messages = models.TextField(blank=True, null=True)  # Field to store motivational messages
 
     class Meta:
