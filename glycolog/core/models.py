@@ -14,6 +14,7 @@ class CustomUser(AbstractUser):
 
 # Model to log glucose levels for each user
 class GlucoseLog(models.Model):
+    logID = models.AutoField(primary_key=True)  # Primary key for the log
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='glucose_logs')  # Foreign key linking to CustomUser
     glucose_level = models.FloatField()  # Field to store glucose level
     timestamp = models.DateTimeField(auto_now_add=True)  # Automatically set timestamp when log is created

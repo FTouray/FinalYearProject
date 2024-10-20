@@ -59,21 +59,24 @@ def login_user(request):
 @permission_classes([IsAuthenticated])  # Ensure the user is authenticated
 def log_glucose(request):
     if request.method == 'GET':
-        logs = GlucoseLog.objects.all()
+        logs = GlucoseLog.objects.filter(user=request.user)  # Filter logs by the authenticated user
         serializer = GlucoseLogSerializer(logs, many=True)
         return Response({'logs': serializer.data}, status=status.HTTP_200_OK)
     
     elif request.method == 'POST':
-        serializer = GlucoseLogSerializer(data=request.data)
+        print("Incoming request data:", request.data)  # Log the incoming data to the console
+        data = request.data.copy()
+        serializer = GlucoseLogSerializer(data=data, context={'request': request})  # Pass the request context
 
         if serializer.is_valid():
-            serializer.save(user=request.user)  # Save the glucose log with the authenticated user
+            serializer.save()
             return Response({"message": "Glucose log created successfully"}, status=status.HTTP_201_CREATED)
         else:
+            print("Serializer errors:", serializer.errors) # Log the errors to the console
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
   
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@api_view(['GET']) 
+@permission_classes([IsAuthenticated]) 
 def glucose_log_history(request):
     """
     View to list or filter glucose logs for the authenticated user.

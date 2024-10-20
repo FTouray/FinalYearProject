@@ -11,7 +11,7 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  String _selectedUnit = 'mmol/L'; // Default unit for glucose measurement
+  String _selectedUnit = 'mg/dL'; // Default unit for glucose measurement
   bool _notificationsEnabled = true; // Notifications on by default
   bool _darkModeEnabled = false; // Dark mode off by default
 

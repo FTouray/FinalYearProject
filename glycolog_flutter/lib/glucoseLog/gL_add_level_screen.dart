@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart'; // Import the OCR package
+import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'dart:io';
+import 'package:image/image.dart' as img;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:Glycolog/services/auth_service.dart'; // Import your auth service
-import 'package:http/http.dart' as http; // Import HTTP package for API requests
-import 'dart:convert'; // Import Dart's convert library for JSON encoding/decoding
-import 'gL_confirmation_screen.dart'; // Import the confirmation screen
+import 'package:Glycolog/services/auth_service.dart';
+import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
+import 'dart:convert';
+import 'gL_confirmation_screen.dart';
 
 class AddGlucoseLevelScreen extends StatefulWidget {
   const AddGlucoseLevelScreen({super.key});
@@ -17,10 +19,10 @@ class AddGlucoseLevelScreen extends StatefulWidget {
 
 class _AddGlucoseLevelScreenState extends State<AddGlucoseLevelScreen> {
   final TextEditingController _glucoseLevelController = TextEditingController();
-  DateTime _selectedDate = DateTime.now();
+  DateTime _selectedDate = DateTime.now(); // Default to current date
   TimeOfDay _selectedTime = TimeOfDay.now();
   String measurementUnit = 'mg/dL'; // Default unit
-  File? _pickedImage;
+  File? _pickedImage; // Store the picked image
   String? errorMessage;
   String _mealContext = 'fasting'; // Default meal context
 
@@ -37,10 +39,17 @@ class _AddGlucoseLevelScreenState extends State<AddGlucoseLevelScreen> {
     });
   }
 
+  // Function to get a temporary file
+  Future<File> getFile() async {
+    final directory = await getTemporaryDirectory();
+    final path = '${directory.path}/example.txt'; // Specify the file name
+    return File(path);
+  }
+
   // Function to pick an image from the camera
   Future<void> _pickImage() async {
     final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.camera);
+    final pickedFile = await picker.pickImage(source: ImageSource.camera); 
     if (pickedFile != null) {
       setState(() {
         _pickedImage = File(pickedFile.path);
@@ -49,42 +58,82 @@ class _AddGlucoseLevelScreenState extends State<AddGlucoseLevelScreen> {
     }
   }
 
-  // Function to scan the glucose meter using OCR
+  // Function to preprocess the image
+  Future<File> _preprocessImage(File imageFile) async {
+    final bytes = await imageFile.readAsBytes();
+    img.Image? image = img.decodeImage(bytes);
+
+    if (image != null) {
+      // Convert to grayscale
+      img.Image grayscaleImage = img.grayscale(image);
+
+      // Apply thresholding
+      img.Image thresholdImage = img.copyResize(grayscaleImage, width: grayscaleImage.width, height: grayscaleImage.height);
+
+      // Save the processed image to a temporary file
+      final directory = await getTemporaryDirectory();
+      final path = '${directory.path}/processed_image.png';
+      final processedImageFile = File(path)..writeAsBytesSync(img.encodePng(thresholdImage));
+
+      return processedImageFile;
+    } else {
+      throw Exception('Failed to preprocess image');
+    }
+  }
+
+  // Function to scan the glucose meter image
   Future<void> _scanGlucoseMeter(File imageFile) async {
-    final InputImage inputImage = InputImage.fromFile(imageFile);
-    final textRecognizer = TextRecognizer(); // Initialize the TextRecognizer
+  try {
+    final processedImageFile = await _preprocessImage(imageFile);
+    final inputImage = InputImage.fromFile(processedImageFile);
+    final textRecognizer = TextRecognizer();
     final RecognizedText recognizedText = await textRecognizer.processImage(inputImage);
 
-    // Scan for numbers within the recognized text (for glucose level)
-    String? glucoseValue; // Keep this nullable to check if it gets assigned
+    double? glucoseValue; // Keep this nullable
+    double maxHeight = 0; // Variable to keep track of the largest font size
 
+    final regex = RegExp(r'\b\d+(\.\d+)?\b'); // Match both integers and decimals
     for (TextBlock block in recognizedText.blocks) {
       for (TextLine line in block.lines) {
         for (TextElement element in line.elements) {
-          if (RegExp(r'^\d+$').hasMatch(element.text)) {
-            glucoseValue = element.text; // Assume it's the glucose value
-            break;
+          // Match the element text with the regex to filter only valid numbers
+          if (regex.hasMatch(element.text)) {
+            double? value = double.tryParse(element.text); // Try to parse the text as a double
+            double textHeight = element.boundingBox.height; // Get the height of the text element
+
+            // Check for valid value and if it is the largest height found so far
+            if (value != null && textHeight > maxHeight) {
+              glucoseValue = value; // Update to the value with the largest font size
+              maxHeight = textHeight; // Update the largest font size
+            }
           }
         }
-        if (glucoseValue != null) break; // Exit outer loop if glucoseValue is found
       }
-      if (glucoseValue != null) break; // Exit outer loop if glucoseValue is found
     }
 
-    // Set the scanned value in the text field
-    if (glucoseValue != null) {
+    // Define valid ranges
+    double minValue = (measurementUnit == 'mg/dL') ? 10 : 0.55;
+    double maxValue = (measurementUnit == 'mg/dL') ? 600 : 33.3;
+
+    // Validate the detected glucose value before setting it
+    if (glucoseValue != null && glucoseValue >= minValue && glucoseValue <= maxValue) {
       setState(() {
-        _glucoseLevelController.text = glucoseValue!; // Auto-fill the scanned value
+        _glucoseLevelController.text = glucoseValue.toString(); // Auto-fill the scanned value
       });
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('No valid glucose level detected.')),
+        SnackBar(content: Text('Detected glucose level is out of valid range.')),
       );
     }
 
     // Dispose the recognizer when done
     textRecognizer.close();
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Failed to process image: $e')),
+    );
   }
+}
 
   // Function to pick the date
   Future<void> _selectDate(BuildContext context) async {
@@ -127,7 +176,7 @@ class _AddGlucoseLevelScreenState extends State<AddGlucoseLevelScreen> {
       // Navigate to the confirmation screen
       Navigator.push(
         context,
-        MaterialPageRoute(
+        MaterialPageRoute( // Use MaterialPageRoute to pass data to the confirmation screen 
           builder: (context) => GlucoseLogConfirmationScreen(
             glucoseLevel: double.parse(_glucoseLevelController.text),
             selectedDate: _selectedDate,
@@ -138,12 +187,13 @@ class _AddGlucoseLevelScreenState extends State<AddGlucoseLevelScreen> {
         ),
       ).then((confirmed) {
         if (confirmed == true) {
-          _saveGlucoseLog(glucoseValue);
+          _saveGlucoseLog(glucoseValue); // Save the glucose log if confirmed
         }
       });
     }
   }
 
+  // Function to validate the input
   bool _validateInput() {
     String glucoseLevel = _glucoseLevelController.text;
 
@@ -157,11 +207,11 @@ class _AddGlucoseLevelScreenState extends State<AddGlucoseLevelScreen> {
     try {
       double level = double.parse(glucoseLevel);
 
-      // Set realistic range based on measurement unit
-      double minValue = (measurementUnit == 'mg/dL') ? 10 : 1; // Lower threshold based on unit
-      double maxValue = (measurementUnit == 'mg/dL') ? 600 : 33; // Upper threshold for mmol/L
+      // Define ranges based on the selected measurement unit
+      double minValue = (measurementUnit == 'mg/dL') ? 10 : 0.55;
+      double maxValue = (measurementUnit == 'mg/dL') ? 600 : 33.3;
 
-      // Check if the value is within the realistic range
+      // Check if the value is within the realistic range for the selected unit
       if (level < minValue || level > maxValue) {
         setState(() {
           errorMessage = 'Please enter a glucose level between $minValue and $maxValue $measurementUnit.';
@@ -194,15 +244,16 @@ class _AddGlucoseLevelScreenState extends State<AddGlucoseLevelScreen> {
   Future<void> _saveGlucoseLog(double glucoseLevel) async {
     String? token = await AuthService().getAccessToken();
     final response = await http.post(
-      Uri.parse('http://10.0.2.2:8000/api/glucose-log/'), // Update with your API endpoint
+      // Uri.parse('http://10.0.2.2:8000/api/glucose-log/'), // For Emulator API endpoint
+      Uri.parse('http://192.168.1.19:8000/api/glucose-log/'),  // For Physical Device API endpoint
       headers: {
         'Authorization': 'Bearer $token', // Send the token in the header
         'Content-Type': 'application/json',
       },
       body: json.encode({
-        'glucoseLevel': glucoseLevel,
+        'glucose_level': glucoseLevel,
         'timestamp': DateTime.now().toIso8601String(), // Use the current date and time
-        'mealContext': _mealContext,  // Include meal context
+        'meal_context': _mealContext,  // Include meal context
       }),
     );
 
@@ -214,6 +265,8 @@ class _AddGlucoseLevelScreenState extends State<AddGlucoseLevelScreen> {
       setState(() {
         _pickedImage = null; // Clear the picked image after saving
       });
+      // Navigate to the main glucose log page
+      Navigator.pushReplacementNamed(context, '/glucose-log');
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to add glucose log. Please try again.')),
@@ -225,32 +278,47 @@ class _AddGlucoseLevelScreenState extends State<AddGlucoseLevelScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Add Glucose Level'),
+        title: const Text(
+          'Add Glucose Level',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        backgroundColor: Colors.blue[800], 
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Glucose Level Entry
-            TextField(
+            _buildInputField(
+              label: 'Glucose Level',
               controller: _glucoseLevelController,
               keyboardType: TextInputType.number,
-              decoration: InputDecoration(
-                labelText: 'Glucose Level ($measurementUnit)', // Show unit in the label
-                errorText: errorMessage,
-              ),
+              errorMessage: errorMessage,
+              suffixText: measurementUnit,
             ),
+
             const SizedBox(height: 20),
 
             // OCR Scan Button
             ElevatedButton.icon(
-              onPressed: _pickImage, // Pick image to scan
-              icon: Icon(Icons.camera_alt),
-              label: Text('Scan Glucose Meter'),
+              onPressed: _pickImage,
+              icon: const Icon(Icons.camera_alt),
+              label: const Text('Scan Glucose Meter'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue[800],
+                padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
             ),
             const SizedBox(height: 20),
 
-            // Display picked image (if any)
+            // Display picked image if available
             if (_pickedImage != null)
               Image.file(
                 _pickedImage!,
@@ -261,13 +329,10 @@ class _AddGlucoseLevelScreenState extends State<AddGlucoseLevelScreen> {
             const SizedBox(height: 20),
 
             // Meal Context Dropdown
-            DropdownButtonFormField<String>(
+            _buildDropdownMenu(
               value: _mealContext,
-              decoration: InputDecoration(
-                labelText: 'Meal Context',
-                border: OutlineInputBorder(),
-              ),
-              items: [
+              label: 'Meal Context',
+              items: const [
                 DropdownMenuItem(value: 'fasting', child: Text('Fasting')),
                 DropdownMenuItem(value: 'pre_meal', child: Text('Pre-Meal')),
                 DropdownMenuItem(value: 'post_meal', child: Text('Post-Meal')),
@@ -283,14 +348,14 @@ class _AddGlucoseLevelScreenState extends State<AddGlucoseLevelScreen> {
             // Date Picker
             ListTile(
               title: Text("Date: ${_selectedDate.toLocal()}".split(' ')[0]),
-              trailing: Icon(Icons.calendar_today),
+              trailing: const Icon(Icons.calendar_today),
               onTap: () => _selectDate(context),
             ),
 
             // Time Picker
             ListTile(
               title: Text("Time: ${_selectedTime.format(context)}"),
-              trailing: Icon(Icons.access_time),
+              trailing: const Icon(Icons.access_time),
               onTap: () => _selectTime(context),
             ),
 
@@ -299,11 +364,66 @@ class _AddGlucoseLevelScreenState extends State<AddGlucoseLevelScreen> {
             // Submit Button
             ElevatedButton(
               onPressed: _submitData,
-              child: Text('Save Glucose Log'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue[800], // Confirm button color
+                padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 15),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text(
+                'Save Glucose Log',
+                style: TextStyle(
+                  fontSize: 18,
+                  color: Colors.white,
+                ),
+              ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  
+  Widget _buildInputField({
+    required String label,
+    required TextEditingController controller,
+    required TextInputType keyboardType,
+    String? suffixText,
+    String? errorMessage,
+  }) {
+    return TextField(
+      controller: controller,
+      keyboardType: keyboardType,
+      decoration: InputDecoration(
+        labelText: '$label ($measurementUnit)',
+        suffixText: suffixText,
+        errorText: errorMessage,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12.0),
+        ),
+      ),
+    );
+  }
+
+  // D                ropdown menu
+  Widget _buildDropdownMenu({
+    required String value,
+    required String label,
+    required List<DropdownMenuItem<String>> items,
+    required void Function(String?) onChanged,
+  }) {
+    return DropdownButtonFormField<String>(
+      value: value,
+      decoration: InputDecoration(
+        labelText: label,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12.0),
+        ),
+      ),
+      items: items,
+      onChanged: onChanged,
     );
   }
 }

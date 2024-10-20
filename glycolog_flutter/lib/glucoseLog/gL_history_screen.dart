@@ -3,8 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:Glycolog/services/auth_service.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'gl_detail_screen.dart';
-
+import 'gL_detail_screen.dart';
 
 class GlucoseLogHistoryScreen extends StatefulWidget {
   const GlucoseLogHistoryScreen({super.key});
@@ -14,79 +13,70 @@ class GlucoseLogHistoryScreen extends StatefulWidget {
 }
 
 class _GlucoseLogHistoryScreenState extends State<GlucoseLogHistoryScreen> {
-  List<Map<String, dynamic>> glucoseLogs = []; // List to hold glucose log data
-  List<Map<String, dynamic>> filteredLogs = []; // List to hold filtered logs
-  String measurementUnit = 'mg/dL'; // Default measurement unit
-  bool isLoading = true; // To show loading indicator while fetching data
-  String? errorMessage; // To hold error messages if any
+  List<Map<String, dynamic>> glucoseLogs = [];
+  List<Map<String, dynamic>> filteredLogs = [];
+  String measurementUnit = 'mg/dL';
+  bool isLoading = true;
+  String? errorMessage;
 
-  DateTime? _startDate; // For filtering by start date
-  DateTime? _endDate; // For filtering by end date
-  final TextEditingController _levelFilterController = TextEditingController(); // Input for glucose level filter
-  String _selectedFilterType = 'equal'; // Filter type (greater, less, or equal)
+  DateTime? _startDate;
+  DateTime? _endDate;
+  final TextEditingController _levelFilterController = TextEditingController();
+  String _selectedFilterType = 'equal';
 
   @override
   void initState() {
     super.initState();
-    _loadUserSettings(); // Load user settings to get the preferred measurement unit
-    fetchGlucoseLogs(); // Fetch glucose logs when the screen initializes
+    _loadUserSettings();
+    fetchGlucoseLogs();
   }
 
-  // Fetch user's preferred measurement unit
+  // Method to load user settings from SharedPreferences
   Future<void> _loadUserSettings() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
-      measurementUnit = prefs.getString('selectedUnit') ?? 'mg/dL'; // Default to mg/dL
+      measurementUnit = prefs.getString('selectedUnit') ?? 'mg/dL';
     });
   }
 
-  // Conversion function to convert mg/dL to mmol/L
   double convertToMmolL(double value) {
-    return value / 18.01559; // Convert mg/dL to mmol/L
+    return value / 18.01559;
   }
 
-  // Conversion function to convert mmol/L to mg/dL
   double convertToMgdL(double value) {
-    return value * 18.01559; // Convert mmol/L to mg/dL
+    return value * 18.01559;
   }
 
-  // Fetch glucose logs from the server
   Future<void> fetchGlucoseLogs() async {
-    String? token = await AuthService().getAccessToken(); // Get access token
+    String? token = await AuthService().getAccessToken();
 
     if (token != null) {
       try {
         final response = await http.get(
-          Uri.parse('http://10.0.2.2:8000/api/glucose-log/'), // Replace with your API endpoint
-          headers: {
-            'Authorization': 'Bearer $token', // Send token in request header
-          },
+         // Uri.parse('http://10.0.2.2:8000/api/glucose-log/'), // For Android Emulator
+          Uri.parse('http://192.168.1.19:8000/api/glucose-log/'),  // For Physical Device 
+          headers: {'Authorization': 'Bearer $token'},
         );
 
         if (response.statusCode == 200) {
           final data = json.decode(response.body);
           setState(() {
-            glucoseLogs = List<Map<String, dynamic>>.from(data['logs'] ?? []); // Get logs or an empty list
-
-            // Apply unit conversion to each glucose log based on the user's setting
+            glucoseLogs = List<Map<String, dynamic>>.from(data['logs'] ?? []);
             if (measurementUnit == 'mmol/L') {
               for (var log in glucoseLogs) {
                 log['glucoseLevel'] = convertToMmolL(log['glucoseLevel']);
               }
             }
-
-            filteredLogs = glucoseLogs; // Initially, all logs are displayed
-            isLoading = false; // Data has been loaded
+            filteredLogs = glucoseLogs;
+            isLoading = false;
           });
         } else {
-          // Handle server error
           setState(() {
             errorMessage = 'Failed to load glucose logs.';
             isLoading = false;
           });
         }
       } catch (e) {
-        // Handle network or other errors
         setState(() {
           errorMessage = 'An error occurred: $e';
           isLoading = false;
@@ -100,32 +90,28 @@ class _GlucoseLogHistoryScreenState extends State<GlucoseLogHistoryScreen> {
     }
   }
 
-  // Function to validate and filter glucose logs based on user input
+  // Method to apply filters based on user input
   void _applyFilters() {
     double? filterLevel;
     if (_levelFilterController.text.isNotEmpty) {
       try {
         filterLevel = double.parse(_levelFilterController.text);
-
-        // Convert the filter level if necessary
         if (measurementUnit == 'mmol/L') {
-          filterLevel = convertToMgdL(filterLevel); // Convert to mg/dL for filtering
+          filterLevel = convertToMgdL(filterLevel);
         }
-
       } catch (e) {
         setState(() {
           errorMessage = 'Please enter a valid numeric glucose level.';
         });
-        return; // Stop if input is invalid
+        return;
       }
     }
 
     setState(() {
       filteredLogs = glucoseLogs.where((log) {
-        final logDate = DateTime.parse(log['timestamp']); // Parse timestamp
+        final logDate = DateTime.parse(log['timestamp']);
         final logLevel = log['glucoseLevel'];
 
-        // Filter by date range
         bool dateFilter = true;
         if (_startDate != null) {
           dateFilter = logDate.isAfter(_startDate!) || logDate.isAtSameMomentAs(_startDate!);
@@ -134,7 +120,6 @@ class _GlucoseLogHistoryScreenState extends State<GlucoseLogHistoryScreen> {
           dateFilter = dateFilter && (logDate.isBefore(_endDate!) || logDate.isAtSameMomentAs(_endDate!));
         }
 
-        // Filter by glucose level
         bool levelFilter = true;
         if (filterLevel != null) {
           switch (_selectedFilterType) {
@@ -156,7 +141,6 @@ class _GlucoseLogHistoryScreenState extends State<GlucoseLogHistoryScreen> {
     });
   }
 
-  // Date Picker
   Future<void> _selectDate(BuildContext context, {bool isStart = true}) async {
     final DateTime? pickedDate = await showDatePicker(
       context: context,
@@ -181,9 +165,10 @@ class _GlucoseLogHistoryScreenState extends State<GlucoseLogHistoryScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Glucose Log History'),
+        backgroundColor: Colors.blue[800],
       ),
       body: isLoading
-          ? const Center(child: CircularProgressIndicator()) // Show loading indicator while fetching data
+          ? const Center(child: CircularProgressIndicator())
           : Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
@@ -200,73 +185,44 @@ class _GlucoseLogHistoryScreenState extends State<GlucoseLogHistoryScreen> {
 
                   const Text(
                     'Glucose Log History',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue,
+                    ),
                   ),
 
                   const SizedBox(height: 20),
-                  // Glucose Level Filter Section
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _levelFilterController,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            labelText: 'Filter by Glucose Level',
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      DropdownButton<String>(
-                        value: _selectedFilterType,
-                        onChanged: (String? newValue) {
-                          setState(() {
-                            _selectedFilterType = newValue!;
-                          });
-                        },
-                        items: const [
-                          DropdownMenuItem(value: 'greater', child: Text('>')),
-                          DropdownMenuItem(value: 'less', child: Text('<')),
-                          DropdownMenuItem(value: 'equal', child: Text('=')),
-                        ],
-                      ),
-                    ],
-                  ),
+
+                  // Glucose Level Filter
+                  _buildFilterSection(),
 
                   const SizedBox(height: 10),
 
                   // Date Range Filter Section
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ListTile(
-                          title: Text(_startDate != null
-                              ? 'From: ${_startDate!.toLocal()}'.split(' ')[0]
-                              : 'From: Select Date'),
-                          trailing: const Icon(Icons.calendar_today),
-                          onTap: () => _selectDate(context, isStart: true),
+                  _buildDateFilterSection(),
+
+                  const SizedBox(height: 20),
+
+                  // Apply Filters Button
+                  Center(
+                    child: ElevatedButton(
+                      onPressed: _applyFilters,
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+                        backgroundColor: Colors.blue[800],
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12.0),
                         ),
                       ),
-                      Expanded(
-                        child: ListTile(
-                          title: Text(_endDate != null
-                              ? 'To: ${_endDate!.toLocal()}'.split(' ')[0]
-                              : 'To: Select Date'),
-                          trailing: const Icon(Icons.calendar_today),
-                          onTap: () => _selectDate(context, isStart: false),
-                        ),
+                      child: const Text(
+                        'Apply Filters',
+                        style: TextStyle(fontSize: 18, color: Colors.white),
                       ),
-                    ],
+                    ),
                   ),
 
-                  const SizedBox(height: 10),
-
-                  ElevatedButton(
-                    onPressed: _applyFilters,
-                    child: const Text('Apply Filters'),
-                  ),
-
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 20),
 
                   // Filtered Glucose Logs
                   Expanded(
@@ -274,28 +230,108 @@ class _GlucoseLogHistoryScreenState extends State<GlucoseLogHistoryScreen> {
                       itemCount: filteredLogs.length,
                       itemBuilder: (context, index) {
                         final log = filteredLogs[index];
-                        return ListTile(
-                          title: Text(
-                            'Glucose Level: ${log['glucoseLevel']} $measurementUnit',
-                            style: const TextStyle(fontSize: 16),
-                          ),
-                          subtitle: Text('Date: ${log['timestamp']}'),
-                          onTap: () {
-                            // Navigate to log details
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => LogDetailsScreen(logDetails: log), // Pass log details
-                              ),
-                            );
-                          },
-                        );
+                        return _buildLogTile(log, context);
                       },
                     ),
                   ),
                 ],
               ),
             ),
+    );
+  }
+
+  // Widget for the glucose level filter section
+  Widget _buildFilterSection() {
+    return Row(
+      children: [
+        Expanded(
+          child: TextField(
+            controller: _levelFilterController,
+            keyboardType: TextInputType.number,
+            decoration: InputDecoration(
+              labelText: 'Filter by Glucose Level',
+              labelStyle: const TextStyle(fontSize: 16, color: Colors.black54),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        DropdownButton<String>(
+          value: _selectedFilterType,
+          onChanged: (String? newValue) {
+            setState(() {
+              _selectedFilterType = newValue!;
+            });
+          },
+          items: const [
+            DropdownMenuItem(value: 'greater', child: Text('>')),
+            DropdownMenuItem(value: 'less', child: Text('<')),
+            DropdownMenuItem(value: 'equal', child: Text('=')),
+          ],
+        ),
+      ],
+    );
+  }
+
+  // Widget for the date filter section
+  Widget _buildDateFilterSection() {
+    return Row(
+      children: [
+        Expanded(
+          child: ListTile(
+            title: Text(
+              _startDate != null
+                  ? 'From: ${_startDate!.toLocal()}'.split(' ')[0]
+                  : 'From: Select Date',
+              style: const TextStyle(color: Colors.black87, fontSize: 16),
+            ),
+            trailing: const Icon(Icons.calendar_today),
+            onTap: () => _selectDate(context, isStart: true),
+          ),
+        ),
+        Expanded(
+          child: ListTile(
+            title: Text(
+              _endDate != null ? 'To: ${_endDate!.toLocal()}'.split(' ')[0] : 'To: Select Date',
+              style: const TextStyle(color: Colors.black87, fontSize: 16),
+            ),
+            trailing: const Icon(Icons.calendar_today),
+            onTap: () => _selectDate(context, isStart: false),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Widget for displaying each glucose log
+  Widget _buildLogTile(Map<String, dynamic> log, BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 8.0),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10.0),
+      ),
+      elevation: 4.0,
+      child: ListTile(
+        contentPadding: const EdgeInsets.all(16.0),
+        title: Text(
+          'Glucose Level: ${log['glucoseLevel']} $measurementUnit',
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        subtitle: Text(
+          'Date: ${log['timestamp']}',
+          style: const TextStyle(fontSize: 16, color: Colors.black54),
+        ),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => LogDetailsScreen(logDetails: log),
+            ),
+          );
+        },
+      ),
     );
   }
 }

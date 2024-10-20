@@ -71,16 +71,18 @@ class MealSerializer(serializers.ModelSerializer):
 class GlucoseLogSerializer(serializers.ModelSerializer):
     class Meta:
         model = GlucoseLog
-        fields = ['logID', 'userID', 'glucoseLevel', 'timestamp', 'mealContext']
+        fields = ['logID', 'user', 'glucose_level', 'timestamp', 'meal_context']
+        read_only_fields = ['user']  # Make the user field read-only
 
     def create(self, validated_data):
         # Automatically set the user from the request
         request = self.context.get('request')
-        validated_data['user'] = request.user  # Set the logged-in user
+        if request and hasattr(request, 'user'):
+            validated_data['user'] = request.user  # Set the logged-in user
         return super().create(validated_data)
 
     # Validations
-    def validate_glucoseLevel(self, value):
+    def validate_glucose_level(self, value):
         # Ensure glucose level is within a reasonable range
         if value < 0:
             raise serializers.ValidationError("Glucose level must be a positive number.")

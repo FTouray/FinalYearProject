@@ -25,7 +25,13 @@ class _GlucoseLogScreenState extends State<GlucoseLogScreen> {
   void initState() {
     super.initState();
     _loadUserSettings(); // Load user settings to get the preferred measurement unit
-    fetchGlucoseLogs(); // Fetch the glucose logs when the screen initializes
+    //fetchGlucoseLogs(); // Fetch the glucose logs when the screen initializes
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    fetchGlucoseLogs(); // Fetch the glucose logs when the screen is displayed
   }
 
   // Fetch user's preferred measurement unit
@@ -48,7 +54,8 @@ class _GlucoseLogScreenState extends State<GlucoseLogScreen> {
     if (token != null) {
       try {
         final response = await http.get(
-          Uri.parse('http://10.0.2.2:8000/api/glucose-log/'), // Replace with your API endpoint
+         // Uri.parse('http://10.0.2.2:8000/api/glucose-log/'), //For Emulator
+          Uri.parse('http://192.168.1.19:8000/api/glucose-log/'),  // For Physical Device 
           headers: {
             'Authorization': 'Bearer $token', // Send token in request header
           },
@@ -104,6 +111,16 @@ class _GlucoseLogScreenState extends State<GlucoseLogScreen> {
       return Colors.red; // High glucose levels
     }
     return Colors.blue[800]!; // Normal glucose levels
+  }
+
+  // Function to dynamically determine the graph line color based on glucose level
+  Color getGraphLineColor(double glucoseLevel) {
+    if (glucoseLevel < (measurementUnit == 'mg/dL' ? 80 : 4.4)) {
+      return Colors.green; // Low glucose levels
+    } else if (glucoseLevel > (measurementUnit == 'mg/dL' ? 180 : 10.0)) {
+      return Colors.red; // High glucose levels
+    }
+    return Colors.blue; // Normal glucose levels
   }
 
   @override
@@ -165,7 +182,7 @@ class _GlucoseLogScreenState extends State<GlucoseLogScreen> {
                               label: "Last Log",
                               color: getCircleColor(lastLog),
                               onTap: () {
-                                // Optional: Add onTap functionality if needed.
+                                // Maybe display detail of last log.
                               },
                             ),
                             // Add Log Circle
@@ -183,9 +200,7 @@ class _GlucoseLogScreenState extends State<GlucoseLogScreen> {
                               value: averageLog,
                               label: "Average",
                               color: getCircleColor(averageLog),
-                              onTap: () {
-                                // Optional: Add onTap functionality if needed.
-                              },
+                              
                             ),
                           ],
                         ),
@@ -258,11 +273,12 @@ class _GlucoseLogScreenState extends State<GlucoseLogScreen> {
                                                 spots: glucoseLogs
                                                     .asMap()
                                                     .entries
-                                                    .map((e) =>
-                                                        FlSpot(e.key.toDouble(), e.value['glucoseLevel']))
+                                                    .map((e) => FlSpot(
+                                                        e.key.toDouble(),
+                                                        e.value['glucoseLevel']))
                                                     .toList(),
                                                 isCurved: true,
-                                                color: Colors.blue,
+                                                color: Colors.blue, // Use a single color for now
                                                 barWidth: 3,
                                                 belowBarData: BarAreaData(
                                                     show: true,

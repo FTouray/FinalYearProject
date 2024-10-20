@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'glucoseLog/add_glucose_log_screen.dart';
+import 'glucoseLog/gL_add_level_screen.dart';
 import 'glucoseLog/gL_history_screen.dart';
-import 'glucoseLog/gl_detail_screen.dart';
-import 'glucoseLog/glucose_log_screen.dart';
+import 'glucoseLog/gL_detail_screen.dart';
+import 'glucoseLog/gL_main_screen.dart';
 import 'loginRegister/login_screen.dart';
 import 'home/homepage_screen.dart';
 import 'loginRegister/register_screen.dart';
@@ -68,7 +68,8 @@ class _MyAppState extends State<MyApp> {
   // Function to refresh the token
   Future<void> _refreshToken() async {
     final response = await http.post(
-      Uri.parse('http://10.0.2.2:8000/api/token/refresh/'), // Your token refresh API endpoint
+     // Uri.parse('http://10.0.2.2:8000/api/token/refresh/'), // For Emulator Token refresh API endpoint
+      Uri.parse('http://192.168.1.19:8000/api/token/refresh/'),  // For Physical Device 
       headers: {'Content-Type': 'application/json'},
       body: json.encode({'refresh': _token}), // Include refresh token in the body
     );
