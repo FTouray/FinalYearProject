@@ -59,9 +59,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             ListTile(
-              title: const Text('mmol/L'),
+              title: const Text('mg/dL'),
               leading: Radio<String>(
-                value: 'mmol/L',
+                value: 'mg/dL',
                 groupValue: _selectedUnit,
                 onChanged: (value) {
                   setState(() {
@@ -73,9 +73,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
             ListTile(
-              title: const Text('mg/dL'),
+              title: const Text('mmol/L'),
               leading: Radio<String>(
-                value: 'mg/dL',
+                value: 'mmol/L',
                 groupValue: _selectedUnit,
                 onChanged: (value) {
                   setState(() {

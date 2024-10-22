@@ -70,6 +70,7 @@ class _MyAppState extends State<MyApp> {
     final response = await http.post(
      // Uri.parse('http://10.0.2.2:8000/api/token/refresh/'), // For Emulator Token refresh API endpoint
       Uri.parse('http://192.168.1.19:8000/api/token/refresh/'),  // For Physical Device 
+      // Uri.parse('http://147.252.148.38:8000/api/token/refresh/'), // For Eduroam API endpoint
       headers: {'Content-Type': 'application/json'},
       body: json.encode({'refresh': _token}), // Include refresh token in the body
     );

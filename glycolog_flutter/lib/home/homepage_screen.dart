@@ -23,7 +23,7 @@ class _HomePageState extends State<HomePage> {
     // Handle navigation based on the selected index
     if (index == 0) {
       // Home
-      Navigator.pushReplacementNamed(context, '/home');
+      Navigator.pushNamed(context, '/home');
     } else if (index == 1) {
       // Community Forum
       Navigator.pushNamed(context, '/community');

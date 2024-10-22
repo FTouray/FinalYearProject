@@ -55,6 +55,8 @@ class _GlucoseLogHistoryScreenState extends State<GlucoseLogHistoryScreen> {
         final response = await http.get(
          // Uri.parse('http://10.0.2.2:8000/api/glucose-log/'), // For Android Emulator
           Uri.parse('http://192.168.1.19:8000/api/glucose-log/'),  // For Physical Device 
+         // Uri.parse('http://147.252.148.38:8000/api/glucose-log/'), // For Eduroam API endpoint
+         // Uri.parse('http://192.168.40.184:8000/api/glucose-log/'), // Ethernet IP
           headers: {'Authorization': 'Bearer $token'},
         );
 
@@ -64,7 +66,7 @@ class _GlucoseLogHistoryScreenState extends State<GlucoseLogHistoryScreen> {
             glucoseLogs = List<Map<String, dynamic>>.from(data['logs'] ?? []);
             if (measurementUnit == 'mmol/L') {
               for (var log in glucoseLogs) {
-                log['glucoseLevel'] = convertToMmolL(log['glucoseLevel']);
+                log['glucose_level'] = convertToMmolL(log['glucose_level']);
               }
             }
             filteredLogs = glucoseLogs;
@@ -110,7 +112,7 @@ class _GlucoseLogHistoryScreenState extends State<GlucoseLogHistoryScreen> {
     setState(() {
       filteredLogs = glucoseLogs.where((log) {
         final logDate = DateTime.parse(log['timestamp']);
-        final logLevel = log['glucoseLevel'];
+        final logLevel = log['glucose_level'];
 
         bool dateFilter = true;
         if (_startDate != null) {
@@ -316,7 +318,7 @@ class _GlucoseLogHistoryScreenState extends State<GlucoseLogHistoryScreen> {
       child: ListTile(
         contentPadding: const EdgeInsets.all(16.0),
         title: Text(
-          'Glucose Level: ${log['glucoseLevel']} $measurementUnit',
+          'Glucose Level: ${log['glucose_level']} $measurementUnit',
           style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         subtitle: Text(

@@ -32,6 +32,9 @@ class _LoginScreenState extends State<LoginScreen> {
       final response = await http.post(
        // Uri.parse('http://10.0.2.2:8000/api/login/'), // For Android Emulator
         Uri.parse('http://192.168.1.19:8000/api/login/'),  // For Physical Device 
+       // Uri.parse('http://147.252.148.38:8000/api/login/'), // For Eduroam API endpoint
+       // Uri.parse('http://192.168.40.184:8000/api/login/'), // Ethernet IP
+
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'username': username,
@@ -55,7 +58,7 @@ class _LoginScreenState extends State<LoginScreen> {
         });
         
         // Navigate to the Home Page and pass the first name
-        Navigator.pushReplacementNamed(context, '/home', arguments: firstName); 
+        Navigator.pushNamed(context, '/home', arguments: firstName); 
       } else {
         final data = json.decode(response.body);
         setState(() {

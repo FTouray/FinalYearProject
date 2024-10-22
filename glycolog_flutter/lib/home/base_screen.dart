@@ -90,7 +90,7 @@ class BaseScreen extends StatelessWidget {
           onItemTapped(index);
           if (index == 0) {
             // If the first item (Home) is tapped, navigate to Home
-            Navigator.pushReplacementNamed(context, '/home');
+            Navigator.pushNamed(context, '/home');
           }
         },
         items: const <BottomNavigationBarItem>[

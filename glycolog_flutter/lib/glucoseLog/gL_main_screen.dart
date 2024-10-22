@@ -2,6 +2,7 @@ import 'package:Glycolog/services/auth_service.dart';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart'; // Importing the chart package
 import 'package:http/http.dart' as http; // For making API requests
+import 'package:intl/intl.dart';
 import 'dart:convert'; // For JSON handling
 import 'package:shared_preferences/shared_preferences.dart'; // For retrieving user settings
 import '../home/base_screen.dart'; // Import BaseScreen
@@ -14,8 +15,8 @@ class GlucoseLogScreen extends StatefulWidget {
 }
 
 class _GlucoseLogScreenState extends State<GlucoseLogScreen> {
-  double lastLog = 0.0; // Default value for last glucose log
-  double averageLog = 0.0; // Default value for average glucose log
+  double? lastLog; // Changed to nullable double for safety
+  double? averageLog; // Changed to nullable double for safety
   List<Map<String, dynamic>> glucoseLogs = []; // List to hold the full glucose log data
   String measurementUnit = 'mg/dL'; // Default measurement unit
   bool isLoading = true; // To show loading indicator while fetching data
@@ -25,7 +26,6 @@ class _GlucoseLogScreenState extends State<GlucoseLogScreen> {
   void initState() {
     super.initState();
     _loadUserSettings(); // Load user settings to get the preferred measurement unit
-    //fetchGlucoseLogs(); // Fetch the glucose logs when the screen initializes
   }
 
   @override
@@ -47,6 +47,12 @@ class _GlucoseLogScreenState extends State<GlucoseLogScreen> {
     return value / 18.01559; // Convert mg/dL to mmol/L
   }
 
+  // Safe parsing for double values, returns null if the value cannot be parsed
+  double? parseDouble(dynamic value) {
+    if (value == null) return null;
+    return double.tryParse(value.toString());
+  }
+
   // Fetch glucose logs from the server using the refreshed token if needed
   Future<void> fetchGlucoseLogs() async {
     String? token = await AuthService().getAccessToken(); // Get access token or refresh if expired
@@ -55,7 +61,9 @@ class _GlucoseLogScreenState extends State<GlucoseLogScreen> {
       try {
         final response = await http.get(
          // Uri.parse('http://10.0.2.2:8000/api/glucose-log/'), //For Emulator
-          Uri.parse('http://192.168.1.19:8000/api/glucose-log/'),  // For Physical Device 
+         Uri.parse('http://192.168.1.19:8000/api/glucose-log/'),  // For Physical Device 
+         // Uri.parse('http://147.252.148.38:8000/api/glucose-log/'), // For Eduroam API endpoint
+         // Uri.parse('http://192.168.40.184:8000/api/glucose-log/'), // Ethernet IP
           headers: {
             'Authorization': 'Bearer $token', // Send token in request header
           },
@@ -65,25 +73,42 @@ class _GlucoseLogScreenState extends State<GlucoseLogScreen> {
           final data = json.decode(response.body);
 
           setState(() {
-            lastLog = data['lastLog'] ?? 0.0; // Get the last log or set to 0
-            averageLog = data['averageLog'] ?? 0.0; // Get the average log or set to 0
-            glucoseLogs = List<Map<String, dynamic>>.from(data['logs'] ?? []); // Get logs or an empty list
+            // Ensure this data is being correctly set
+            lastLog = parseDouble(data['lastLog']); 
+            averageLog = parseDouble(data['averageLog']); 
+            glucoseLogs = List<Map<String, dynamic>>.from(data['logs'] ?? []); 
+
+            // Sort logs by timestamp to find the last log
+            glucoseLogs.sort((a, b) => DateTime.parse(b['timestamp']).compareTo(DateTime.parse(a['timestamp'])));
+
+            lastLog = glucoseLogs.isNotEmpty ? parseDouble(glucoseLogs.first['glucose_level']) : null;
+
+            // Calculate the average log
+            if (glucoseLogs.isNotEmpty) {
+              double total = glucoseLogs.fold(0.0, (sum, log) => sum + (parseDouble(log['glucose_level']) ?? 0.0));
+              averageLog = total / glucoseLogs.length;
+            } else {
+              averageLog = null;
+            }
+        
 
             // Apply unit conversion to each glucose log based on the user's setting
             if (measurementUnit == 'mmol/L') {
-              lastLog = convertToMmolL(lastLog);
-              averageLog = convertToMmolL(averageLog);
+              lastLog = lastLog != null ? convertToMmolL(lastLog!) : null;
+              averageLog = averageLog != null ? convertToMmolL(averageLog!) : null;
               for (var log in glucoseLogs) {
-                log['glucoseLevel'] = convertToMmolL(log['glucoseLevel']);
+                log['glucose_level'] = log['glucose_level'] != null
+                    ? convertToMmolL(parseDouble(log['glucose_level']) ?? 0.0)
+                    : null; // Safely parse glucose level
               }
             }
 
-            isLoading = false; // Data has been loaded
+             isLoading = false; // Data has been loaded
           });
         } else {
           // Handle the case where the server returns an error
           setState(() {
-            errorMessage = 'Log Glucose Levels.';
+            errorMessage = 'Failed to load glucose logs.';
             isLoading = false; // Stop loading
           });
         }
@@ -102,36 +127,70 @@ class _GlucoseLogScreenState extends State<GlucoseLogScreen> {
     }
   }
 
-  // Function to determine circle color based on glucose levels
-  Color getCircleColor(double? value) {
-    if (value == null) return Colors.blue[300]!;
-    if (value < (measurementUnit == 'mg/dL' ? 80 : 4.4)) {
-      return Colors.green; // Low glucose levels
-    } else if (value > (measurementUnit == 'mg/dL' ? 180 : 10.0)) {
-      return Colors.red; // High glucose levels
-    }
-    return Colors.blue[800]!; // Normal glucose levels
-  }
-
-  // Function to dynamically determine the graph line color based on glucose level
-  Color getGraphLineColor(double glucoseLevel) {
+ // Determine the point color based on glucose level
+  Color getPointColor(double glucoseLevel) {
     if (glucoseLevel < (measurementUnit == 'mg/dL' ? 80 : 4.4)) {
-      return Colors.green; // Low glucose levels
+      return Colors.green; // Low
     } else if (glucoseLevel > (measurementUnit == 'mg/dL' ? 180 : 10.0)) {
-      return Colors.red; // High glucose levels
+      return Colors.red; // High
     }
-    return Colors.blue; // Normal glucose levels
+    return Colors.blue; // Normal
   }
 
-  @override
+  // Function to get graph data points
+  List<FlSpot> getGraphData() {
+    return glucoseLogs.asMap().entries
+        .map((e) => FlSpot(e.key.toDouble(), e.value['glucose_level'] ?? 0.0))
+        .toList();
+  }
+
+  // Get the highest glucose level and round it up
+  double getMaxY() {
+    if (glucoseLogs.isEmpty) return 10.0;
+    double maxGlucose = glucoseLogs.fold<double>(0.0, (previousMax, log) {
+      double? level = log['glucose_level'];
+      return level != null && level > previousMax ? level : previousMax;
+    });
+    return (maxGlucose.ceilToDouble()); // Round to the next highest integer
+  }
+
+  // Function to get individual point decorators
+  List<LineChartBarData> getLineChartBarData() {
+    final spots = getGraphData();
+
+    return [
+      LineChartBarData(
+        spots: spots,
+        isCurved: true,
+        dotData: FlDotData(
+          show: true,
+          getDotPainter: (spot, _, __, ___) {
+            return FlDotCirclePainter(
+              radius: 6,
+              color: getPointColor(spot.y),
+              strokeColor: Colors.black,
+              strokeWidth: 2,
+            );
+          },
+        ),
+        color: Colors.blue, // Line color
+        barWidth: 3,
+        belowBarData: BarAreaData(show: true, color: Colors.blue.withOpacity(0.3)),
+      )
+    ];
+  }
+
+@override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width; // Get the screen width
+
     return BaseScreen(
-      selectedIndex: 1, // Assuming glucose log is the second tab
+      selectedIndex: 1,
       onItemTapped: (index) {
         // Handle tab changes if needed
       },
       body: isLoading
-          ? Center(child: CircularProgressIndicator()) // Show loading indicator while fetching data
+          ? Center(child: CircularProgressIndicator())
           : Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
@@ -145,9 +204,10 @@ class _GlucoseLogScreenState extends State<GlucoseLogScreen> {
                         style: TextStyle(color: Colors.red),
                       ),
                     ),
-                  // Elevated Rectangle with Circles
+                  // Glucose Log Overview container
                   Container(
                     padding: const EdgeInsets.all(16.0),
+                    width: screenWidth, // Make it full width
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(16.0),
@@ -172,35 +232,32 @@ class _GlucoseLogScreenState extends State<GlucoseLogScreen> {
                           ),
                         ),
                         const SizedBox(height: 20),
-                        // Circles in Elevated Rectangle
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                           children: [
                             // Last Log Circle
                             CircleDisplay(
-                              value: lastLog,
+                              value: lastLog ?? 0.0,
                               label: "Last Log",
-                              color: getCircleColor(lastLog),
-                              onTap: () {
-                                // Maybe display detail of last log.
-                              },
+                              color: getPointColor(lastLog ?? 0.0),
+                              measurementUnit: measurementUnit,
                             ),
                             // Add Log Circle
                             CircleDisplay(
                               value: null,
                               label: "Add Log",
                               color: Colors.blue[300]!,
+                              measurementUnit: measurementUnit,
                               onTap: () {
                                 Navigator.pushNamed(context, '/add-log');
                               },
                               icon: Icons.add,
                             ),
-                            // Average Log Circle
                             CircleDisplay(
-                              value: averageLog,
+                              value: averageLog ?? 0.0,
                               label: "Average",
-                              color: getCircleColor(averageLog),
-                              
+                              color: getPointColor(averageLog ?? 0.0),
+                              measurementUnit: measurementUnit,
                             ),
                           ],
                         ),
@@ -208,139 +265,103 @@ class _GlucoseLogScreenState extends State<GlucoseLogScreen> {
                     ),
                   ),
                   const SizedBox(height: 30),
-                  // Graph Section
-                  Expanded(
-                    child: glucoseLogs.isNotEmpty // Check if glucoseLogs has data
-                        ? Column(
-                            children: [
-                              // Graph
-                              Expanded(
-                                flex: 3,
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(10),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        blurRadius: 8,
-                                        color: Colors.grey.shade300,
-                                        spreadRadius: 3,
-                                      ),
-                                    ],
-                                  ),
-                                  padding: const EdgeInsets.all(16.0),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        "Glucose Levels Today",
-                                        style: TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.blue[800],
-                                        ),
-                                      ),
-                                      const SizedBox(height: 20),
-                                      Expanded(
-                                        child: LineChart(
-                                          LineChartData(
-                                            gridData: FlGridData(show: true),
-                                            borderData: FlBorderData(show: false),
-                                            titlesData: FlTitlesData(
-                                              bottomTitles: AxisTitles(
-                                                sideTitles: SideTitles(
-                                                  showTitles: true,
-                                                  reservedSize: 22,
-                                                  getTitlesWidget: (value, meta) {
-                                                    return Text(
-                                                        '${value.toInt()}'); // X-axis labels (glucose levels)
-                                                  },
-                                                ),
-                                              ),
-                                              leftTitles: AxisTitles(
-                                                sideTitles: SideTitles(
-                                                  showTitles: true,
-                                                  reservedSize: 40,
-                                                  getTitlesWidget: (value, meta) {
-                                                    return Text(
-                                                        '${value.toInt()}'); // Y-axis labels (time)
-                                                  },
-                                                ),
-                                              ),
-                                            ),
-                                            lineBarsData: [
-                                              LineChartBarData(
-                                                spots: glucoseLogs
-                                                    .asMap()
-                                                    .entries
-                                                    .map((e) => FlSpot(
-                                                        e.key.toDouble(),
-                                                        e.value['glucoseLevel']))
-                                                    .toList(),
-                                                isCurved: true,
-                                                color: Colors.blue, // Use a single color for now
-                                                barWidth: 3,
-                                                belowBarData: BarAreaData(
-                                                    show: true,
-                                                    color: Colors.blue.withOpacity(0.3)),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                  // Graph Section with fixed-size container and scrollable content
+                  Container(
+                    width: screenWidth, // Full width of the screen
+                    height: 250, // Fixed height to match the size of the Glucose Log Overview
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16.0),
+                      boxShadow: [
+                        BoxShadow(
+                          blurRadius: 8,
+                          color: Colors.grey.shade300,
+                          spreadRadius: 3,
+                          offset: Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Container(
+                        width: screenWidth, // Ensure the graph spans the full width
+                        padding: const EdgeInsets.all(16.0),
+                        child: LineChart(
+                          LineChartData(
+                            gridData: FlGridData(show: true), // Permanent grid
+                            borderData: FlBorderData(
+                              show: true,
+                              border: Border.all(color: Colors.grey),
+                            ),
+                            titlesData: FlTitlesData(
+                              leftTitles: AxisTitles(
+                                sideTitles: SideTitles(
+                                  showTitles: true,
+                                  interval: getMaxY() / 5, // Y-axis intervals
+                                  getTitlesWidget: (value, meta) {
+                                    return Text('${value.toInt()}');
+                                  },
                                 ),
                               ),
-                              const SizedBox(height: 10),
-                              // Log History
-                              Expanded(
-                                flex: 2,
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      "Recent Logs",
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.blue[800],
-                                      ),
-                                    ),
-                                    const SizedBox(height: 10),
-                                    Expanded(
-                                      child: ListView.builder(
-                                        itemCount: glucoseLogs.length > 5 ? 5 : glucoseLogs.length,
-                                        itemBuilder: (context, index) {
-                                          final log = glucoseLogs[index];
-                                          return ListTile(
-                                            title: Text(
-                                                'Glucose Level: ${log['glucoseLevel']} $measurementUnit'),
-                                            subtitle: Text('Date: ${log['timestamp']}'),
-                                            onTap: () {
-                                              // No navigation to log-details page, just show the history here.
-                                              // Can be expanded to show more details here itself.
-                                            },
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                    // "See All" Button
-                                    ElevatedButton(
-                                      onPressed: () {
-                                        Navigator.pushNamed(context, '/log-history');
-                                      },
-                                      child: const Text("See All Logs"),
-                                    ),
-                                  ],
+                              bottomTitles: AxisTitles(
+                                sideTitles: SideTitles(
+                                  showTitles: true,
+                                  interval: 6, // X-axis intervals (fixed time intervals)
+                                  getTitlesWidget: (value, meta) {
+                                    const times = ['00:00', '06:00', '12:00', '18:00', '24:00'];
+                                    return Text(times[value.toInt() % times.length]); // Static time labels
+                                  },
                                 ),
                               ),
-                            ],
-                          )
-                        : Center(
-                            child: Text(
-                                "Log Glucose Levels For Data To Be Displayed."), // Display message when no data
+                              rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                              topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                            ),
+                            minX: 0,
+                            maxX: 24, // X-axis goes from 0 to 24 (representing hours)
+                            minY: 0,
+                            maxY: getMaxY(), // Y-axis adjusts dynamically
+                            lineBarsData: getLineChartBarData(),
                           ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  // Log History
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "Recent Logs",
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blue[800],
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Expanded(
+                          child: ListView.builder(
+                            itemCount: glucoseLogs.length > 5 ? 5 : glucoseLogs.length,
+                            itemBuilder: (context, index) {
+                              final log = glucoseLogs[index];
+                              return ListTile(
+                                title: Text(
+                                    'Glucose Level: ${log['glucose_level']?.toStringAsFixed(measurementUnit == 'mg/dL' ? 0 : 1) ?? 'N/A'} $measurementUnit'),
+                                subtitle: Text('Date: ${log['timestamp']}'),
+                              );
+                            },
+                          ),
+                        ),
+                        ElevatedButton(
+                          onPressed: () {
+                            Navigator.pushNamed(context, '/log-history');
+                          },
+                          child: const Text("See All Logs"),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -356,8 +377,9 @@ class CircleDisplay extends StatelessWidget {
   final VoidCallback? onTap;
   final IconData? icon;
   final Color color;
+  final String measurementUnit;
 
-  const CircleDisplay({super.key, this.value, required this.label, this.onTap, this.icon, required this.color});
+  const CircleDisplay({super.key, this.value, required this.label, this.onTap, this.icon, required this.color, required this.measurementUnit});
 
   @override
   Widget build(BuildContext context) {

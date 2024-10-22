@@ -21,7 +21,7 @@ class LogDetailsScreen extends StatelessWidget {
             _buildInfoCard(
               icon: Icons.show_chart,
               title: 'Glucose Level',
-              content: '${logDetails['glucoseLevel']}',
+              content: '${logDetails['glucose_level']}',
               context: context,
             ),
             const SizedBox(height: 20),
@@ -39,7 +39,7 @@ class LogDetailsScreen extends StatelessWidget {
             _buildInfoCard(
               icon: Icons.restaurant_menu,
               title: 'Meal Context',
-              content: '${logDetails['mealContext'] ?? "Not specified"}',
+              content: '${logDetails['meal_context'] ?? "Not specified"}',
               context: context,
             ),
           ],
