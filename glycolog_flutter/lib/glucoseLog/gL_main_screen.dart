@@ -295,6 +295,8 @@ class _GlucoseLogScreenState extends State<GlucoseLogScreen> {
                             ),
                             titlesData: FlTitlesData(
                               leftTitles: AxisTitles(
+                                axisNameWidget: Text('Glucose Level ($measurementUnit)'),
+                                axisNameSize: 30, 
                                 sideTitles: SideTitles(
                                   showTitles: true,
                                   interval: getMaxY() / 5, // Y-axis intervals
@@ -304,12 +306,16 @@ class _GlucoseLogScreenState extends State<GlucoseLogScreen> {
                                 ),
                               ),
                               bottomTitles: AxisTitles(
+                                axisNameWidget: Text('Time (24h)'),
+                                axisNameSize: screenWidth / 20, //30
                                 sideTitles: SideTitles(
                                   showTitles: true,
-                                  interval: 6, // X-axis intervals (fixed time intervals)
+                                  //interval: 6, // X-axis intervals (fixed time intervals)
+                                   interval: 1, // X-axis intervals (hourly)
                                   getTitlesWidget: (value, meta) {
-                                    const times = ['00:00', '06:00', '12:00', '18:00', '24:00'];
-                                    return Text(times[value.toInt() % times.length]); // Static time labels
+                                    // const times = ['00:00', '06:00', '12:00', '18:00', '24:00'];
+                                    // return Text(times[value.toInt() % times.length]); // Static time labels
+                                    return Text('${value.toInt()}:00'); // Display each hour
                                   },
                                 ),
                               ),
