@@ -14,6 +14,11 @@ class AuthService {
     final prefs = await SharedPreferences.getInstance();
     final refreshToken = prefs.getString('refresh_token'); // Retrieve refresh token
 
+    if (refreshToken == null) {
+      print("No refresh token found");
+      return null;
+    }
+
     try {
       final response = await http.post(
       //   Uri.parse('http://10.0.2.2:8000/api/token/refresh/'), // For Android Emulator
@@ -28,21 +33,30 @@ class AuthService {
         }),
       );
 
-      if (response.statusCode == 200) {
+     if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final newToken = data['access']; // Get new access token
         
         // Store the new access token
-        await prefs.setString('auth_token', newToken);
+        await prefs.setString('access_token', newToken);
+        return newToken; // Return the new token
+      } else if (response.statusCode == 401) {
+        // Handle unauthorized error by clearing tokens and logging out
+        await logout();
+        print("Unauthorized: Refresh token is invalid or expired. Logging out.");
+        return null;
       } else {
-        // Handle refresh token error
+        // Handle other errors
         print("Error refreshing token: ${response.reasonPhrase}");
+        return null;
       }
     } catch (e) {
       // Handle network or other errors
       print("Network error: $e");
+      return null;
     }
   }
+
 
   // Function to logout the user
   Future<void> logout() async {

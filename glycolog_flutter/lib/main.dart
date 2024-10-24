@@ -27,7 +27,7 @@ Future<bool> _loadDarkModePreference() async {
 // Function to load token from SharedPreferences
 Future<String?> _loadToken() async {
   final prefs = await SharedPreferences.getInstance();
-  return prefs.getString('auth_token'); // Return the stored token
+  return prefs.getString('access_token'); // Use 'access_token' consistently
 }
 
 class MyApp extends StatefulWidget {
@@ -49,7 +49,16 @@ class _MyAppState extends State<MyApp> {
     super.initState();
     _isDarkMode = widget.darkModeEnabled; // Initialize dark mode from passed preference
     _token = widget.token; // Initialize token
-  }
+
+    // Delay navigation until after the first frame is rendered to ensure Navigator is available
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    if (_token == null) {
+      Navigator.pushReplacementNamed(context, '/login'); // Navigate to login
+    }
+  });
+    }
+  
+  
 
   // Method to toggle dark mode across the app
   void _toggleDarkMode(bool isEnabled) {
@@ -82,13 +91,14 @@ class _MyAppState extends State<MyApp> {
     } else {
       // Handle token refresh error
       print('Failed to refresh token: ${response.reasonPhrase}');
+      // Optionally, you could log the user out and navigate to login
     }
   }
 
   // Save the token in SharedPreferences
   Future<void> _saveToken(String token) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('auth_token', token); // Save the token for future use
+    await prefs.setString('access_token', token); // Use 'access_token'
   }
 
   @override
@@ -118,7 +128,7 @@ class _MyAppState extends State<MyApp> {
             ),
         '/add-log': (context) => const AddGlucoseLevelScreen(),
         '/log-history': (context) => const GlucoseLogHistoryScreen(),
-         '/log-details': (context) {
+        '/log-details': (context) {
           final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
           return LogDetailsScreen(logDetails: args ?? {}); // Pass log details or an empty map
         },

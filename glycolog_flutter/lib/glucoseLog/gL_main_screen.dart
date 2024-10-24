@@ -17,7 +17,8 @@ class GlucoseLogScreen extends StatefulWidget {
 class _GlucoseLogScreenState extends State<GlucoseLogScreen> {
   double? lastLog; // Changed to nullable double for safety
   double? averageLog; // Changed to nullable double for safety
-  List<Map<String, dynamic>> glucoseLogs = []; // List to hold the full glucose log data
+  List<Map<String, dynamic>> glucoseLogs =
+      []; // List to hold the full glucose log data
   String measurementUnit = 'mg/dL'; // Default measurement unit
   bool isLoading = true; // To show loading indicator while fetching data
   String? errorMessage; // To hold error messages if any
@@ -38,7 +39,8 @@ class _GlucoseLogScreenState extends State<GlucoseLogScreen> {
   Future<void> _loadUserSettings() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
-      measurementUnit = prefs.getString('selectedUnit') ?? 'mg/dL'; // Default to mg/dL
+      measurementUnit =
+          prefs.getString('selectedUnit') ?? 'mg/dL'; // Default to mg/dL
     });
   }
 
@@ -55,15 +57,17 @@ class _GlucoseLogScreenState extends State<GlucoseLogScreen> {
 
   // Fetch glucose logs from the server using the refreshed token if needed
   Future<void> fetchGlucoseLogs() async {
-    String? token = await AuthService().getAccessToken(); // Get access token or refresh if expired
+    String? token = await AuthService()
+        .getAccessToken(); // Get access token or refresh if expired
 
     if (token != null) {
       try {
         final response = await http.get(
-         // Uri.parse('http://10.0.2.2:8000/api/glucose-log/'), //For Emulator
-         Uri.parse('http://192.168.1.19:8000/api/glucose-log/'),  // For Physical Device 
-         // Uri.parse('http://147.252.148.38:8000/api/glucose-log/'), // For Eduroam API endpoint
-         // Uri.parse('http://192.168.40.184:8000/api/glucose-log/'), // Ethernet IP
+          // Uri.parse('http://10.0.2.2:8000/api/glucose-log/'), //For Emulator
+          Uri.parse(
+              'http://192.168.1.19:8000/api/glucose-log/'), // For Physical Device
+          // Uri.parse('http://147.252.148.38:8000/api/glucose-log/'), // For Eduroam API endpoint
+          // Uri.parse('http://192.168.40.184:8000/api/glucose-log/'), // Ethernet IP
           headers: {
             'Authorization': 'Bearer $token', // Send token in request header
           },
@@ -74,28 +78,34 @@ class _GlucoseLogScreenState extends State<GlucoseLogScreen> {
 
           setState(() {
             // Ensure this data is being correctly set
-            lastLog = parseDouble(data['lastLog']); 
-            averageLog = parseDouble(data['averageLog']); 
-            glucoseLogs = List<Map<String, dynamic>>.from(data['logs'] ?? []); 
+            lastLog = parseDouble(data['lastLog']);
+            averageLog = parseDouble(data['averageLog']);
+            glucoseLogs = List<Map<String, dynamic>>.from(data['logs'] ?? []);
 
             // Sort logs by timestamp to find the last log
-            glucoseLogs.sort((a, b) => DateTime.parse(b['timestamp']).compareTo(DateTime.parse(a['timestamp'])));
+            glucoseLogs.sort((a, b) => DateTime.parse(b['timestamp'])
+                .compareTo(DateTime.parse(a['timestamp'])));
 
-            lastLog = glucoseLogs.isNotEmpty ? parseDouble(glucoseLogs.first['glucose_level']) : null;
+            lastLog = glucoseLogs.isNotEmpty
+                ? parseDouble(glucoseLogs.first['glucose_level'])
+                : null;
 
             // Calculate the average log
             if (glucoseLogs.isNotEmpty) {
-              double total = glucoseLogs.fold(0.0, (sum, log) => sum + (parseDouble(log['glucose_level']) ?? 0.0));
+              double total = glucoseLogs.fold(
+                  0.0,
+                  (sum, log) =>
+                      sum + (parseDouble(log['glucose_level']) ?? 0.0));
               averageLog = total / glucoseLogs.length;
             } else {
               averageLog = null;
             }
-        
 
             // Apply unit conversion to each glucose log based on the user's setting
             if (measurementUnit == 'mmol/L') {
               lastLog = lastLog != null ? convertToMmolL(lastLog!) : null;
-              averageLog = averageLog != null ? convertToMmolL(averageLog!) : null;
+              averageLog =
+                  averageLog != null ? convertToMmolL(averageLog!) : null;
               for (var log in glucoseLogs) {
                 log['glucose_level'] = log['glucose_level'] != null
                     ? convertToMmolL(parseDouble(log['glucose_level']) ?? 0.0)
@@ -103,7 +113,7 @@ class _GlucoseLogScreenState extends State<GlucoseLogScreen> {
               }
             }
 
-             isLoading = false; // Data has been loaded
+            isLoading = false; // Data has been loaded
           });
         } else {
           // Handle the case where the server returns an error
@@ -127,7 +137,7 @@ class _GlucoseLogScreenState extends State<GlucoseLogScreen> {
     }
   }
 
- // Determine the point color based on glucose level
+  // Determine the point color based on glucose level
   Color getPointColor(double glucoseLevel) {
     if (glucoseLevel < (measurementUnit == 'mg/dL' ? 80 : 4.4)) {
       return Colors.green; // Low
@@ -139,7 +149,9 @@ class _GlucoseLogScreenState extends State<GlucoseLogScreen> {
 
   // Function to get graph data points
   List<FlSpot> getGraphData() {
-    return glucoseLogs.asMap().entries
+    return glucoseLogs
+        .asMap()
+        .entries
         .map((e) => FlSpot(e.key.toDouble(), e.value['glucose_level'] ?? 0.0))
         .toList();
   }
@@ -175,204 +187,273 @@ class _GlucoseLogScreenState extends State<GlucoseLogScreen> {
         ),
         color: Colors.blue, // Line color
         barWidth: 3,
-        belowBarData: BarAreaData(show: true, color: Colors.blue.withOpacity(0.3)),
+        belowBarData:
+            BarAreaData(show: true, color: Colors.blue.withOpacity(0.3)),
+        showingIndicators: List.generate(spots.length, (index) => index),
       )
     ];
   }
 
-@override
+  @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width; // Get the screen width
+    final screenWidth =
+        MediaQuery.of(context).size.width; // Get the screen width
 
     return BaseScreen(
-      selectedIndex: 1,
-      onItemTapped: (index) {
-        // Handle tab changes if needed
-      },
-      body: isLoading
-          ? Center(child: CircularProgressIndicator())
-          : Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                children: [
-                  // Error message display
-                  if (errorMessage != null)
-                    Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Text(
-                        errorMessage!,
-                        style: TextStyle(color: Colors.red),
-                      ),
-                    ),
-                  // Glucose Log Overview container
-                  Container(
-                    padding: const EdgeInsets.all(16.0),
-                    width: screenWidth, // Make it full width
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16.0),
-                      boxShadow: [
-                        BoxShadow(
-                          blurRadius: 8,
-                          color: Colors.grey.shade300,
-                          spreadRadius: 3,
-                          offset: Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      children: [
-                        // Title for Glucose Log Section
-                        Text(
-                          "Glucose Log Overview",
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.blue[800],
+        selectedIndex: 1,
+        onItemTapped: (index) {
+          // Handle tab changes if needed
+        },
+        body: isLoading
+            ? Center(child: CircularProgressIndicator())
+            : SingleChildScrollView(
+                // Wrap the entire content in SingleChildScrollView
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    children: [
+                      // Error message display
+                      if (errorMessage != null)
+                        Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Text(
+                            errorMessage!,
+                            style: TextStyle(color: Colors.red),
                           ),
                         ),
-                        const SizedBox(height: 20),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: [
-                            // Last Log Circle
-                            CircleDisplay(
-                              value: lastLog ?? 0.0,
-                              label: "Last Log",
-                              color: getPointColor(lastLog ?? 0.0),
-                              measurementUnit: measurementUnit,
-                            ),
-                            // Add Log Circle
-                            CircleDisplay(
-                              value: null,
-                              label: "Add Log",
-                              color: Colors.blue[300]!,
-                              measurementUnit: measurementUnit,
-                              onTap: () {
-                                Navigator.pushNamed(context, '/add-log');
-                              },
-                              icon: Icons.add,
-                            ),
-                            CircleDisplay(
-                              value: averageLog ?? 0.0,
-                              label: "Average",
-                              color: getPointColor(averageLog ?? 0.0),
-                              measurementUnit: measurementUnit,
+                      // Glucose Log Overview container
+                      Container(
+                        padding: const EdgeInsets.all(16.0),
+                        width: screenWidth, // Make it full width
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16.0),
+                          boxShadow: [
+                            BoxShadow(
+                              blurRadius: 8,
+                              color: Colors.grey.shade300,
+                              spreadRadius: 3,
+                              offset: Offset(0, 4),
                             ),
                           ],
                         ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 30),
-                  // Graph Section with fixed-size container and scrollable content
-                  Container(
-                    width: screenWidth, // Full width of the screen
-                    height: 250, // Fixed height to match the size of the Glucose Log Overview
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16.0),
-                      boxShadow: [
-                        BoxShadow(
-                          blurRadius: 8,
-                          color: Colors.grey.shade300,
-                          spreadRadius: 3,
-                          offset: Offset(0, 4),
+                        child: Column(
+                          children: [
+                            // Title for Glucose Log Section
+                            Text(
+                              "Glucose Log Overview",
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.blue[800],
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: [
+                                // Last Log Circle
+                                CircleDisplay(
+                                  value: lastLog ?? 0.0,
+                                  label: "Last Log",
+                                  color: getPointColor(lastLog ?? 0.0),
+                                  measurementUnit: measurementUnit,
+                                ),
+                                // Add Log Circle
+                                CircleDisplay(
+                                  value: null,
+                                  label: "Add Log",
+                                  color: Colors.blue[300]!,
+                                  measurementUnit: measurementUnit,
+                                  onTap: () {
+                                    Navigator.pushNamed(context, '/add-log');
+                                  },
+                                  icon: Icons.add,
+                                ),
+                                CircleDisplay(
+                                  value: averageLog ?? 0.0,
+                                  label: "Average",
+                                  color: getPointColor(averageLog ?? 0.0),
+                                  measurementUnit: measurementUnit,
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Container(
-                        width: screenWidth, // Ensure the graph spans the full width
-                        padding: const EdgeInsets.all(16.0),
-                        child: LineChart(
-                          LineChartData(
-                            gridData: FlGridData(show: true), // Permanent grid
-                            borderData: FlBorderData(
-                              show: true,
-                              border: Border.all(color: Colors.grey),
+                      ),
+                      const SizedBox(height: 30),
+                      // Graph Section with fixed-size container and scrollable content
+                      Container(
+                        width: screenWidth, // Full width of the screen
+                        height: 350, // Fixed height for the graph
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16.0),
+                          boxShadow: [
+                            BoxShadow(
+                              blurRadius: 8,
+                              color: Colors.grey.shade300,
+                              spreadRadius: 3,
+                              offset: Offset(0, 4),
                             ),
-                            titlesData: FlTitlesData(
-                              leftTitles: AxisTitles(
-                                axisNameWidget: Text('Glucose Level ($measurementUnit)'),
-                                axisNameSize: 30, 
-                                sideTitles: SideTitles(
-                                  showTitles: true,
-                                  interval: getMaxY() / 5, // Y-axis intervals
-                                  getTitlesWidget: (value, meta) {
-                                    return Text('${value.toInt()}');
-                                  },
+                          ],
+                        ),
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Container(
+                            width: screenWidth *
+                                2, // Ensure the graph spans the full width
+                            padding: const EdgeInsets.all(16.0),
+                            child: LineChart(
+                              LineChartData(
+                                gridData:
+                                    FlGridData(show: true), // Permanent grid
+                                borderData: FlBorderData(
+                                  show: true,
+                                  border: Border.all(color: Colors.grey),
+                                ),
+                                titlesData: FlTitlesData(
+                                  leftTitles: AxisTitles(
+                                    axisNameWidget: Text(
+                                        'Glucose Level ($measurementUnit)'),
+                                    axisNameSize: 30,
+                                    sideTitles: SideTitles(
+                                      showTitles: true,
+                                      interval:
+                                          getMaxY() / 5, // Y-axis intervals
+                                      getTitlesWidget: (value, meta) {
+                                        return Text('${value.toInt()}');
+                                      },
+                                    ),
+                                  ),
+                                  bottomTitles: AxisTitles(
+                                    axisNameWidget: Text('Time (24h)'),
+                                    axisNameSize: screenWidth / 20, //30'
+                                    sideTitles: SideTitles(
+                                      showTitles: true,
+                                      interval:
+                                          2, // Show every 2 hours on x-axis
+                                      getTitlesWidget: (value, meta) {
+                                        final hour = value.toInt();
+                                        return SideTitleWidget(
+                                          axisSide: meta.axisSide,
+                                          child: Transform.translate(
+                                            offset: Offset(-10,
+                                                5), // Adjust for better spacing
+                                            child: Transform.rotate(
+                                              angle: -45 *
+                                                  3.1416 /
+                                                  180, // Rotate the text 45 degrees
+                                              child: Text(
+                                                hour < 10
+                                                    ? '0$hour:00'
+                                                    : '$hour:00', // Format time labels
+                                                style: const TextStyle(
+                                                    fontSize: 12),
+                                              ),
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                  rightTitles: AxisTitles(
+                                      sideTitles:
+                                          SideTitles(showTitles: false)),
+                                  topTitles: AxisTitles(
+                                      sideTitles:
+                                          SideTitles(showTitles: false)),
+                                ),
+                                minX: 0,
+                                maxX:
+                                    24, // X-axis goes from 0 to 24 (representing hours)
+                                minY: 0,
+                                maxY: getMaxY(), // Y-axis adjusts dynamically
+                                lineBarsData: getLineChartBarData(),
+                                lineTouchData: LineTouchData(
+                                  // Line touch data should be here
+                                  touchTooltipData: LineTouchTooltipData(
+                                    tooltipRoundedRadius:
+                                        8, // Rounded corner radius for the tooltip
+                                    tooltipPadding: const EdgeInsets.all(
+                                        8), // Padding inside the tooltip
+                                    tooltipMargin:
+                                        10, // Space between the tooltip and the touch point
+                                    fitInsideHorizontally:
+                                        true, // Keeps tooltip within chart boundaries horizontally
+                                    fitInsideVertically:
+                                        true, // Ensures the tooltip fits inside the chart
+                                    getTooltipItems: (touchedSpots) {
+                                      return touchedSpots.map((spot) {
+                                        final dateTime = DateTime.now().add(
+                                            Duration(hours: spot.x.toInt()));
+                                        final formattedTime =
+                                            DateFormat('HH:mm')
+                                                .format(dateTime);
+                                        return LineTooltipItem(
+                                          'Glucose: ${spot.y.toStringAsFixed(1)}\nTime: $formattedTime',
+                                          const TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.bold),
+                                        );
+                                      }).toList();
+                                    },
+                                  ),
                                 ),
                               ),
-                              bottomTitles: AxisTitles(
-                                axisNameWidget: Text('Time (24h)'),
-                                axisNameSize: screenWidth / 20, //30
-                                sideTitles: SideTitles(
-                                  showTitles: true,
-                                  //interval: 6, // X-axis intervals (fixed time intervals)
-                                   interval: 1, // X-axis intervals (hourly)
-                                  getTitlesWidget: (value, meta) {
-                                    // const times = ['00:00', '06:00', '12:00', '18:00', '24:00'];
-                                    // return Text(times[value.toInt() % times.length]); // Static time labels
-                                    return Text('${value.toInt()}:00'); // Display each hour
-                                  },
-                                ),
-                              ),
-                              rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                              topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
                             ),
-                            minX: 0,
-                            maxX: 24, // X-axis goes from 0 to 24 (representing hours)
-                            minY: 0,
-                            maxY: getMaxY(), // Y-axis adjusts dynamically
-                            lineBarsData: getLineChartBarData(),
                           ),
                         ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  // Log History
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "Recent Logs",
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.blue[800],
+                      const SizedBox(height: 10),
+                      // Log History section
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "Recent Logs",
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue[800],
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 10),
-                        Expanded(
-                          child: ListView.builder(
-                            itemCount: glucoseLogs.length > 5 ? 5 : glucoseLogs.length,
-                            itemBuilder: (context, index) {
-                              final log = glucoseLogs[index];
-                              return ListTile(
-                                title: Text(
-                                    'Glucose Level: ${log['glucose_level']?.toStringAsFixed(measurementUnit == 'mg/dL' ? 0 : 1) ?? 'N/A'} $measurementUnit'),
-                                subtitle: Text('Date: ${log['timestamp']}'),
-                              );
+                          const SizedBox(height: 10),
+                          // Limiting the height of recent logs to a fixed size
+                          SizedBox(
+                            height:
+                                250, // Set a fixed height for the log history
+                            child: ListView.builder(
+                              itemCount: glucoseLogs.length > 5
+                                  ? 5
+                                  : glucoseLogs.length,
+                              shrinkWrap:
+                                  true, // Makes the ListView take up only as much space as needed
+                              physics:
+                                  NeverScrollableScrollPhysics(), // Disable scrolling for the logs
+                              itemBuilder: (context, index) {
+                                final log = glucoseLogs[index];
+                                return ListTile(
+                                  title: Text(
+                                    'Glucose Level: ${log['glucose_level']?.toStringAsFixed(measurementUnit == 'mg/dL' ? 0 : 1) ?? 'N/A'} $measurementUnit',
+                                  ),
+                                  subtitle: Text('Date: ${log['timestamp']}'),
+                                );
+                              },
+                            ),
+                          ),
+                          ElevatedButton(
+                            onPressed: () {
+                              Navigator.pushNamed(context, '/log-history');
                             },
+                            child: const Text("See All Logs"),
                           ),
-                        ),
-                        ElevatedButton(
-                          onPressed: () {
-                            Navigator.pushNamed(context, '/log-history');
-                          },
-                          child: const Text("See All Logs"),
-                        ),
-                      ],
-                    ),
+                        ],
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ),
-    );
+                ),
+              ));
   }
 }
 
@@ -385,7 +466,14 @@ class CircleDisplay extends StatelessWidget {
   final Color color;
   final String measurementUnit;
 
-  const CircleDisplay({super.key, this.value, required this.label, this.onTap, this.icon, required this.color, required this.measurementUnit});
+  const CircleDisplay(
+      {super.key,
+      this.value,
+      required this.label,
+      this.onTap,
+      this.icon,
+      required this.color,
+      required this.measurementUnit});
 
   @override
   Widget build(BuildContext context) {
