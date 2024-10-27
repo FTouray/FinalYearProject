@@ -82,8 +82,6 @@ class _GlucoseLogScreenState extends State<GlucoseLogScreen> {
         if (response.statusCode == 200) {
           final data = json.decode(response.body);
 
-          
-
           setState(() {
             lastLog = parseDouble(data['lastLog']);
             averageLog = parseDouble(data['averageLog']);
@@ -121,6 +119,9 @@ class _GlucoseLogScreenState extends State<GlucoseLogScreen> {
               }
             }
 
+            // Update the graph data points
+            graphData = getGraphData();
+
             isLoading = false; // Data has been loaded
           });
         } else {
@@ -143,8 +144,8 @@ class _GlucoseLogScreenState extends State<GlucoseLogScreen> {
     }
   }
 
-   // Filter logs for today's date
-    List<Map<String, dynamic>> filterLogsForToday(
+  // Filter logs for today's date
+  List<Map<String, dynamic>> filterLogsForToday(
       List<Map<String, dynamic>> logs) {
     DateTime now = DateTime.now();
     return logs.where((log) {
@@ -156,7 +157,7 @@ class _GlucoseLogScreenState extends State<GlucoseLogScreen> {
   }
 
   // Add a new glucose log entry
-void addNewLog(Map<String, dynamic> newLog) {
+  void addNewLog(Map<String, dynamic> newLog) {
     setState(() {
       // Add the new log to the list
       glucoseLogs.add(newLog);
@@ -187,7 +188,6 @@ void addNewLog(Map<String, dynamic> newLog) {
     });
   }
 
- 
   // Determine the point color based on glucose level
   Color getPointColor(double glucoseLevel) {
     if (glucoseLevel < (measurementUnit == 'mg/dL' ? 80 : 4.4)) {
@@ -199,14 +199,20 @@ void addNewLog(Map<String, dynamic> newLog) {
   }
 
   // Function to get graph data points (only for today)
-List<FlSpot> getGraphData() {
+  List<FlSpot> getGraphData() {
     List<Map<String, dynamic>> todayLogs = filterLogsForToday(glucoseLogs);
-    return todayLogs
-        .asMap()
-        .entries
-        .map((e) => FlSpot(
-            e.key.toDouble(), parseDouble(e.value['glucose_level']) ?? 0.0))
-        .toList();
+    // return todayLogs
+    //     .asMap()
+    //     .entries
+    //     .map((e) => FlSpot(
+    //         e.key.toDouble(), parseDouble(e.value['glucose_level']) ?? 0.0))
+    //     .toList();
+    return todayLogs.map((log) {
+      DateTime logDate = DateTime.parse(log['timestamp']);
+      double hour =
+          logDate.hour + logDate.minute / 60.0; // Convert time to hours
+      return FlSpot(hour, parseDouble(log['glucose_level']) ?? 0.0);
+    }).toList();
   }
 
   // Get the highest glucose level and round it up
@@ -311,7 +317,7 @@ List<FlSpot> getGraphData() {
                                   label: "Last Log",
                                   color: getPointColor(lastLog ?? 0.0),
                                   measurementUnit: measurementUnit,
-                                   formattedValue: formatGlucoseValue(
+                                  formattedValue: formatGlucoseValue(
                                       lastLog), // Use formatted value
                                 ),
                                 // Add Log Circle
@@ -330,7 +336,7 @@ List<FlSpot> getGraphData() {
                                   label: "Average",
                                   color: getPointColor(averageLog ?? 0.0),
                                   measurementUnit: measurementUnit,
-                                   formattedValue: formatGlucoseValue(
+                                  formattedValue: formatGlucoseValue(
                                       averageLog), // Use formatted value
                                 ),
                               ],
@@ -340,9 +346,13 @@ List<FlSpot> getGraphData() {
                       ),
                       const SizedBox(height: 30),
                       // Graph Section with fixed-size container and scrollable content
+                      // Graph Section with dynamic height
+                      AspectRatio(
+                        aspectRatio: 1,
+                        child:
                       Container(
                         width: screenWidth, // Full width of the screen
-                        height: 350, // Fixed height for the graph
+                        //height: 400, // Fixed height for the graph
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(16.0),
@@ -443,8 +453,18 @@ List<FlSpot> getGraphData() {
                                         true, // Ensures the tooltip fits inside the chart
                                     getTooltipItems: (touchedSpots) {
                                       return touchedSpots.map((spot) {
-                                        final dateTime = DateTime.now().add(
-                                            Duration(hours: spot.x.toInt()));
+                                       final log = glucoseLogs.firstWhere(
+                                            (log) =>
+                                                DateTime.parse(log['timestamp'])
+                                                        .hour ==
+                                                    spot.x.toInt() &&
+                                                DateTime.parse(log['timestamp'])
+                                                        .minute ==
+                                                    ((spot.x - spot.x.toInt()) *
+                                                            60)
+                                                        .toInt(),
+                                            orElse: () => {});
+                                        final dateTime = DateTime.parse(log['timestamp']);
                                         final formattedTime =
                                             DateFormat('HH:mm')
                                                 .format(dateTime);
@@ -462,6 +482,7 @@ List<FlSpot> getGraphData() {
                             ),
                           ),
                         ),
+                      ),
                       ),
                       const SizedBox(height: 10),
                       // Log History section
