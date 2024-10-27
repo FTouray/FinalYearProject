@@ -16,9 +16,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController firstNameController = TextEditingController();
   final TextEditingController lastNameController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
-  final TextEditingController passwordConfirmController = TextEditingController();
+  final TextEditingController passwordConfirmController =
+      TextEditingController();
   bool _obscurePassword = true; // Password visibility for password field
-  bool _obscurePasswordConfirm = true; // Password visibility for confirm password field
+  bool _obscurePasswordConfirm =
+      true; // Password visibility for confirm password field
   String? errorMessage;
 
   Future<void> register() async {
@@ -32,7 +34,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     String passwordConfirm = passwordConfirmController.text;
 
     // Frontend validation for blank fields
-    if ([username, email, phone, firstName, lastName, password, passwordConfirm].any((field) => field.isEmpty)) {
+    if ([username, email, phone, firstName, lastName, password, passwordConfirm]
+        .any((field) => field.isEmpty)) {
       setState(() {
         errorMessage = 'All fields are required.';
       });
@@ -49,10 +52,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     try {
       final response = await http.post(
-      // Uri.parse('http://10.0.2.2:8000/api/register/'), // For Android Emulator
-        Uri.parse('http://192.168.1.19:8000/api/register/'),  // For Physical Device 
-      //  Uri.parse('http://147.252.148.38:8000/api/register/'), // For Eduroam API endpoint
-      //  Uri.parse('http://192.168.40.184:8000/api/register/'), //Ethernet IP
+        // Uri.parse('http://10.0.2.2:8000/api/register/'), // For Android Emulator
+        Uri.parse(
+            'http://192.168.1.19:8000/api/register/'), // For Physical Device
+        //  Uri.parse('http://147.252.148.38:8000/api/register/'), // For Eduroam API endpoint
+        //  Uri.parse('http://192.168.40.184:8000/api/register/'), //Ethernet IP
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'username': username,
@@ -67,7 +71,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       if (response.statusCode == 201) {
         setState(() {
-          errorMessage = null;  // Clear error if registration is successful
+          errorMessage = null; // Clear error if registration is successful
         });
         print('User registered successfully!');
 
@@ -89,7 +93,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.lightBlue[50], 
+      backgroundColor: Colors.lightBlue[50],
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
@@ -99,7 +103,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               children: [
                 // App Logo
                 Image.asset(
-                  'assets/logos/glycolog_logo.png', 
+                  'assets/logos/glycolog_logo.png',
                   height: 100,
                 ),
                 const SizedBox(height: 20),
@@ -220,7 +224,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               ),
                               onPressed: () {
                                 setState(() {
-                                  _obscurePasswordConfirm = !_obscurePasswordConfirm;
+                                  _obscurePasswordConfirm =
+                                      !_obscurePasswordConfirm;
                                 });
                               },
                             ),
@@ -241,8 +246,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           child: const Text(
                             'Register',
                             style: TextStyle(
-                              color: Colors.white, 
-                              fontSize: 18, 
+                              color: Colors.white,
+                              fontSize: 18,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -261,7 +266,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         // Back to Login Option
                         GestureDetector(
                           onTap: () {
-                            Navigator.pushReplacementNamed(context, '/login'); // Navigate back to login screen
+                            Navigator.pushReplacementNamed(context,
+                                '/login'); // Navigate back to login screen
                           },
                           child: Text(
                             'Back to Login',

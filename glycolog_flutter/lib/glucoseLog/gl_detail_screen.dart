@@ -10,7 +10,8 @@ class LogDetailsScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Log Details'),
-        backgroundColor: Colors.blue[800], // Consistent blue theme for the app bar
+        backgroundColor:
+            Colors.blue[800], // Consistent blue theme for the app bar
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -49,7 +50,11 @@ class LogDetailsScreen extends StatelessWidget {
   }
 
   // Helper method to create consistent info cards for each log detail
-  Widget _buildInfoCard({required IconData icon, required String title, required String content, required BuildContext context}) {
+  Widget _buildInfoCard(
+      {required IconData icon,
+      required String title,
+      required String content,
+      required BuildContext context}) {
     return Card(
       elevation: 4.0,
       shape: RoundedRectangleBorder(
@@ -59,7 +64,9 @@ class LogDetailsScreen extends StatelessWidget {
         padding: const EdgeInsets.all(16.0),
         child: Row(
           children: [
-            Icon(icon, size: 40, color: Colors.blue[800]), // Icon representing the content type
+            Icon(icon,
+                size: 40,
+                color: Colors.blue[800]), // Icon representing the content type
             const SizedBox(width: 20),
             Expanded(
               child: Column(

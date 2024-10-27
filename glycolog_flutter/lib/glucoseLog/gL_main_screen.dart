@@ -22,6 +22,7 @@ class _GlucoseLogScreenState extends State<GlucoseLogScreen> {
   String measurementUnit = 'mg/dL'; // Default measurement unit
   bool isLoading = true; // To show loading indicator while fetching data
   String? errorMessage; // To hold error messages if any
+  List<FlSpot> graphData = []; // Define graphData variable
 
   @override
   void initState() {
@@ -55,42 +56,49 @@ class _GlucoseLogScreenState extends State<GlucoseLogScreen> {
     return double.tryParse(value.toString());
   }
 
-  // Fetch glucose logs from the server using the refreshed token if needed
+  // Function to format the glucose values based on the unit
+  String formatGlucoseValue(double? value) {
+    if (value == null) return '-'; // Return a placeholder if the value is null
+    if (measurementUnit == 'mmol/L') {
+      return value.toStringAsFixed(1); // One decimal point for mmol/L
+    } else {
+      return value.round().toString(); // Nearest whole number for mg/dL
+    }
+  }
+
+  // Fetch glucose logs from the server
   Future<void> fetchGlucoseLogs() async {
-    String? token = await AuthService()
-        .getAccessToken(); // Get access token or refresh if expired
+    String? token = await AuthService().getAccessToken();
 
     if (token != null) {
       try {
         final response = await http.get(
-          // Uri.parse('http://10.0.2.2:8000/api/glucose-log/'), //For Emulator
-          Uri.parse(
-              'http://192.168.1.19:8000/api/glucose-log/'), // For Physical Device
-          // Uri.parse('http://147.252.148.38:8000/api/glucose-log/'), // For Eduroam API endpoint
-          // Uri.parse('http://192.168.40.184:8000/api/glucose-log/'), // Ethernet IP
+          Uri.parse('http://192.168.1.19:8000/api/glucose-log/'),
           headers: {
-            'Authorization': 'Bearer $token', // Send token in request header
+            'Authorization': 'Bearer $token', // Include token in headers
           },
         );
 
         if (response.statusCode == 200) {
           final data = json.decode(response.body);
 
+          
+
           setState(() {
-            // Ensure this data is being correctly set
             lastLog = parseDouble(data['lastLog']);
             averageLog = parseDouble(data['averageLog']);
             glucoseLogs = List<Map<String, dynamic>>.from(data['logs'] ?? []);
 
-            // Sort logs by timestamp to find the last log
+            // Sort logs by timestamp (latest first)
             glucoseLogs.sort((a, b) => DateTime.parse(b['timestamp'])
                 .compareTo(DateTime.parse(a['timestamp'])));
 
+            // Update last log value
             lastLog = glucoseLogs.isNotEmpty
                 ? parseDouble(glucoseLogs.first['glucose_level'])
                 : null;
 
-            // Calculate the average log
+            // Calculate the average glucose log
             if (glucoseLogs.isNotEmpty) {
               double total = glucoseLogs.fold(
                   0.0,
@@ -101,7 +109,7 @@ class _GlucoseLogScreenState extends State<GlucoseLogScreen> {
               averageLog = null;
             }
 
-            // Apply unit conversion to each glucose log based on the user's setting
+            // Apply unit conversion if necessary
             if (measurementUnit == 'mmol/L') {
               lastLog = lastLog != null ? convertToMmolL(lastLog!) : null;
               averageLog =
@@ -109,23 +117,21 @@ class _GlucoseLogScreenState extends State<GlucoseLogScreen> {
               for (var log in glucoseLogs) {
                 log['glucose_level'] = log['glucose_level'] != null
                     ? convertToMmolL(parseDouble(log['glucose_level']) ?? 0.0)
-                    : null; // Safely parse glucose level
+                    : null;
               }
             }
 
             isLoading = false; // Data has been loaded
           });
         } else {
-          // Handle the case where the server returns an error
           setState(() {
             errorMessage = 'Failed to load glucose logs.';
             isLoading = false; // Stop loading
           });
         }
       } catch (e) {
-        // Handle exceptions (e.g., network errors)
         setState(() {
-          errorMessage = 'An error occurred: $e'; // Show the error
+          errorMessage = 'An error occurred: $e';
           isLoading = false; // Stop loading
         });
       }
@@ -137,6 +143,51 @@ class _GlucoseLogScreenState extends State<GlucoseLogScreen> {
     }
   }
 
+   // Filter logs for today's date
+    List<Map<String, dynamic>> filterLogsForToday(
+      List<Map<String, dynamic>> logs) {
+    DateTime now = DateTime.now();
+    return logs.where((log) {
+      DateTime logDate = DateTime.parse(log['timestamp']);
+      return logDate.year == now.year &&
+          logDate.month == now.month &&
+          logDate.day == now.day;
+    }).toList();
+  }
+
+  // Add a new glucose log entry
+void addNewLog(Map<String, dynamic> newLog) {
+    setState(() {
+      // Add the new log to the list
+      glucoseLogs.add(newLog);
+
+      // Update lastLog and averageLog values
+      lastLog = parseDouble(newLog['glucose_level']);
+      averageLog = (averageLog != null && glucoseLogs.isNotEmpty)
+          ? ((averageLog! * (glucoseLogs.length - 1) + lastLog!) /
+              glucoseLogs.length)
+          : lastLog;
+
+      // Re-filter today's logs for the graph
+      glucoseLogs = filterLogsForToday(
+          glucoseLogs); // This can be removed if the graph only uses all logs
+      // Update the graph data points
+      graphData = getGraphData();
+
+      // Apply unit conversion if necessary
+      if (measurementUnit == 'mmol/L') {
+        lastLog = lastLog != null ? convertToMmolL(lastLog!) : null;
+        averageLog = averageLog != null ? convertToMmolL(averageLog!) : null;
+        for (var log in glucoseLogs) {
+          log['glucose_level'] = log['glucose_level'] != null
+              ? convertToMmolL(parseDouble(log['glucose_level']) ?? 0.0)
+              : null;
+        }
+      }
+    });
+  }
+
+ 
   // Determine the point color based on glucose level
   Color getPointColor(double glucoseLevel) {
     if (glucoseLevel < (measurementUnit == 'mg/dL' ? 80 : 4.4)) {
@@ -147,12 +198,14 @@ class _GlucoseLogScreenState extends State<GlucoseLogScreen> {
     return Colors.blue; // Normal
   }
 
-  // Function to get graph data points
-  List<FlSpot> getGraphData() {
-    return glucoseLogs
+  // Function to get graph data points (only for today)
+List<FlSpot> getGraphData() {
+    List<Map<String, dynamic>> todayLogs = filterLogsForToday(glucoseLogs);
+    return todayLogs
         .asMap()
         .entries
-        .map((e) => FlSpot(e.key.toDouble(), e.value['glucose_level'] ?? 0.0))
+        .map((e) => FlSpot(
+            e.key.toDouble(), parseDouble(e.value['glucose_level']) ?? 0.0))
         .toList();
   }
 
@@ -258,6 +311,8 @@ class _GlucoseLogScreenState extends State<GlucoseLogScreen> {
                                   label: "Last Log",
                                   color: getPointColor(lastLog ?? 0.0),
                                   measurementUnit: measurementUnit,
+                                   formattedValue: formatGlucoseValue(
+                                      lastLog), // Use formatted value
                                 ),
                                 // Add Log Circle
                                 CircleDisplay(
@@ -275,6 +330,8 @@ class _GlucoseLogScreenState extends State<GlucoseLogScreen> {
                                   label: "Average",
                                   color: getPointColor(averageLog ?? 0.0),
                                   measurementUnit: measurementUnit,
+                                   formattedValue: formatGlucoseValue(
+                                      averageLog), // Use formatted value
                                 ),
                               ],
                             ),
@@ -304,6 +361,7 @@ class _GlucoseLogScreenState extends State<GlucoseLogScreen> {
                             width: screenWidth *
                                 2, // Ensure the graph spans the full width
                             padding: const EdgeInsets.all(16.0),
+
                             child: LineChart(
                               LineChartData(
                                 gridData:
@@ -465,6 +523,7 @@ class CircleDisplay extends StatelessWidget {
   final IconData? icon;
   final Color color;
   final String measurementUnit;
+  final String? formattedValue; // New parameter for formatted value
 
   const CircleDisplay(
       {super.key,
@@ -473,7 +532,8 @@ class CircleDisplay extends StatelessWidget {
       this.onTap,
       this.icon,
       required this.color,
-      required this.measurementUnit});
+      required this.measurementUnit,
+      this.formattedValue});
 
   @override
   Widget build(BuildContext context) {
@@ -492,7 +552,8 @@ class CircleDisplay extends StatelessWidget {
               child: icon != null
                   ? Icon(icon, size: 40, color: Colors.white)
                   : Text(
-                      value != null ? value.toString() : "0",
+                      formattedValue ??
+                          value.toString(), // Use formatted value if provided
                       style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,

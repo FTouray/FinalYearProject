@@ -30,10 +30,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       final response = await http.post(
-       // Uri.parse('http://10.0.2.2:8000/api/login/'), // For Android Emulator
-        Uri.parse('http://192.168.1.19:8000/api/login/'),  // For Physical Device 
-       // Uri.parse('http://147.252.148.38:8000/api/login/'), // For Eduroam API endpoint
-       // Uri.parse('http://192.168.40.184:8000/api/login/'), // Ethernet IP
+        // Uri.parse('http://10.0.2.2:8000/api/login/'), // For Android Emulator
+        Uri.parse('http://192.168.1.19:8000/api/login/'), // For Physical Device
+        // Uri.parse('http://147.252.148.38:8000/api/login/'), // For Eduroam API endpoint
+        // Uri.parse('http://192.168.40.184:8000/api/login/'), // Ethernet IP
 
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
@@ -54,11 +54,11 @@ class _LoginScreenState extends State<LoginScreen> {
         await prefs.setString('refresh_token', refreshToken);
 
         setState(() {
-          errorMessage = null;  // Clear error if login is successful
+          errorMessage = null; // Clear error if login is successful
         });
-        
+
         // Navigate to the Home Page and pass the first name
-        Navigator.pushNamed(context, '/home', arguments: firstName); 
+        Navigator.pushNamed(context, '/home', arguments: firstName);
       } else {
         final data = json.decode(response.body);
         setState(() {
@@ -85,7 +85,7 @@ class _LoginScreenState extends State<LoginScreen> {
               children: [
                 // App Logo
                 Image.asset(
-                  'assets/logos/glycolog_logo.png', 
+                  'assets/logos/glycolog_logo.png',
                   height: 100,
                 ),
                 const SizedBox(height: 20),
@@ -168,8 +168,8 @@ class _LoginScreenState extends State<LoginScreen> {
                           child: const Text(
                             'Login',
                             style: TextStyle(
-                              color: Colors.white, 
-                              fontSize: 18, 
+                              color: Colors.white,
+                              fontSize: 18,
                               fontWeight: FontWeight.bold,
                             ),
                           ),

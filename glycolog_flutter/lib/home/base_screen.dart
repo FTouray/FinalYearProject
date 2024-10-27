@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:Glycolog/services/auth_service.dart';
 
-
 class BaseScreen extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onItemTapped;
   final Widget body;
+  final AuthService authService = AuthService(); // Initialize AuthService here
 
-  const BaseScreen({
+  BaseScreen({
     Key? key,
     required this.selectedIndex,
     required this.onItemTapped,
@@ -18,14 +18,16 @@ class BaseScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Image.asset('assets/logos/glycolog_logo.png', height: 40), // Logo in the middle
+        title: Image.asset('assets/logos/glycolog_logo.png',
+            height: 40), // Logo in the middle
         centerTitle: true,
         leading: Builder(
           builder: (context) => IconButton(
             icon: const Icon(Icons.menu), // Hamburger menu icon
             onPressed: () {
               // Use the context of the Scaffold to open the drawer
-              Scaffold.of(context).openDrawer(); // Correct context for opening the drawer
+              Scaffold.of(context)
+                  .openDrawer(); // Correct context for opening the drawer
             },
           ),
         ),
@@ -70,7 +72,7 @@ class BaseScreen extends StatelessWidget {
                 Navigator.pushNamed(context, '/glucose-log');
               },
             ),
-             ListTile(
+            ListTile(
               leading: const Icon(Icons.logout),
               title: const Text('Logout'),
               onTap: () async {
@@ -80,7 +82,7 @@ class BaseScreen extends StatelessWidget {
           ],
         ),
       ),
-     body: body, // This will hold the main content of the page
+      body: body, // This will hold the main content of the page
       bottomNavigationBar: BottomNavigationBar(
         backgroundColor: Colors.blue[800],
         selectedItemColor: Colors.white,
@@ -113,10 +115,6 @@ class BaseScreen extends StatelessWidget {
 
   // Logout function using AuthService
   Future<void> _logout(BuildContext context) async {
-    AuthService authService = AuthService();
-    await authService.logout(); // Call logout function from AuthService
-
-    // Navigate to the login page
-    Navigator.pushReplacementNamed(context, '/login');
+    await authService.logout(context); // AuthService handles navigation
   }
 }

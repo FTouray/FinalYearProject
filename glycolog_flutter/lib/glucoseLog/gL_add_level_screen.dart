@@ -36,7 +36,8 @@ class _AddGlucoseLevelScreenState extends State<AddGlucoseLevelScreen> {
   Future<void> _loadUserSettings() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
-      measurementUnit = prefs.getString('selectedUnit') ?? 'mg/dL'; // Default to mg/dL
+      measurementUnit =
+          prefs.getString('selectedUnit') ?? 'mg/dL'; // Default to mg/dL
     });
   }
 
@@ -50,7 +51,7 @@ class _AddGlucoseLevelScreenState extends State<AddGlucoseLevelScreen> {
   // Function to pick an image from the camera
   Future<void> _pickImage() async {
     final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.camera); 
+    final pickedFile = await picker.pickImage(source: ImageSource.camera);
     if (pickedFile != null) {
       setState(() {
         _pickedImage = File(pickedFile.path);
@@ -69,12 +70,14 @@ class _AddGlucoseLevelScreenState extends State<AddGlucoseLevelScreen> {
       img.Image grayscaleImage = img.grayscale(image);
 
       // Apply thresholding
-      img.Image thresholdImage = img.copyResize(grayscaleImage, width: grayscaleImage.width, height: grayscaleImage.height);
+      img.Image thresholdImage = img.copyResize(grayscaleImage,
+          width: grayscaleImage.width, height: grayscaleImage.height);
 
       // Save the processed image to a temporary file
       final directory = await getTemporaryDirectory();
       final path = '${directory.path}/processed_image.png';
-      final processedImageFile = File(path)..writeAsBytesSync(img.encodePng(thresholdImage));
+      final processedImageFile = File(path)
+        ..writeAsBytesSync(img.encodePng(thresholdImage));
 
       return processedImageFile;
     } else {
@@ -84,57 +87,66 @@ class _AddGlucoseLevelScreenState extends State<AddGlucoseLevelScreen> {
 
   // Function to scan the glucose meter image
   Future<void> _scanGlucoseMeter(File imageFile) async {
-  try {
-    final processedImageFile = await _preprocessImage(imageFile);
-    final inputImage = InputImage.fromFile(processedImageFile);
-    final textRecognizer = TextRecognizer();
-    final RecognizedText recognizedText = await textRecognizer.processImage(inputImage);
+    try {
+      final processedImageFile = await _preprocessImage(imageFile);
+      final inputImage = InputImage.fromFile(processedImageFile);
+      final textRecognizer = TextRecognizer();
+      final RecognizedText recognizedText =
+          await textRecognizer.processImage(inputImage);
 
-    double? glucoseValue; // Keep this nullable
-    double maxHeight = 0; // Variable to keep track of the largest font size
+      double? glucoseValue; // Keep this nullable
+      double maxHeight = 0; // Variable to keep track of the largest font size
 
-    final regex = RegExp(r'\b\d+(\.\d+)?\b'); // Match both integers and decimals
-    for (TextBlock block in recognizedText.blocks) {
-      for (TextLine line in block.lines) {
-        for (TextElement element in line.elements) {
-          // Match the element text with the regex to filter only valid numbers
-          if (regex.hasMatch(element.text)) {
-            double? value = double.tryParse(element.text); // Try to parse the text as a double
-            double textHeight = element.boundingBox.height; // Get the height of the text element
+      final regex =
+          RegExp(r'\b\d+(\.\d+)?\b'); // Match both integers and decimals
+      for (TextBlock block in recognizedText.blocks) {
+        for (TextLine line in block.lines) {
+          for (TextElement element in line.elements) {
+            // Match the element text with the regex to filter only valid numbers
+            if (regex.hasMatch(element.text)) {
+              double? value = double.tryParse(
+                  element.text); // Try to parse the text as a double
+              double textHeight = element
+                  .boundingBox.height; // Get the height of the text element
 
-            // Check for valid value and if it is the largest height found so far
-            if (value != null && textHeight > maxHeight) {
-              glucoseValue = value; // Update to the value with the largest font size
-              maxHeight = textHeight; // Update the largest font size
+              // Check for valid value and if it is the largest height found so far
+              if (value != null && textHeight > maxHeight) {
+                glucoseValue =
+                    value; // Update to the value with the largest font size
+                maxHeight = textHeight; // Update the largest font size
+              }
             }
           }
         }
       }
-    }
 
-    // Define valid ranges
-    double minValue = (measurementUnit == 'mg/dL') ? 10 : 0.55;
-    double maxValue = (measurementUnit == 'mg/dL') ? 600 : 33.3;
+      // Define valid ranges
+      double minValue = (measurementUnit == 'mg/dL') ? 10 : 0.55;
+      double maxValue = (measurementUnit == 'mg/dL') ? 600 : 33.3;
 
-    // Validate the detected glucose value before setting it
-    if (glucoseValue != null && glucoseValue >= minValue && glucoseValue <= maxValue) {
-      setState(() {
-        _glucoseLevelController.text = glucoseValue.toString(); // Auto-fill the scanned value
-      });
-    } else {
+      // Validate the detected glucose value before setting it
+      if (glucoseValue != null &&
+          glucoseValue >= minValue &&
+          glucoseValue <= maxValue) {
+        setState(() {
+          _glucoseLevelController.text =
+              glucoseValue.toString(); // Auto-fill the scanned value
+        });
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text('Detected glucose level is out of valid range.')),
+        );
+      }
+
+      // Dispose the recognizer when done
+      textRecognizer.close();
+    } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Detected glucose level is out of valid range.')),
+        SnackBar(content: Text('Failed to process image: $e')),
       );
     }
-
-    // Dispose the recognizer when done
-    textRecognizer.close();
-  } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Failed to process image: $e')),
-    );
   }
-}
 
   // Function to pick the date
   Future<void> _selectDate(BuildContext context) async {
@@ -171,19 +183,22 @@ class _AddGlucoseLevelScreenState extends State<AddGlucoseLevelScreen> {
 
       // Convert glucose level to a single unit for storage
       if (measurementUnit == 'mmol/L') {
-        glucoseValue = convertToMgdL(glucoseValue); // Convert to mg/dL before saving
+        glucoseValue =
+            convertToMgdL(glucoseValue); // Convert to mg/dL before saving
       }
 
       // Navigate to the confirmation screen
       Navigator.push(
         context,
-        MaterialPageRoute( // Use MaterialPageRoute to pass data to the confirmation screen 
+        MaterialPageRoute(
+          // Use MaterialPageRoute to pass data to the confirmation screen
           builder: (context) => GlucoseLogConfirmationScreen(
             glucoseLevel: double.parse(_glucoseLevelController.text),
             selectedDate: _selectedDate,
             selectedTime: _selectedTime,
             measurementUnit: measurementUnit,
-            mealContext: _mealContext, // Pass meal context to confirmation screen
+            mealContext:
+                _mealContext, // Pass meal context to confirmation screen
           ),
         ),
       ).then((confirmed) {
@@ -215,7 +230,8 @@ class _AddGlucoseLevelScreenState extends State<AddGlucoseLevelScreen> {
       // Check if the value is within the realistic range for the selected unit
       if (level < minValue || level > maxValue) {
         setState(() {
-          errorMessage = 'Please enter a glucose level between $minValue and $maxValue $measurementUnit.';
+          errorMessage =
+              'Please enter a glucose level between $minValue and $maxValue $measurementUnit.';
         });
         return false;
       }
@@ -246,18 +262,20 @@ class _AddGlucoseLevelScreenState extends State<AddGlucoseLevelScreen> {
     String? token = await AuthService().getAccessToken();
     final response = await http.post(
       // Uri.parse('http://10.0.2.2:8000/api/glucose-log/'), // For Emulator API endpoint
-       Uri.parse('http://192.168.1.19:8000/api/glucose-log/'),  // For Physical Device API endpoint
+      Uri.parse(
+          'http://192.168.1.19:8000/api/glucose-log/'), // For Physical Device API endpoint
       // Uri.parse('http://147.252.148.38:8000/api/glucose-log/'), // For Eduroam API endpoint
       // Uri.parse('http://192.168.40.184:8000/api/glucose-log/'), // Ethernet IP
- 
+
       headers: {
         'Authorization': 'Bearer $token', // Send the token in the header
         'Content-Type': 'application/json',
       },
       body: json.encode({
         'glucose_level': glucoseLevel,
-        'timestamp': _formatTimestamp(_selectedDate, _selectedTime), // Use the selected date and time
-        'meal_context': _mealContext,  // Include meal context
+        'timestamp': _formatTimestamp(
+            _selectedDate, _selectedTime), // Use the selected date and time
+        'meal_context': _mealContext, // Include meal context
       }),
     );
 
@@ -279,7 +297,8 @@ class _AddGlucoseLevelScreenState extends State<AddGlucoseLevelScreen> {
   }
 
   String _formatTimestamp(DateTime date, TimeOfDay time) {
-    final DateTime dateTime = DateTime(date.year, date.month, date.day, time.hour, time.minute);
+    final DateTime dateTime =
+        DateTime(date.year, date.month, date.day, time.hour, time.minute);
     final DateFormat formatter = DateFormat('dd-MM-yyyy THH:mm:ss');
     return formatter.format(dateTime);
   }
@@ -295,7 +314,7 @@ class _AddGlucoseLevelScreenState extends State<AddGlucoseLevelScreen> {
             fontWeight: FontWeight.bold,
           ),
         ),
-        backgroundColor: Colors.blue[800], 
+        backgroundColor: Colors.blue[800],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -320,7 +339,8 @@ class _AddGlucoseLevelScreenState extends State<AddGlucoseLevelScreen> {
               label: const Text('Scan Glucose Meter'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.blue[800],
-                padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -376,7 +396,8 @@ class _AddGlucoseLevelScreenState extends State<AddGlucoseLevelScreen> {
               onPressed: _submitData,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.blue[800], // Confirm button color
-                padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 15),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 50, vertical: 15),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -395,7 +416,6 @@ class _AddGlucoseLevelScreenState extends State<AddGlucoseLevelScreen> {
     );
   }
 
-  
   Widget _buildInputField({
     required String label,
     required TextEditingController controller,

@@ -38,11 +38,11 @@ class _HomePageState extends State<HomePage> {
     String? token = await authService.getAccessToken();
 
     if (token == null) {
-      // If no token, redirect to login
-      Navigator.pushReplacementNamed(context, '/login');
+      // If no token, call logout function which handles redirection
+      await authService.logout(context);
     } else {
       // Optionally refresh token if close to expiration
-      await authService.refreshAccessToken();
+      await authService.refreshAccessToken(context);
     }
   }
 

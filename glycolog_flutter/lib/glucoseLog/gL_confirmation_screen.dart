@@ -23,11 +23,11 @@ class GlucoseLogConfirmationScreen extends StatelessWidget {
         title: const Text(
           'Confirm Glucose Log',
           style: TextStyle(
-            fontSize: 20, 
+            fontSize: 20,
             fontWeight: FontWeight.bold,
           ),
         ),
-        backgroundColor: Colors.blue[800], 
+        backgroundColor: Colors.blue[800],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -100,7 +100,8 @@ class GlucoseLogConfirmationScreen extends StatelessWidget {
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.grey[400], // Edit button color
-                    padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 30, vertical: 15),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -119,7 +120,8 @@ class GlucoseLogConfirmationScreen extends StatelessWidget {
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue[800], // Confirm button color
-                    padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 30, vertical: 15),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),

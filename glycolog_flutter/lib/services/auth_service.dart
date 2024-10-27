@@ -1,18 +1,20 @@
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
 class AuthService {
- // Function to get the access token from SharedPreferences
+  // Function to get the access token from SharedPreferences
   Future<String?> getAccessToken() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('access_token'); // Return the stored access token
   }
 
   // Function to refresh access token
-  Future<void> refreshAccessToken() async {
+  Future<void> refreshAccessToken(BuildContext context) async {
     final prefs = await SharedPreferences.getInstance();
-    final refreshToken = prefs.getString('refresh_token'); // Retrieve refresh token
+    final refreshToken =
+        prefs.getString('refresh_token'); // Retrieve refresh token
 
     if (refreshToken == null) {
       print("No refresh token found");
@@ -21,10 +23,11 @@ class AuthService {
 
     try {
       final response = await http.post(
-      //   Uri.parse('http://10.0.2.2:8000/api/token/refresh/'), // For Android Emulator
-        Uri.parse('http://192.168.1.19:8000/api/token/refresh/'),  // For Physical Device 
-      //  Uri.parse('http://147.252.148.38:8000/api/token/refresh/'), // For Eduroam API endpoint
-      //  Uri.parse('http://192.168.40.184:8000/api/token/refresh/'), //Ethernet IP
+        //   Uri.parse('http://10.0.2.2:8000/api/token/refresh/'), // For Android Emulator
+        Uri.parse(
+            'http://192.168.1.19:8000/api/token/refresh/'), // For Physical Device
+        //  Uri.parse('http://147.252.148.38:8000/api/token/refresh/'), // For Eduroam API endpoint
+        //  Uri.parse('http://192.168.40.184:8000/api/token/refresh/'), //Ethernet IP
         headers: {
           'Content-Type': 'application/json',
         },
@@ -33,22 +36,21 @@ class AuthService {
         }),
       );
 
-     if (response.statusCode == 200) {
+      if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final newToken = data['access']; // Get new access token
-        
+
         // Store the new access token
         await prefs.setString('access_token', newToken);
         return newToken; // Return the new token
       } else if (response.statusCode == 401) {
         // Handle unauthorized error by clearing tokens and logging out
-        await logout();
-        print("Unauthorized: Refresh token is invalid or expired. Logging out.");
-        return null;
+        await logout(context);
+        print(
+            "Unauthorized: Refresh token is invalid or expired. Logging out.");
       } else {
         // Handle other errors
         print("Error refreshing token: ${response.reasonPhrase}");
-        return null;
       }
     } catch (e) {
       // Handle network or other errors
@@ -57,12 +59,16 @@ class AuthService {
     }
   }
 
-
   // Function to logout the user
-  Future<void> logout() async {
+  Future<void> logout(BuildContext context) async {
     // Clear tokens from SharedPreferences
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('access_token');
     await prefs.remove('refresh_token');
+
+    // Navigate to login screen if context is provided
+    if (context.mounted) {
+      Navigator.pushReplacementNamed(context, '/login');
+    }
   }
 }

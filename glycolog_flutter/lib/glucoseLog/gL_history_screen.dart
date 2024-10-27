@@ -9,7 +9,8 @@ class GlucoseLogHistoryScreen extends StatefulWidget {
   const GlucoseLogHistoryScreen({super.key});
 
   @override
-  _GlucoseLogHistoryScreenState createState() => _GlucoseLogHistoryScreenState();
+  _GlucoseLogHistoryScreenState createState() =>
+      _GlucoseLogHistoryScreenState();
 }
 
 class _GlucoseLogHistoryScreenState extends State<GlucoseLogHistoryScreen> {
@@ -53,10 +54,11 @@ class _GlucoseLogHistoryScreenState extends State<GlucoseLogHistoryScreen> {
     if (token != null) {
       try {
         final response = await http.get(
-         // Uri.parse('http://10.0.2.2:8000/api/glucose-log/'), // For Android Emulator
-          Uri.parse('http://192.168.1.19:8000/api/glucose-log/'),  // For Physical Device 
-         // Uri.parse('http://147.252.148.38:8000/api/glucose-log/'), // For Eduroam API endpoint
-         // Uri.parse('http://192.168.40.184:8000/api/glucose-log/'), // Ethernet IP
+          // Uri.parse('http://10.0.2.2:8000/api/glucose-log/'), // For Android Emulator
+          Uri.parse(
+              'http://192.168.1.19:8000/api/glucose-log/'), // For Physical Device
+          // Uri.parse('http://147.252.148.38:8000/api/glucose-log/'), // For Eduroam API endpoint
+          // Uri.parse('http://192.168.40.184:8000/api/glucose-log/'), // Ethernet IP
           headers: {'Authorization': 'Bearer $token'},
         );
 
@@ -116,10 +118,13 @@ class _GlucoseLogHistoryScreenState extends State<GlucoseLogHistoryScreen> {
 
         bool dateFilter = true;
         if (_startDate != null) {
-          dateFilter = logDate.isAfter(_startDate!) || logDate.isAtSameMomentAs(_startDate!);
+          dateFilter = logDate.isAfter(_startDate!) ||
+              logDate.isAtSameMomentAs(_startDate!);
         }
         if (_endDate != null) {
-          dateFilter = dateFilter && (logDate.isBefore(_endDate!) || logDate.isAtSameMomentAs(_endDate!));
+          dateFilter = dateFilter &&
+              (logDate.isBefore(_endDate!) ||
+                  logDate.isAtSameMomentAs(_endDate!));
         }
 
         bool levelFilter = true;
@@ -211,7 +216,8 @@ class _GlucoseLogHistoryScreenState extends State<GlucoseLogHistoryScreen> {
                     child: ElevatedButton(
                       onPressed: _applyFilters,
                       style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 30, vertical: 15),
                         backgroundColor: Colors.blue[800],
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12.0),
@@ -296,7 +302,9 @@ class _GlucoseLogHistoryScreenState extends State<GlucoseLogHistoryScreen> {
         Expanded(
           child: ListTile(
             title: Text(
-              _endDate != null ? 'To: ${_endDate!.toLocal()}'.split(' ')[0] : 'To: Select Date',
+              _endDate != null
+                  ? 'To: ${_endDate!.toLocal()}'.split(' ')[0]
+                  : 'To: Select Date',
               style: const TextStyle(color: Colors.black87, fontSize: 16),
             ),
             trailing: const Icon(Icons.calendar_today),
