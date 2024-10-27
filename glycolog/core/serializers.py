@@ -2,7 +2,7 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
-from .models import GlycaemicResponseTracker, Meal, GlucoseLog  # Import your models
+from .models import FoodItem, GlycaemicResponseTracker, Meal, GlucoseLog  # Import your models
 
 # Get the custom user model
 User = get_user_model()
@@ -54,18 +54,39 @@ class GlycaemicResponseTrackerSerializer(serializers.ModelSerializer):
         # Custom validation logic for user_data if needed
         return value
 
+# Food Item Serializer
+class FoodItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FoodItem
+        fields = ['foodId', 'name', 'glycaemic_index', 'carbs']
+
 # Meal Serializer
 class MealSerializer(serializers.ModelSerializer):
+    food_items = FoodItemSerializer(many=True)
+
     class Meta:
         model = Meal
-        fields = ['mealID', 'trackerID', 'foodItems', 'glycaemicIndex', 'carbs', 'timestamp']
-
-    # Validation or methods???
-    def validate_foodItems(self, value):
-        # Ensure foodItems is not empty
-        if not value:
-            raise serializers.ValidationError("Food items cannot be empty.")
-        return value
+        fields = ['mealId', 'user', 'tracker', 'food_items', 'total_glycaemic_index', 'total_carbs', 'timestamp']
+    
+    def create(self, validated_data):
+        # Extract food items data
+        food_items_data = validated_data.pop('food_items')
+        meal = Meal.objects.create(**validated_data)
+        
+        # Get FoodItem instances and add to the meal
+        for food_item_data in food_items_data:
+            food_item, created = FoodItem.objects.get_or_create(
+                name=food_item_data['name'],
+                defaults={
+                    'glycaemic_index': food_item_data['glycaemic_index'],
+                    'carbs': food_item_data.get('carbs')
+                }
+            )
+            meal.food_items.add(food_item)
+        
+        # Calculate totals for the meal
+        meal.calculate_totals()
+        return meal
 
 # Glucose Log Serializer
 class GlucoseLogSerializer(serializers.ModelSerializer):

@@ -32,16 +32,39 @@ class GlucoseLog(models.Model):
     def __str__(self):
         return f"{self.user.username} - {self.glucose_level} at {self.timestamp}"
 
+# Model to store food items and their glycaemic index
+class FoodItem(models.Model):
+    foodId = models.AutoField(primary_key=True)  # Primary key for the food item
+    name = models.CharField(max_length=100)  # Name of the food item
+    glycaemic_index = models.FloatField()  # Glycemic index of the food item
+    carbs = models.FloatField(null=True, blank=True)  # Carbohydrate content, optional
+    
+    def __str__(self):
+        return self.name
+
 # Model to store meal details linked to the glycaemic response tracker
 class Meal(models.Model):
+    mealId = models.AutoField(primary_key=True)  # Primary key for the meal
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='meals') # Foreign key linking to user
     tracker = models.ForeignKey('GlycaemicResponseTracker', on_delete=models.CASCADE, related_name='meals')  # Foreign key linking to the tracker
-    food_items = models.TextField()  # Field to store food items in the meal
-    glycaemic_index = models.FloatField()  # Glycaemic index of the meal
-    carbs = models.FloatField()  # Total carbs in the meal
+    food_items = models.ManyToManyField(FoodItem, related_name='meals')  # Link to multiple food items  # Field to store food items in the meal
+    total_glycaemic_index = models.FloatField()  # Glycaemic index of the meal
+    total_carbs = models.FloatField()  # Total carbs in the meal
     timestamp = models.DateTimeField(auto_now_add=True)  # Automatically set timestamp when meal is logged
 
     class Meta:
         indexes = [models.Index(fields=['tracker']),]  # Index for faster lookups by tracker
+    
+    def __str__(self):
+        return f"Meal logged by {self.user.username} on {self.timestamp}"
+    
+    @property # Calculate the total glycaemic index of the meal
+    def total_glycaemic_index(self):
+        return sum(item.glycaemic_index for item in self.food_items.all())
+
+    @property # Calculate the total carbs in the meal
+    def total_carbs(self):
+        return sum(item.carbs for item in self.food_items.all() if item.carbs is not None)
 
 # Model to track glycaemic responses linked to a user
 class GlycaemicResponseTracker(models.Model):

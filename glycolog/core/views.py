@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
-from .serializers import GlucoseLogSerializer, RegisterSerializer, LoginSerializer, SettingsSerializer
+from .serializers import GlucoseLogSerializer, MealSerializer, RegisterSerializer, LoginSerializer, SettingsSerializer
 from .models import CustomUser, GlucoseLog  
 from django.contrib.auth import get_user_model
 from rest_framework.permissions import IsAuthenticated
@@ -149,3 +149,20 @@ def settings_view(request):
         user.save()
 
         return Response({"message": "Settings updated successfully"}, status=status.HTTP_200_OK)
+    
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def log_meal(request):
+    """
+    Endpoint to log a new meal, calculating total glycemic index and carbs based on food items.
+    """
+    data = request.data.copy()
+    data['user'] = request.user.id  # Link the meal to the authenticated user
+
+    serializer = MealSerializer(data=data, context={'request': request})
+
+    if serializer.is_valid():
+        serializer.save()  # This calls the `create` method on the serializer
+        return Response({"message": "Meal logged successfully", "meal": serializer.data}, status=status.HTTP_201_CREATED)
+    else:
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

@@ -1,6 +1,7 @@
 from django.urls import path
 from .views import (
-    log_glucose, 
+    log_glucose,
+    log_meal, 
     register_user, 
     login_user, 
     settings_view, 
@@ -28,4 +29,7 @@ urlpatterns = [
     
     # Settings
     path('settings/', settings_view, name='settings'), 
+    
+    # Glycaemic Response Tracker endpoints
+    path('api/log_meal/', log_meal, name='log_meal'),  # Endpoint to log a meal
 ]
