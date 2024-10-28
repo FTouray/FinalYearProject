@@ -1,0 +1,909 @@
+Food Name,Category,GI,Carbs
+"Cupcake, strawberry-iced",Bakery Products,73.0,22.0
+Gingerbread,Bakery Products,81.0,24.0
+Gingerbread,Bakery Products,88.0,26.0
+Gingerbread,Bakery Products,89.0,27.0
+Muffin made with corn flour,Bakery Products,74.0,22.0
+Muffin made with wheat flour,Bakery Products,74.0,22.0
+Muffin made with rice flour,Bakery Products,79.0,24.0
+"Pancakes, millet (100% foxtail millet flour)",Bakery Products,76.0,23.0
+"Pancakes, prepared from wheat flour",Bakery Products,80.0,24.0
+"Pancakes, millet (75% foxtail millet flour, 25% extrusion flour (w/w, dry basis)",Bakery Products,83.0,25.0
+"Pancakes, buckwheat, gluten-free, made from packet mix",Bakery Products,102.0,31.0
+Doughnut,Bakery Products,75.0,23.0
+"Pikelets, Golden brand",Bakery Products,85.0,26.0
+"Scones, plain, made from packet mix",Bakery Products,92.0,28.0
+Beer (4.5% alcohol by volume) (Nikolai Lager),Beverages,119.0,12.0
+"Beer (4.4% alcohol by volume), Pilsner Urquell®",Beverages,89.0,9.0
+"Beer, non-alcoholic (0.0% alcohol by volume) (Nikolai Lager)",Beverages,80.0,8.0
+"Coca Cola®, soft drink",Beverages,73.0,18.0
+"Cola, Pepsi®, sucrose-sweetened",Beverages,72.0,18.0
+"Fruit drink, increased GI variant (containing 8% sucrose)",Beverages,86.0,22.0
+"Ice Lemon Tea, ready-to-drink black tea with lemon flavor",Beverages,74.0,19.0
+"Iced lemon tea, lemon juice powder 0.2%",Beverages,72.0,18.0
+"Iced peach tea, 9.5% peach juice",Beverages,71.0,18.0
+"Rice milk drink, low-fat, Australia's Own Natural™",Beverages,92.0,23.0
+"Rice milk, low-fat, calcium enriched, Vitasoy®",Beverages,79.0,20.0
+English Muffin™ bread,Breads,77.0,12.0
+Fruit and cinnamon bread,Breads,71.0,11.0
+"Multigrain bread, gluten-free",Breads,79.0,12.0
+Linola seed bread,Breads,90.0,14.0
+"Mixed grain sandwich bread, Molenberg™",Breads,75.0,11.0
+"Whole grain bread, Stay Trim™",Breads,70.0,11.0
+"Bread, short oat (50% wholemeal wheat, 20% rye, 10% oatmeal, 20% white wheat, yeast (1.3% net flour weight), no rising time, 30 min proving time, 220°C baking temperature, 30 min bake",Breads,77.0,12.0
+Soft pretzel,Breads,80.0,12.0
+"Rice bread, low-amylose Calrose rice",Breads,72.0,11.0
+"Bread, long rye (50% wholemeal wheat, 30% rye, 20% white wheat, yeast (13% net flour weight), 20 min rising time, 30 min proving time, 220°C baking temperature, 30 min bake time",Breads,76.0,11.0
+"Bread, short rye (50% wholemeal wheat, 30% rye, 20% white wheat, yeast (1.3% net flour weight), no rising time, 30 min proving time, 220°C baking temperature, 30 min bake time",Breads,82.0,12.0
+Sourdough Cob Bread,Breads,77.0,12.0
+"Sourdough bread (50% wholemeal wheat, 50% white wheat, sourdough starter (70% wet weight), 80 min rising time, 60 min proving time, 200°C baking temperature, 60 min baking time",Breads,82.0,12.0
+"Sourdough bread + oats (50% wholemeal wheat, 50% white wheat, 10% rolled oats; sourdough starter (70% wet weight), 80 min rising time, 60 min proving time, 200°C baking temperature, 60 min baking time",Breads,71.0,11.0
+"White bread, WonderWhite™",Breads,70.0,11.0
+"White bread, WonderWhite™, tested by subjects with a low AMY1 copy number",Breads,70.0,11.0
+"White bread, Sunblest™",Breads,70.0,11.0
+White bread,Breads,71.0,11.0
+White bread,Breads,71.0,11.0
+White bread,Breads,71.0,11.0
+White bread (Original White Bread),Breads,71.0,11.0
+"Wheat bread, bite-sized, soft wheat flour",Breads,71.0,11.0
+White bread,Breads,72.0,11.0
+White bread,Breads,72.0,11.0
+White bread,Breads,74.0,11.0
+White bread,Breads,75.0,11.0
+White bread,Breads,75.0,11.0
+White bread (Vodova veka Penam),Breads,75.0,11.0
+White bread,Breads,76.0,11.0
+White bread,Breads,76.0,11.0
+"White bread, containing 9% sourdough, baked for 30 min at 210°C",Breads,76.0,11.0
+White bread,Breads,76.0,11.0
+"Wheat bread, sliced (Harry's)",Breads,76.0,11.0
+White bread,Breads,78.0,12.0
+"White bread, WonderWhite™, tested by subjects with a high AMY1 copy number",Breads,81.0,12.0
+White bread,Breads,83.0,12.0
+White bread,Breads,83.0,12.0
+Wheat bread,Breads,84.0,13.0
+White bread (lab made),Breads,87.0,13.0
+White bread,Breads,88.0,13.0
+"Baguette, Whole Grain, President's Choice® Blue Menu™",Breads,73.0,11.0
+"Bread, bakery made from an industrial mix for bread preparation",Breads,72.0,11.0
+"Bread, bakery made from an industrial mix for bread preparation",Breads,87.0,13.0
+"White bread, candeal-flour",Breads,86.0,13.0
+"Enriched white bread, Wonder™",Breads,71.0,11.0
+"Enriched white bread, Wonder™",Breads,72.0,11.0
+"Enriched white bread, Wonder™",Breads,77.0,12.0
+"Bread, sliced, soft wheat flour, extra virgin olive oil",Breads,73.0,11.0
+White bread (100% wheat flour) + 2% pectin,Breads,86.0,13.0
+White bread (100% wheat flour) + 5% fruit fiber,Breads,77.0,12.0
+White bread (80% wheat flour + 20% chickpea flour),Breads,80.0,12.0
+White bread (90% wheat flour + 10% modified corn starch),Breads,79.0,12.0
+White bread (90% wheat flour + 10% tapioca starch),Breads,78.0,12.0
+White bread (95% wheat flour + 5% oat bran),Breads,75.0,11.0
+"White bread, containing 2% vinegar and 2.5% sourdough",Breads,80.0,12.0
+"White bread, fiber-enriched, Fiber White™",Breads,77.0,12.0
+White bread (10% of white bread flour was substituted by resistant starch from tapioca),Breads,70.0,11.0
+"White bread, prepared with a 30 min prove and a second 12 min proving (moderate loaf volume)",Breads,72.0,11.0
+"White bread, prepared with a 60 min prove and a second 30 min proving (moderate loaf volume)",Breads,86.0,13.0
+"White bread, prepared with a 40 min prove, a second 25 min proving and a third 50 min proving (large loaf volume)",Breads,100.0,15.0
+"Western baked bread, made with high protein flour (15 min resting time, 70 min proving time, 11 min baking at 210°C)",Breads,71.0,11.0
+"White bread, pre-cooked frozen, baked 16 min at 180°C, cooled at 30°C for 18 min; frozen at -30°C for 30 min; preserved at -18°C; 2nd baking at 230°C for 12 min13",Breads,78.0,12.0
+"Modified baked bread made with steamed bread recipe, made with medium protein flour (15 min resting time, 70 min proving time, 11 min baking at 210°C)",Breads,75.0,11.0
+Wholemeal flour bread,Breads,75.0,11.0
+"Wholemeal flour bread, short wholemeal (50% whole meal wheat, 50% white wheat, Baker’s yeast (1.3% net flour weight), no rising time, 30 min proving time, 220°C baking temperature, 30 min baking time",Breads,78.0,12.0
+"Wholemeal bread, long whole meal (50% whole meal wheat, 50% white wheat, Baker’s yeast (13% net flour weight), 20 min rising time, 30 min proving time, 220°C baking temperature, 30 min baking time",Breads,80.0,12.0
+Wholemeal bread,Breads,85.0,13.0
+"Wholemeal bread, yeast (50% wholemeal wheat, 50% white wheat, Baker’s yeast (15% dry weight), 60 min rising time, 40 min proving time, 200°C baking temperature, 40-50 min baking time",Breads,88.0,13.0
+"Bread, desem (50% whole meal wheat, 50% white wheat), baker’s yeast (15% dry weight), desem (15% wet weight), 60 min rising time, 40 min proving time, 200°C baking temperature, 40-50 min baking time",Breads,92.0,14.0
+"Lebanese bread, white",Breads,75.0,11.0
+"Naan bread, heated in microwave for 25 sec",Breads,71.0,11.0
+Pumpkin Cob Gourmet Bread,Breads,85.0,13.0
+Steamed wheat bread,Breads,88.0,13.0
+"Barley bread, containing 40% barley flour and 60% wheat flour, separate proving of wheat dough",Breads,72.0,11.0
+"Millet steamed bread (75% foxtail-millet flour and 25% extrusion flour (w/w, dry basis)",Breads,90.0,14.0
+Bran Flakes™,Breastfast Cereals,74.0,15.0
+"Chocapic™, wheat-based flaked cereal",Breastfast Cereals,70.0,14.0
+"Chocapic™, wheat-based flaked cereal",Breastfast Cereals,74.0,15.0
+"Chocapic™, wheat-based flaked cereal",Breastfast Cereals,84.0,17.0
+Cornflakes,Breastfast Cereals,74.0,15.0
+Cornflakes,Breastfast Cereals,77.0,15.0
+Cornflakes,Breastfast Cereals,77.0,15.0
+Cornflakes,Breastfast Cereals,79.0,16.0
+"Cornflakes, tested in older adults (56-86 y)",Breastfast Cereals,81.0,16.0
+Cornflakes,Breastfast Cereals,82.0,16.0
+Cornflakes,Breastfast Cereals,93.0,19.0
+Cornflakes,Breastfast Cereals,105.0,21.0
+"Cornflakes, Crunchy Nut™",Breastfast Cereals,72.0,14.0
+"Granola Clusters, Raisin & Almond, low fat, President’s Choice® Blue Menu™",Breastfast Cereals,70.0,14.0
+Muesli,Breastfast Cereals,86.0,17.0
+"Instant oats, cooked in microwave for 2.5 min",Breastfast Cereals,76.0,15.0
+"Instant oat porridge, cooked in microwave with water",Breastfast Cereals,82.0,16.0
+"Instant oat cereal porridge, prepared with water",Breastfast Cereals,83.0,17.0
+"Instant oat porridge, prepared with water, cooked",Breastfast Cereals,87.0,17.0
+"Oat porridge made from 0.5-0.6 mm thick rolled oat flakes, cooked for 10 min",Breastfast Cereals,76.0,15.0
+Rice Bubbles™,Breastfast Cereals,85.0,17.0
+Rice Bubbles™,Breastfast Cereals,92.0,18.0
+"Special K™, made from rice",Breastfast Cereals,84.0,17.0
+Whole wheat Goldies™,Breastfast Cereals,70.0,14.0
+Wheat based cereal biscuits,Breastfast Cereals,72.0,14.0
+Wheat flake cereal biscuits,Breastfast Cereals,76.0,15.0
+Honey Goldies™,Breastfast Cereals,72.0,14.0
+"Lite-Bix™, plain, no added sugar",Breastfast Cereals,70.0,14.0
+Wheat flake cereal biscuits with 1.4 g Filtered Molasses Concentrate added per 100 g (2.08 g FMC/100 g carbohydrate),Breastfast Cereals,72.0,14.0
+Wheat flake cereal biscuits with 2.0 g Filtered Molasses Concentrate added per 100g (2.98 g FMC/100 g carbohydrate),Breastfast Cereals,70.0,14.0
+Wheat flakes,Breastfast Cereals,73.0,15.0
+Coco Pops™,Breastfast Cereals,77.0,15.0
+Corn Pops™,Breastfast Cereals,80.0,16.0
+Crunchola Apple & Cinnamon Oat & Fruit,Breastfast Cereals,70.0,14.0
+"Energy Mix™, wheat-based flaked cereal",Breastfast Cereals,80.0,16.0
+"Fruity-Bix™, berry",Breastfast Cereals,113.0,23.0
+Golden Wheats™,Breastfast Cereals,71.0,14.0
+Grapenuts™,Breastfast Cereals,75.0,15.0
+Honey Rice Bubbles™,Breastfast Cereals,77.0,15.0
+Honey Smacks™,Breastfast Cereals,71.0,14.0
+"Mini Wheats™, blackcurrant",Breastfast Cereals,72.0,14.0
+Oat 'n Honey Bake™,Breastfast Cereals,77.0,15.0
+Wheat flakes,Breastfast Cereals,73.0,15.0
+"Apricot Breakfast Bar, chewy",Breastfast Cereals,85.0,17.0
+Crunchy Nut Cornflakes™ bar,Breastfast Cereals,72.0,14.0
+K-Time Just Right™ bar,Breastfast Cereals,72.0,14.0
+K-Time Strawberry Crunch™ bar,Breastfast Cereals,77.0,15.0
+"Adlay, Chinese pearl barley (Coix lachryma-Jobi L.), boiled in water for 28 min",Cereal Grains,78.0,35.0
+"100% waxy corn starch (Amioca™ powder, Ingredion), prepared as a gel with water, heated in microwave for 90 sec",Cereal Grains,92.0,41.0
+"100% waxy corn starch (Ultra-Sperse™powder, Ingredion), prepared as a gel with water, heated in microwave for 90 sec",Cereal Grains,101.0,45.0
+"Unpolished little millet, plain cooked",Cereal Grains,89.0,40.0
+"Unpolished foxtail millet, plain cooked",Cereal Grains,89.0,40.0
+Foxtail millet porridge (millet:water ratio 1:9),Cereal Grains,94.0,42.0
+"Basmati, brown (unpolished milled basmati rice), cooked for 25 min",Cereal Grains,75.0,34.0
+"Basmati, easy-cook (heat-treated white, polished basmati rice), cooked 15 min",Cereal Grains,80.0,36.0
+"Jasmine rice, steamed for 30 min",Cereal Grains,76.0,34.0
+"Jasmine Fragrant rice, white, SunRice brand",Cereal Grains,79.0,36.0
+"Jasmine Fragrant rice, SunRice brand",Cereal Grains,80.0,36.0
+"Jasmine rice, cooked in rice cooker, SunRice brand",Cereal Grains,80.0,36.0
+Jasmine long grain rice,Cereal Grains,82.0,37.0
+Jasmine white rice (Uncle Ben's Jasmine Rice),Cereal Grains,84.0,38.0
+"Jasmine rice, white Thai (Double FP brand); chewed 30 times",Cereal Grains,88.0,40.0
+"Jasmine Fragrant rice, white, SunRice brand",Cereal Grains,89.0,40.0
+"Jasmine rice (Double FP Thai Hom Mali premium quality fragrant rice, Thailand)",Cereal Grains,90.0,41.0
+"Jasmine rice (Double FP Thai Hom Mali premium quality fragrant rice, Thailand)",Cereal Grains,91.0,41.0
+"Jasmine rice (Double FP Thai Hom Mali premium quality fragrant rice, Thailand)",Cereal Grains,92.0,41.0
+"Rice, white, Thai Hom Mali fragrant rice, cooked in rice cooker",Cereal Grains,96.0,43.0
+"Jasmine rice, Jazzmen, cooked in rice cooker",Cereal Grains,106.0,48.0
+"Jasmine rice, white, cooked in rice cooker",Cereal Grains,109.0,49.0
+"Jasmine rice, Mahatma, cooked in rice cooker",Cereal Grains,115.0,52.0
+"Jasmine rice, Reindeer, cooked in rice cooker",Cereal Grains,116.0,52.0
+"Brown rice, boiled in excess water for 25 min, SunRice brand",Cereal Grains,72.0,32.0
+Brown rice,Cereal Grains,87.0,39.0
+"Brown rice, SunRice brand",Cereal Grains,78.0,35.0
+"Long grain, boiled (Star Brand)",Cereal Grains,76.0,34.0
+"Instant Doongara, white, cooked 5 min",Cereal Grains,94.0,42.0
+"Instant rice, white, cooked 6 min",Cereal Grains,87.0,39.0
+"Long Grain White Rice in 90 Seconds, microwaved, SunRice brand,",Cereal Grains,76.0,34.0
+"Medium grain white rice, boiled 12 min (Sun Rice brand)",Cereal Grains,75.0,34.0
+"White rice, NS",Cereal Grains,83.0,37.0
+"White rice, fully polished, prepared from the Indian rice variety ""Bapatla"" (BPT-5204), pressure cooked for 18 min",Cereal Grains,80.0,36.0
+"White rice, Ponni, cooked in rice cooker for 33 min",Cereal Grains,70.0,32.0
+"White rice, Ponni, refined, harvested 2013, pressure-cooked for 30 min",Cereal Grains,81.0,36.0
+"White rice, Ponni, refined, harvested 2014, pressure-cooked for 30 min",Cereal Grains,77.0,35.0
+"White rice, Sona Masuri variety, cooked in rice cooker for 35 min",Cereal Grains,72.0,32.0
+"White rice, Surti Kolam variety, cooked in rice cooker for 32 min",Cereal Grains,77.0,35.0
+"Rice porridge, made with Jasmine rice, steamed for 40 min",Cereal Grains,80.0,36.0
+"Rice porridge, NS",Cereal Grains,88.0,40.0
+"Broken rice, white, cooked in rice cooker",Cereal Grains,86.0,39.0
+"Glutinous rice, white, cooked in rice cooker",Cereal Grains,94.0,42.0
+"Glutinous rice, white, cooked in rice cooker",Cereal Grains,98.0,44.0
+"Japanese Style Sushi rice, white (SunRice brand)",Cereal Grains,85.0,38.0
+"Koshihikari rice, white (SunRice brand)",Cereal Grains,73.0,33.0
+"Red rice, Thai, unpolished, cooked 25 min",Cereal Grains,76.0,34.0
+Sticky rice,Cereal Grains,87.0,39.0
+Sticky rice,Cereal Grains,88.0,40.0
+"Sticky rice, Thai glutinous rice, cooked for 10 min",Cereal Grains,92.0,41.0
+"Rice, under milled, minimally polished 2.3%, prepared from the Indian rice variety ""Bapatla"" (BPT-5204), pressure cooked for 10 min",Cereal Grains,73.0,33.0
+"Parboiled brown rice, Uncle Ben’s® Natural Wholegrain Instant brown rice, cooked for 20 min",Cereal Grains,88.0,40.0
+"Parboiled, long grain, 20 min cooking time (Uncle Ben's)",Cereal Grains,75.0,34.0
+"Parboiled rice, NS (Uncle Ben's)",Cereal Grains,72.0,32.0
+"Parboiled rice, white, cooked 5 min, Uncle Ben's Snabbris®",Cereal Grains,74.0,33.0
+"Wheat, pearled",Cereal Grains,72.0,32.0
+Barquette Abricot,Cookies,71.0,14.0
+"Biscuit, NS",Cookies,72.0,14.0
+"Biscuit, thin, NS",Cookies,81.0,16.0
+Petit brun extra,Cookies,77.0,15.0
+Prince Energie+,Cookies,73.0,15.0
+"Corn Thins, puffed corn cakes, gluten-free",Crackers,87.0,13.0
+"Melba Toast/Rusk, whole-meal wheat flour (50.1%), soft wheat flour (Fette Biscottate Le Integrali, Mulino Bianco)",Crackers,73.0,11.0
+"Puffed rice cakes, Calrose rice, low-amylose",Crackers,91.0,14.0
+"Puffed rice cakes, caramel flavored",Crackers,82.0,12.0
+"Rice cracker, plain",Crackers,91.0,14.0
+Control dairy beverage,Dairy Products and Alternatives,70.0,7.0
+"Breadfruit, roasted on preheated charcoal",Fruit and Fruit Products,72.0,11.0
+"Dates, Maktoomi cultivar, Tamer stage",Fruit and Fruit Products,71.0,11.0
+"Dates, Sellaj cultivar, Tamer stage",Fruit and Fruit Products,75.0,11.0
+"Lychee, canned in syrup and drained, Narcissus brand",Fruit and Fruit Products,79.0,12.0
+Peach (Prunus persica),Fruit and Fruit Products,76.0,11.0
+"Pineapple, raw (Ananas comosa)",Fruit and Fruit Products,82.0,12.0
+"Blueberry fruit spread, wild blueberry",Fruit and Fruit Products,74.0,11.0
+"Farex™ baby rice, prepared with water",Infant Formula and Weaning Foods,74.0,7.0
+"Farex™ baby rice, 7 g cereal with 80 g water",Infant Formula and Weaning Foods,95.0,10.0
+"Organix™ organic wholegrain baby rice, prepared with water",Infant Formula and Weaning Foods,74.0,7.0
+"Isocal, ready-to-drink",Nutrition Support Products,79.0,24.0
+"Isocal, ready-to-drink",Nutrition Support Products,82.0,25.0
+"Isocal, ready-to-drink",Nutrition Support Products,85.0,26.0
+"Sport beverage based on oligosaccharides (low molecular weight carbohydrate), orange flavor",Nutrition Support Products,118.0,35.0
+"Sport beverage based on hydrolyzed starch (high molecular weight carbohydrate), orange flavor",Nutrition Support Products,106.0,32.0
+"Barley pasta (celebrity, whole grain fraction), cooked 5 min",Pasta and Noodles,71.0,28.0
+"Barley pasta (AC Parkhill, whole grain fraction), cooked 5 min",Pasta and Noodles,73.0,29.0
+"Corn pasta, gluten-free",Pasta and Noodles,78.0,31.0
+"Rice and maize pasta, gluten-free, Ris'O'Mais",Pasta and Noodles,76.0,30.0
+"Pennette rigate integrali, durum wheat wholemeal",Pasta and Noodles,73.0,29.0
+Semolina pasta,Pasta and Noodles,78.0,31.0
+"Apple Fruit Bar, fat-free, President's Choice® Blue Menu™",Snack Foods and Confectionery,90.0,23.0
+"Fig Fruit bar, President's Choice® Blue Menu™",Snack Foods and Confectionery,70.0,18.0
+"Fruit snack processed, Roll-Ups®",Snack Foods and Confectionery,99.0,25.0
+"Raspberry Fruit bar, fat-free, President's Choice® Blue Menu™ (Loblaw Brands Limited, Canada)",Snack Foods and Confectionery,74.0,19.0
+"Strawberry processed fruit bar, Real Fruit",Snack Foods and Confectionery,90.0,23.0
+"Cheese Puffs, made from rice and corn puffs, aged white cheddar extruded snack, Pirate's Booty brand",Snack Foods and Confectionery,70.0,18.0
+"Cheese Puffs, Pirates Booty brand",Snack Foods and Confectionery,74.0,19.0
+"Rice and corn cheese flavored extruded snack, Twisties™",Snack Foods and Confectionery,74.0,19.0
+"Brown rice chips with wild rice, gluten-free, SunRice™",Snack Foods and Confectionery,70.0,18.0
+"Japanese Tamari Rice & Corn Crisps, President's Choice® Blue Menu™",Snack Foods and Confectionery,91.0,23.0
+"Japanese Wasabi & Honey Rice & Corn Crisps, President's Choice® Blue Menu™",Snack Foods and Confectionery,82.0,21.0
+"Prawn crackers, BBQ Rib flavor, Infuzions™, made from tapioca and wheat",Snack Foods and Confectionery,74.0,19.0
+"Pretzels, oven-baked, traditional wheat flavor, 97% fat free (Parker's)",Snack Foods and Confectionery,84.0,21.0
+"Thai Curry Rice & Corn Crisps, President's Choice® Blue Menu™",Snack Foods and Confectionery,84.0,21.0
+"Microwave Popping Corn, butter flavor, President's Choice® Blue Menu™",Snack Foods and Confectionery,72.0,18.0
+"Baked potato chips (Baked Lays, Original Potato Crisps)",Snack Foods and Confectionery,72.0,18.0
+"Baked potato chips (Baked Lays, Original Potato Crisps)",Snack Foods and Confectionery,71.0,18.0
+"Sunshine™ soy protein chips, lightly salted (Revival Soy®)",Snack Foods and Confectionery,87.0,22.0
+Puffed rice squares,Snack Foods and Confectionery,77.0,19.0
+"Jelly beans, assorted colors",Snack Foods and Confectionery,76.0,19.0
+"Licorice, soft",Snack Foods and Confectionery,78.0,20.0
+"Pop Tarts™, double choc",Snack Foods and Confectionery,70.0,18.0
+Skittles®,Snack Foods and Confectionery,70.0,18.0
+"Sorbet, lemon (Sorbetto al limone, Carte d’or)",Snack Foods and Confectionery,72.0,18.0
+"Sour Straws, strawberry flavor, gummy/chewy confectionery",Snack Foods and Confectionery,76.0,19.0
+"Cold-pressed bar, made with 22.1 g maltodextrin (Globe Plus 10 DE maltodextrin) and 21.8 g corn syrup (Globe Plus 63 DE Maltodextrin)",Snack Foods and Confectionery,93.0,23.0
+"Chewy Chocolate Chip & Marshmallow Granola bar, President's Choice® Blue Menu™",Snack Foods and Confectionery,78.0,20.0
+"60% Whole Wheat Fig Fruit bar, President's Choice® Blue Menu™",Snack Foods and Confectionery,72.0,18.0
+"Pumpkin Soup, creamy, Heinz® Very Special™, with pumpkin, cream, potatoes",Soups,76.0,15.0
+Glucose syrup,Sugars and Syrups,107.0,5.0
+"Commercial Blend honey (28% fructose), NSW blend",Sugars and Syrups,72.0,4.0
+"Buckwheat honey, ratio of fructose:glucose, 1.12",Sugars and Syrups,73.0,4.0
+"Cotton honey, ratio of fructose:glucose, 1.03",Sugars and Syrups,74.0,4.0
+"Honey, NS",Sugars and Syrups,74.0,4.0
+"Tupelo honey, ratio of fructose:glucose, 1.54",Sugars and Syrups,74.0,4.0
+Maltose,Sugars and Syrups,75.0,4.0
+Maltose,Sugars and Syrups,105.0,5.0
+Sucrose,Sugars and Syrups,84.0,4.0
+"Sugar, refined",Sugars and Syrups,91.0,5.0
+Karo Dark Corn Syrup,Sugars and Syrups,90.0,5.0
+Rice malt syrup,Sugars and Syrups,98.0,5.0
+"Ripe plantain (Musa paradisiaca), peeled, fried in vegetable oil",Vegetables,90.0,18.0
+"Irish potato (Solanum tuberosum), peeled, baked 45 min",Vegetables,83.0,17.0
+"Pontiac potato, peeled and baked",Vegetables,93.0,19.0
+"Bintje potato, peeled, cut into 5 cm by 5 cm slices, at a thickness of 0.5 cm, boiled for 8-9 min",Vegetables,94.0,19.0
+"Desiree potato, peeled, boiled 35 min",Vegetables,101.0,20.0
+"Desiree potato, peeled, cut into 5 cm by 5 cm slices, at a thickness of 0.5 cm, boiled for 8-9 min",Vegetables,74.0,15.0
+"Desiree potato, peeled, cut into 5 cm by 5 cm slices, at a thickness of 0.5 cm, boiled for 8-9 min",Vegetables,79.0,16.0
+"King Edward potato, peeled, quartered, boiled 15 min in unsalted water",Vegetables,75.0,15.0
+"Maiflower potato, peeled, cut into 5 cm by 5 cm slices, at a thickness of 0.5 cm, boiled for 8-9 min",Vegetables,103.0,21.0
+"Maris Piper potato, peeled, quartered, boiled 15 min in unsalted water",Vegetables,85.0,17.0
+"Pontiac potato, peeled, boiled 35 min",Vegetables,88.0,18.0
+"Russet Burbank potato, peeled, cut into 5 cm by 5 cm slices, at a thickness of 0.5 cm, boiled for 8-9 min",Vegetables,82.0,16.0
+"Sebago potato, peeled, boiled for 35 min",Vegetables,87.0,17.0
+"Virginia Rose potato, peeled, cut into 5 cm by 5 cm slices, at a thickness of 0.5 cm, boiled for 8-9 min",Vegetables,93.0,19.0
+"Potato, novel clone, selection 1 (CV92056-4, grown to maturity in Alberta; harvested Oct. 2008), boiled for 15 min, reheated in microwave for 2-3 min",Vegetables,75.0,15.0
+"Potato, novel clone, selection 1 (CV92056-4, grown in Ontario; harvested Oct. 2009), unpeeled, cut into 2.5-3 cm cubes, boiled in salted water for 15 min",Vegetables,82.0,16.0
+"Potato, novel clone, selection 3 (F03031, grown in New Brunswick), unpeeled, cut into 2.5-3 cm cubes, boiled in salted water for 15 min",Vegetables,79.0,16.0
+"Potato, novel clone, selection 3 (F03031, grown in New Brunswick), boiled 15 min, reheated in microwave 2-3 min",Vegetables,79.0,16.0
+"Potato, novel clone, selection 3 (F03031, grown to maturity in Ontario), boiled 15 min, reheated in microwave 2-3 min",Vegetables,73.0,15.0
+"Potato, novel clone, selection 4 (F03028, grown in New Brunswick), unpeeled, cut into 2.5-3 cm cubes, boiled in salted water for 15 min",Vegetables,72.0,14.0
+"Irish potato (Solanum tuberosum), peeled, boiled 30 min, refrigerated, reheated for 1 min",Vegetables,71.0,14.0
+"New potato, unpeeled and boiled 20 min",Vegetables,78.0,0.0
+"Red potatoes, boiled with skin on in salted water for 12 min",Vegetables,89.0,18.0
+"Potato, frozen peeled cubes, boiled",Vegetables,70.0,14.0
+Instant mashed potato,Vegetables,88.0,18.0
+"Instant mashed potato, prepared with water",Vegetables,92.0,18.0
+Instant mashed potato,Vegetables,97.0,19.0
+"Potato mash (Homestyle, continental)",Vegetables,72.0,14.0
+"Mashed potato, NS",Vegetables,73.0,15.0
+"Mashed potato, Aviko B.V.",Vegetables,76.0,15.0
+"Mashed potato, NS",Vegetables,76.0,15.0
+"Potato, Folva, precooked, peeled, salted, vacuum packed and then boiled until soft to the center, drained and mashed",Vegetables,81.0,16.0
+"Pontiac potato, peeled, cubed, boiled 15 min, mashed",Vegetables,91.0,18.0
+"Estima potato, cooked in microwave 6 min then baked 10 min",Vegetables,93.0,19.0
+"Pontiac potato, peeled, cooked in microwave on high for 6-7.5 min",Vegetables,79.0,16.0
+"Prince Edward Island white potato, cooked in microwave for 18 min",Vegetables,73.0,15.0
+"Russet Burbank Norkotah potato, unpeeled, cooked in microwave for 18 min",Vegetables,77.0,15.0
+"California white potatoes, cubed, roasted in soybean oil",Vegetables,72.0,14.0
+"Irish potato (Solanum tuberosum), peeled, fried in vegetable oil",Vegetables,70.0,14.0
+"Sweet potato (Ipomoea batatas), Dor cultivar, baked with skin on at 175°C for 45 min",Vegetables,83.0,17.0
+"Sweet potato (Ipomoea batatas), Clarendon cultivar, baked with skin on at 175°C for 45 min",Vegetables,83.0,17.0
+"Sweet potato (Ipomoea batatas), Eustace cultivar, baked with skin on at 175°C for 45 min",Vegetables,93.0,19.0
+"Sweet potato (Ipomoea batatas), Fire on Land cultivar, baked with skin on at 175°C for 45 min",Vegetables,87.0,17.0
+"Sweet potato (Ipomoea batatas), Ganja cultivar, baked with skin on at 175°C for 45 min",Vegetables,82.0,16.0
+"Sweet potato (Ipomoea batatas), Ms Mac cultivar, baked with skin on at 175°C for 45 min",Vegetables,87.0,17.0
+"Sweet potato (Ipomoea batatas), Minda cultivar, baked with skin on at 175°C for 45 min",Vegetables,91.0,18.0
+"Sweet potato (Ipomoea batatas), Quarter Million cultivar, baked with skin on at 175°C for 45 min",Vegetables,94.0,19.0
+"Sweet potato (Ipomoea batatas), Watson cultivar, baked with skin on at 175°C for 45 min",Vegetables,85.0,17.0
+"Sweet potato (Ipomoea batatas), Yellow Belly cultivar, baked with skin on at 175°C for 45 min",Vegetables,86.0,17.0
+"Sweet potato (Ipomoea batatas), NS, peeled, baked 45 min",Vegetables,94.0,19.0
+"Sweet potato, purple skin white flesh, peeled, cut into pieces, boiled for 8 min",Vegetables,75.0,15.0
+"Red sweet potato (Ipomoea batatas), NS, cooking method NS",Vegetables,84.0,17.0
+"Sweet potato, kumara, cooking method NS",Vegetables,77.0,15.0
+"Sweet potato (Ipomoea batatas), Dor cultivar, peeled, cut into 10 mm wedges, fried in pre-heated vegetable oil",Vegetables,76.0,15.0
+"Sweet potato (Ipomoea batatas), Clarendon cultivar, peeled, cut into 10 mm wedges, fried in pre-heated vegetable oil",Vegetables,73.0,15.0
+"Sweet potato (Ipomoea batatas), Eustace cultivar, peeled, cut into 10 mm wedges, fried in pre-heated vegetable oil",Vegetables,77.0,15.0
+"Sweet potato (Ipomoea batatas), Fire on Land cultivar, peeled, cut into 10 mm wedges, fried in pre-heated vegetable oil",Vegetables,75.0,15.0
+"Sweet potato (Ipomoea batatas), Quarter Million cultivar, peeled, cut into 10 mm wedges, fried in pre-heated vegetable oil",Vegetables,70.0,14.0
+"Sweet potato (Ipomoea batatas), Yellow Belly cultivar, peeled, cut into 10 mm wedges, fried in pre-heated vegetable oil",Vegetables,72.0,14.0
+"Sweet potato (Ipomoea batatas), NS, peeled, fried in vegetable oil",Vegetables,76.0,15.0
+"Sweet potato (Ipomoea batatas), Dor cultivar, skin on, roasted on pre-heated charcoal for 45 min",Vegetables,86.0,17.0
+"Sweet potato (Ipomoea batatas), Clarendon cultivar, skin on, roasted on pre-heated charcoal for 45 min",Vegetables,81.0,16.0
+"Sweet potato (Ipomoea batatas), Eustace cultivar, skin on, roasted on pre-heated charcoal for 45 min",Vegetables,93.0,19.0
+"Sweet potato (Ipomoea batatas), Fire on Land cultivar, skin on, roasted on pre-heated charcoal for 45 min",Vegetables,90.0,18.0
+"Sweet potato (Ipomoea batatas), Ganja cultivar, skin on, roasted on pre-heated charcoal for 45 min",Vegetables,79.0,16.0
+"Sweet potato (Ipomoea batatas), Ms Mac cultivar, skin on, roasted on pre-heated charcoal for 45 min",Vegetables,85.0,17.0
+"Sweet potato (Ipomoea batatas), Minda cultivar, skin on, roasted on pre-heated charcoal for 45 min",Vegetables,89.0,18.0
+"Sweet potato (Ipomoea batatas), Quarter Million cultivar, skin on, roasted on pre-heated charcoal for 45 min",Vegetables,91.0,18.0
+"Sweet potato (Ipomoea batatas), Watson cultivar, skin on, roasted on pre-heated charcoal for 45 min",Vegetables,87.0,17.0
+"Sweet potato (Ipomoea batatas), Yellow Belly cultivar, skin on, roasted on pre-heated charcoal for 45 min",Vegetables,85.0,17.0
+"Sweet potato (Ipomoea batatas), NS, peeled, roasted on preheated charcoal",Vegetables,82.0,16.0
+"Dasheen (Taro), peeled, cubed, boiled 30 min",Vegetables,72.0,14.0
+"Dasheen, peeled, boiled 30 min, refrigerated, reheated for 1 min",Vegetables,77.0,15.0
+"Lucea Yam (Dioscorea rotundata), peeled, cubed, boiled 30 min",Vegetables,74.0,15.0
+"Lucea Yam (Dioscorea rotundata), peeled, roasted on preheated charcoal",Vegetables,77.0,15.0
+"Negro yam (Dioscorea rotundata), peeled, cubed, boiled 30 min",Vegetables,73.0,15.0
+"Negro yam (Dioscorea rotundata), peeled, roasted on preheated charcoal",Vegetables,73.0,15.0
+"Round leaf yellow yam (Dioscorea cayenensis), peeled, roasted on preheated charcoal",Vegetables,80.0,16.0
+"Sweet yam (Dioscorea alata), peeled, cubed, boiled 30 min",Vegetables,79.0,16.0
+"Sweet yam (Dioscorea alata), peeled, roasted on preheated charcoal",Vegetables,82.0,16.0
+"White yam (Dioscorea alata), peeled, cubed, boiled 30 min",Vegetables,75.0,15.0
+"White yam (Dioscorea alata), peeled, roasted on preheated charcoal",Vegetables,80.0,16.0
+"Yam (Dioscorea alata), white yam, cut into 25 mm chunks, boiled for 20 min, simmered for 10 min",Vegetables,75.0,15.0
+"Yam (Dioscorea esculenta), Chinese yam, cut into 25 mm chunks, boiled for 20 min, simmered for 10 min",Vegetables,97.0,19.0
+"Yam (Dioscorea rotundata), Lucea yam, cut into 25 mm chunks, boiled for 20 min, simmered for 10 min",Vegetables,74.0,15.0
+"Banane braise (blissi), unripe or half-ripe plantain (Musa spp. Afoto), roasted on heated charcoal",Regional or Traditional Foods,88.0,31.0
+"Meat and okra soup, with fermented cassava dough",Regional or Traditional Foods,75.0,26.0
+"Ugali porridge (corn foofoo, pap) made from whole maize flour, cooked for 15 min",Regional or Traditional Foods,71.0,25.0
+"Ugali porridge (corn foofoo, pap) made from refined maize flour, cooked for 15 min",Regional or Traditional Foods,75.0,26.0
+Arseyah (Basmati rice with chicken),Regional or Traditional Foods,72.0,25.0
+"Doughnut, served with Omani coffee (130 mL, 225 mg caffeine)",Regional or Traditional Foods,77.0,27.0
+"Fendal (boiled sweet potato, dates added to cooking water)",Regional or Traditional Foods,74.0,26.0
+"Fried vermicelli (Swayweih/Ballaleet), cooked with sugar, served with water",Regional or Traditional Foods,72.0,25.0
+Muhalla bread (Emirati sweet crepe),Regional or Traditional Foods,77.0,27.0
+Regag bread (Thin crispy crepe),Regional or Traditional Foods,76.0,27.0
+"Thareed, beef (Regag bread served with meat stew)",Regional or Traditional Foods,74.0,26.0
+"Bread, Garden milk bar bun",Regional or Traditional Foods,73.0,26.0
+"Bun, steamed, made from wheat flour",Regional or Traditional Foods,85.0,30.0
+"Butter rice, warm white rice and 10 g butter",Regional or Traditional Foods,79.0,28.0
+"Chee Cheong Fun, rice noodle roll or steamed rice roll, plain served with sweet soya sauce",Regional or Traditional Foods,81.0,28.0
+"Chinese Carrot Cake, turnip cake, daikon cake or radish cake, pan-fired shredded radish with plain rice flour",Regional or Traditional Foods,77.0,27.0
+"Chinese Yam Cake, taro cake or pan-fried shredded yam with plan rice four",Regional or Traditional Foods,86.0,30.0
+"Fried Rice in Yangzhou-style, instant",Regional or Traditional Foods,80.0,28.0
+"Glutinous rice, white, cooked in rice cooker",Regional or Traditional Foods,94.0,33.0
+"Instant cereal, Nestlé Vita (red date flavor, high FE), with boiled water",Regional or Traditional Foods,94.0,33.0
+"Instant cereal, Nestlé Vita (green tea flavor, high Ca), with boiled water",Regional or Traditional Foods,108.0,38.0
+Lo Mai Gai,Regional or Traditional Foods,106.0,37.0
+Low-protein white rice with dried sea algae,Regional or Traditional Foods,70.0,25.0
+"Noodles, doll fried noodles (wheat flour and tapioca starch), boiled 3 min",Regional or Traditional Foods,88.0,31.0
+"Pink Rice Cake (teochew rice cake or Png Kueh), steamed rice pastry stuffed with pan-fried glutinous rice",Regional or Traditional Foods,97.0,34.0
+"Plain steamed vermicelli roll, instant",Regional or Traditional Foods,90.0,32.0
+"Red bean dessert, instant, Nissin Brand",Regional or Traditional Foods,75.0,26.0
+Rice gruel with dried algae,Regional or Traditional Foods,81.0,28.0
+Roasted rice ball,Regional or Traditional Foods,77.0,27.0
+"Salted meat rice dumpling, instant",Regional or Traditional Foods,81.0,28.0
+"Steamed glutinous rice roll, instant",Regional or Traditional Foods,89.0,31.0
+"Sticky rice wrapped in lotus leaf, instant",Regional or Traditional Foods,83.0,29.0
+"Sweet milky bun, frozen, steamed, (AMOY Brand",Regional or Traditional Foods,72.0,25.0
+"White rice (Satou Co. Ltd, Japan) with salted dried plum (umeboshi)",Regional or Traditional Foods,80.0,28.0
+Bun,Regional or Traditional Foods,82.0,29.0
+"Naan bread, heated in microwave for 25 sec",Regional or Traditional Foods,71.0,25.0
+Rice dosa,Regional or Traditional Foods,76.0,27.0
+Rice idli (commercially available dry mix),Regional or Traditional Foods,85.0,30.0
+"Finger millet, decorticated, with lower degree of polish, in the form of upma (savory meal and traditional Indian breakfast choice)",Regional or Traditional Foods,85.0,30.0
+Finger millet flakes in the form of upma,Regional or Traditional Foods,82.0,29.0
+Upma,Regional or Traditional Foods,71.0,25.0
+"Corn muffin, low-amylose (0-7%, Waxy-Amioca) #",Bakery Products,102.0,31.0
+"Oatmeal, muffin, made from mix (Quaker Oats Co. of Canada, Peterborough, Canada) #",Bakery Products,70.0,21.0
+"Crumpet (Dempster's Corporate Foods Ltd., Etobicoke, Canada) #",Bakery Products,70.0,21.0
+"Doughnut, wheat dough, deep-fried #",Bakery Products,75.0,23.0
+"Doughnut, cake type (Loblaw's, Canada) #",Bakery Products,77.0,23.0
+"Lamingtons, sponge dipped in chocolate and coconut (Farmland, Grocery Holdings, Australia) #",Bakery Products,87.0,26.0
+"Waffles, Aunt Jemima (Quaker Oats Co. of Canada) #",Bakery Products,77.0,23.0
+"Coca-Cola® (Coca Cola, Atlanta, GA, USA) #",Beverages,77.0,19.0
+"Cola, sucrose-sweetened, Pepsi® (Pepsi; Hartwell Ltd., Finland) #",Beverages,90.0,23.0
+"Lucozade®, original (sparkling glucose drink) (Glaxo Wellcome Ltd., Uxbridge, Middlesex, UK) #",Beverages,95.0,24.0
+"Gatorade®, orange flavor, US formula (Gatorade, Chicago, IL, USA) #",Beverages,89.0,22.0
+"GatorLode®, orange flavor (Gatorade, Chicago, IL, USA) #",Beverages,100.0,25.0
+"Bagel, white, frozen (Lender's Bakery, Montreal, Canada) #",Breads,73.0,11.0
+Bagel #,Breads,77.0,12.0
+"Baguette, white, plain, industrially produced #",Breads,95.0,14.0
+"Classic French baguette (prepared with wheat flour, ascorbic acid, water, salt & 50 g yeast) #",Breads,83.0,12.0
+"Classic French baguette (prepared with wheat flour, ascorbic acid, water, salt & 50 g yeast) #",Breads,75.0,11.0
+"Classic French baguette (prepared with wheat flour, ascorbic acid, water, salt & 50 g yeast) #",Breads,78.0,12.0
+"French baguette, traditional (prepared with wheat flour, water, salt and 20 g yeast) #",Breads,70.0,11.0
+"French bread loaf, fermented with leaven #",Breads,80.0,12.0
+"French bread loaf, fermented with yeast #",Breads,81.0,12.0
+"Barley flour bread, made from 50% wheat flour and 50% coarse sieved barley flour (containing 4.2% total 1-3, 1-4 ß-glucan of which 2.8% soluble) #",Breads,74.0,11.0
+"Barley flour bread, made from 80% wheat flour and 20% water-extracted barley flour (containing 6.3% total 1-3, 1-4 ß-glucan of which 5.7% soluble) #",Breads,70.0,11.0
+"Barley flour bread, whole-grain, made from 50% barley flour and 50% wheat flour (containing 2.4% total 1-3, 1-4 ß-glucan of which 2.0% soluble) #",Breads,85.0,13.0
+"Barley bread, 70% high-amylose barley flour & 30% white wheat flour, conventionally baked for 45 min at 200°C #",Breads,71.0,11.0
+"Barley bread, whole-wheat #",Breads,75.0,11.0
+"Gluten-free buckwheat bread, made with buckwheat meal & rice flour (Naturis Organic Bread, NSW, Australia) #",Breads,72.0,11.0
+"Gluten-free bread, made from 100% Hom Mali 105 rice flour #",Breads,131.0,20.0
+"Gluten-free white bread, unsliced (gluten-free wheat starch) #",Breads,72.0,11.0
+"Gluten-free white bread, sliced (gluten-free wheat starch) #",Breads,81.0,12.0
+"Gluten-free fiber-enriched, unsliced (gluten-free wheat starch, soya bran) #",Breads,70.0,11.0
+"Gluten-free fiber-enriched, sliced (gluten-free wheat starch, soya bran) #",Breads,77.0,12.0
+Gluten free bread (rice flour and potato starch) #,Breads,71.0,11.0
+"Kaiser rolls (Loblaw's, Canada) #",Breads,74.0,11.0
+Rice bread #,Breads,73.0,11.0
+"Roti, made from CHT1W maize (Zea mays L.) flour #",Breads,71.0,11.0
+"Roti, made from Insaf wheat (Triticum aesitivum L.) flour #",Breads,71.0,11.0
+"Roti, made from Pirsabaq 2005 wheat (Triticum aesitivum L.) flour #",Breads,70.0,11.0
+"Roti, made from Shahkar 2013 wheat (Triticum aesitivum L.) flour #",Breads,70.0,11.0
+"Blackbread, Riga (Berzin's Specialty Bakery, Sydney, Australia) #",Breads,76.0,11.0
+"Dark rye bread, Schinkenbrot, Riga, (Berzin's Specialty Bakery, Sydney, Australia) #",Breads,86.0,13.0
+"Dark/Swiss rye, Bürgen™ (Tip Top Bakeries, Australia) #",Breads,74.0,11.0
+White bread #,Breads,70.0,11.0
+White bread #,Breads,70.0,11.0
+White bread #,Breads,71.0,11.0
+"White bread (Dempster's Corporate Foods Ltd., Canada) #",Breads,72.0,11.0
+White bread #,Breads,71.0,11.0
+White bread #,Breads,71.0,11.0
+White bread #,Breads,72.0,11.0
+White bread #,Breads,72.0,11.0
+White bread #,Breads,76.0,11.0
+"White bread, commercially-manufactured #",Breads,77.0,12.0
+White bread #,Breads,78.0,12.0
+White bread #,Breads,80.0,12.0
+"White bread (Hovis Classic, British Bakeries Ltd, UK) #",Breads,87.0,13.0
+"White bread, homemade #",Breads,89.0,13.0
+White bread #,Breads,89.0,13.0
+White bread #,Breads,93.0,14.0
+White bread #,Breads,94.0,14.0
+"White bread, frozen and defrosted (British Bakeries Ltd, UK) #",Breads,75.0,11.0
+"Bread, made from 100% white wheat flour, frozen and thawed #",Breads,83.0,12.0
+"Bread, made from wheat flour, steamed #",Breads,86.0,13.0
+"Bread, made from mixed white wheat flour (50% Shi4185 and 50% Shixin733 flours), steamed for 20 min #",Breads,93.0,14.0
+"White wheat flour bread, hard, toasted #",Breads,74.0,11.0
+"Bread, made from wheat flour and 10% cassava flour #",Breads,93.0,14.0
+"Bread, made from wheat flour and 15% cassava flour #",Breads,91.0,14.0
+"Bread, made from wheat flour and 20% cassava flour #",Breads,92.0,14.0
+"White bread, enriched with 9 g lupin kernel fiber (viscous insoluble fiber) (Australasian Natural Ingredients Pty Ltd, Perth, Australia) #",Breads,75.0,11.0
+"Wonderwhite™, resistant starch-enriched bread (Buttercup Bakeries, Australia) #",Breads,80.0,12.0
+"White, high-fiber (Weston's Bakery, Toronto, Canada) #",Breads,70.0,11.0
+"Bread, made with 40% ß-glucan-enriched barley waxy flour (CDC Alamo, hull-less and waxy, 15.6% ß-glucan, low amylose) and 60% white wheat flour, frozen and thawed #",Breads,70.0,11.0
+Wholemeal bread #,Breads,75.0,11.0
+Wholemeal bread #,Breads,70.0,11.0
+Wholemeal bread #,Breads,70.0,11.0
+"Wholemeal bread, Helga's™ Traditional (Quality Bakers, Australia) #",Breads,70.0,11.0
+Wholemeal flour bread #,Breads,72.0,11.0
+Wholemeal bread #,Breads,72.0,11.0
+Wholemeal flour/100% whole wheat bread #,Breads,73.0,11.0
+Wholemeal bread #,Breads,75.0,11.0
+"Wholemeal bread (Barilla G.eR. Fratelli S.p.A., Parma, Italy) #",Breads,75.0,11.0
+"Wholemeal bread, tested in young adults (17-18 y) #",Breads,75.0,11.0
+"Wholemeal bread, commercially-manufactured #",Breads,77.0,12.0
+"Wholemeal bread (Tip Top Bakeries, Australia) #",Breads,77.0,12.0
+"Wholemeal bread (Tip Top Bakeries, Australia) #",Breads,78.0,12.0
+"Wholemeal loaf, high fiber #",Breads,85.0,13.0
+Wholemeal bread #,Breads,88.0,13.0
+Whole wheat bread #,Breads,96.0,14.0
+"Wheaten wholegrain bread, Brennans Wholegrain Sliced Loaf (Brennans Bakeries Ltd, Ireland) #",Breads,75.0,11.0
+"Aproten® bread roll, protein-free, enriched with 4.56 g soluble fiber (50% psyllium and 50% inulin) #",Breads,83.0,12.0
+"Bread, made from Hi-Maize® whole grain corn flour (Ingredion, Bridgewater, NJ, USA) and white wheat flour, prepared in an automatic bread machine, frozen and thawed #",Breads,76.0,11.0
+"Bread, made from purple-grain wheat flour (Jizi439 wheat variety), steamed for 20 min #",Breads,75.0,11.0
+"Bread, made from purple-grain wheat flour (Chu20 wheat variety), steamed for 20 min #",Breads,84.0,13.0
+"Bread stuffing, Paxo (Campbell Soup Co Ltd., Toronto, Canada) #",Breads,75.0,11.0
+Brioche #,Breads,70.0,11.0
+"Melba toast, Old London (Best Foods Canada Inc., Etobicoke, Canada) #",Breads,71.0,11.0
+"Mixed grain bread, Molenberg™ (Goodman Fielder, New Zealand) #",Breads,84.0,13.0
+"Turkish bread, white #",Breads,87.0,13.0
+"Wheat bread, Einkorn (Triticum monococcum) wheat, leavened with crushed whole grains #",Breads,72.0,11.0
+"White wheat flour bread, steamed #",Breads,88.0,13.0
+Middle Eastern flatbread #,Breads,97.0,15.0
+"Flatbread, made from wheat flour #",Breads,71.0,11.0
+White wheat flour flatbread12 #,Breads,80.0,12.0
+"Cornflakes™ (Kellogg's, Auckland, New Zealand) #",Breakfast Cereals,72.0,14.0
+Cornflakes #,Breakfast Cereals,74.0,15.0
+Cornflakes #,Breakfast Cereals,79.0,16.0
+"Cornflakes™ (Kellogg's, Australia) #",Breakfast Cereals,77.0,15.0
+"Cornflakes™ (Kellogg's Inc., Canada) #",Breakfast Cereals,80.0,16.0
+"Cornflakes™ (Kellogg's Inc., Canada) #",Breakfast Cereals,87.0,17.0
+Cornflakes #,Breakfast Cereals,88.0,18.0
+"Cornflakes™ (Kellogg's, USA) #",Breakfast Cereals,92.0,18.0
+"Cornflakes (Kellogg's, France) #",Breakfast Cereals,93.0,19.0
+"Cornflakes (Kellogg's, MI, USA) #",Breakfast Cereals,132.0,26.0
+"Cornflakes, high-fiber (Presidents Choice, Sunfresh Ltd., Toronto, Canada #",Breakfast Cereals,75.0,15.0
+"Cream of Wheat™, Instant (Nabisco Brands Ltd., Canada) #",Breakfast Cereals,75.0,15.0
+"Grapenuts™ Flakes (Post, Kraft General Foods Inc., Canada) #",Breakfast Cereals,81.0,16.0
+"Oat bran crisp (Natureal® GI-crisp, Finn Cereal, Vantaa, Finland) #",Breakfast Cereals,79.0,16.0
+"Instant oatmeal porridge, made from packet #",Breakfast Cereals,83.0,17.0
+Oat porridge made from roasted thin (0.5 mm) dehulled oat flakes #,Breakfast Cereals,70.0,14.0
+Oat porridge made from roasted and steamed thin (0.5 mm) dehulled oat flakes #,Breakfast Cereals,81.0,16.0
+"Porridge, oat #",Breakfast Cereals,70.0,14.0
+"Porridge, oat #",Breakfast Cereals,76.0,15.0
+"Buckwheat porridge, made from buckwheat flakes (Myllyn Paras, Hyvinkää, Finland) and water, cooked in microwave for 5 min #",Breakfast Cereals,71.0,14.0
+"Wholemeal oat flour porridge (flour:water = 1:3), boiled 2.5 min #",Breakfast Cereals,75.0,15.0
+"Puffed Wheat (Sanitarium, Australia) #",Breakfast Cereals,80.0,16.0
+"Rice Bubbles™ (Kellogg's, Australia) #",Breakfast Cereals,95.0,19.0
+"Rice Krispies™ (Kellogg's Inc., Canada) #",Breakfast Cereals,83.0,17.0
+"Shredded Wheat™ (Nabisco Brands Ltd., Canada) #",Breakfast Cereals,84.0,17.0
+"Sultana Bran (Healthy Living, UK) #",Breakfast Cereals,90.0,18.0
+"Weetabix™ (Weetabix of Canada Ltd., Canada) #",Breakfast Cereals,75.0,15.0
+"Weetabix™, plain flaked wheat biscuits (Weetabix of Canada Ltd., Thornhill, Canada) #",Breakfast Cereals,75.0,15.0
+"Cheerios™ (General Mills Inc., Etobicoke, Canada) #",Breakfast Cereals,75.0,15.0
+"Corn Bran™ (Quaker Oats Co. of Canada, Peterborough, Canada) #",Breakfast Cereals,76.0,15.0
+"Corn Chex™ (Nabisco Brands Ltd., Canada) #",Breakfast Cereals,84.0,17.0
+"Crispix™ (Kellogg's Inc., Canada) #",Breakfast Cereals,88.0,18.0
+"Golden Grahams™ (General Mills Inc., Canada) #",Breakfast Cereals,72.0,14.0
+"Pro Stars™ (General Mills Inc., Canada) #",Breakfast Cereals,72.0,14.0
+"Rice Chex™ (Nabisco Brands Ltd., Canada) #",Breakfast Cereals,90.0,18.0
+"Team™ (Nabisco Brands Ltd., Canada) #",Breakfast Cereals,83.0,17.0
+"Total™ (General Mills Inc., Canada) #",Breakfast Cereals,77.0,15.0
+"Wheat-bites™ (Uncle Toby's, Australia) #",Breakfast Cereals,72.0,14.0
+"FibrePlus™ breakfast cereal bar (Uncle Toby's, Australia) #",Breakfast Cereals,78.0,16.0
+"Juicy cereal bar (stavnata tycinka FIT, Usovsko, Czech Republic) #",Breakfast Cereals,85.0,17.0
+"Adlay (Coix lacryma-jobi Linn.), pre-soaked at 4oC for 12 h, steamed for 30 min #",Cereal Grains,91.0,41.0
+"Adlay (Coix lacryma-jobi Linn.), pre-soaked at 4oC for 12 h, steamed for 60 min #",Cereal Grains,100.0,45.0
+"Porridge, made from wholegrain barley flour, cooked in microwave for 5 min, stirred twice during cooking #",Cereal Grains,80.0,36.0
+"Barley flour, prepared with water and baked #",Cereal Grains,70.0,32.0
+"Porridge, made from buckwheat flakes (Myllyn Paras, Hyvinkää, Finland) and water, cooked in microwave for 5 min17 #",Cereal Grains,71.0,32.0
+"Maize, ground, simmered with water for 20 min to make a gruel #",Cereal Grains,92.0,41.0
+"Maize meal porridge/gruel, prepared with water #",Cereal Grains,111.0,50.0
+"Maize meal porridge, unrefined, maize-meal:water = 1:3, cooked for 20-30 min, tested in young adults (17-18 y) #",Cereal Grains,71.0,32.0
+"Maize meal porridge, refined, maize-meal:water = 1:3, cooked for 20-30 min, tested in young adults (17-18 y) #",Cereal Grains,74.0,33.0
+"Maize, steamed for 40 min #",Cereal Grains,73.0,33.0
+"Cornmeal, boiled in salted water 2 min (McNair Products Co. Ltd., Toronto, Canada) + 27.8 g margarine #",Cereal Grains,70.0,32.0
+"Corn starch hydrolysate solution, 10% solution (M40, Grain Processing Corporation, IA, USA), tested by subjects with high AMY1 copy number #",Cereal Grains,94.0,42.0
+"Corn starch hydrolysate solution, 10% solution (M40, Grain Processing Corporation, IA, USA), tested by subjects with high AMY1 copy number #",Cereal Grains,111.0,50.0
+"Corn, fresh, roasted #",Cereal Grains,77.0,35.0
+"Corn, fresh, boiled #",Cereal Grains,82.0,37.0
+"Couscous, boiled 5 min #",Cereal Grains,70.0,32.0
+"Millet, NS, boiled in water with 2 g salt #",Cereal Grains,71.0,32.0
+"Foxtail millet (Setaria italica), pre-soaked at 4°C for 12 h, steamed for 60 min #",Cereal Grains,89.0,40.0
+"Foxtail millet (Setaria italica), pre-soaked at 4°C for 12 h, steamed for 30 min #",Cereal Grains,93.0,42.0
+"Millet flour porridge, prepared with water #",Cereal Grains,109.0,49.0
+"Basmati rice, white, cooked by absorption method #",Cereal Grains,84.0,38.0
+"Rice, black waxy (Oryza sativa Linn. spp.), pre-soaked at 4°C for 12 h, steamed for 30 min #",Cereal Grains,100.0,45.0
+"Rice, black waxy (Oryza sativa Linn. spp.), pre-soaked at 4°C for 12 h, steamed for 60 min #",Cereal Grains,109.0,49.0
+"Calrose brown (Rice Growers Co-op, Australia) #",Cereal Grains,87.0,39.0
+"Brown rice (Carolina Natural whole grain brown rice), prepared in rice cooker #",Cereal Grains,95.0,43.0
+"Pelde brown rice (Rice Growers Co-op, Australia) #",Cereal Grains,76.0,34.0
+"Rice, brown, polished, cooked in an electronic rice cooker with 2 mL water/g rice #",Cereal Grains,79.0,36.0
+"Sunbrown Quick™ (Rice Growers Co-op, Australia) #",Cereal Grains,80.0,36.0
+"Rice, white, puffed for 10 min #",Cereal Grains,72.0,32.0
+"Instant rice, white, cooked 6 min (Trice brand, Australia) #",Cereal Grains,87.0,39.0
+"White rice, NS #",Cereal Grains,70.0,32.0
+"White rice, NS #",Cereal Grains,72.0,32.0
+"Rice, NS, boiled in water for 15 min, 76.9% starch gelatinization #",Cereal Grains,72.0,32.0
+"White rice, NS, boiled in water with 1 g salt #",Cereal Grains,73.0,33.0
+"Rice (Oryza sativa), white #",Cereal Grains,77.0,35.0
+"Rice, white, polished (Cap Rambutan, Malaysia), cooked in an electronic rice cooker with 2 mL water/g rice #",Cereal Grains,86.0,39.0
+"Rice, white, NS, boiled 13 min in salted water #",Cereal Grains,89.0,40.0
+"White rice, NS, boiled #",Cereal Grains,92.0,41.0
+"White rice, NS, boiled in salted water #",Cereal Grains,114.0,51.0
+"Japonica, short-grain white rice, cooked in electric rice cooker #",Cereal Grains,76.0,34.0
+"Japonica, short-grain white rice, cooked in electric rice cooker #",Cereal Grains,75.0,34.0
+"Japonica rice (Oryza sativa spp. japonica), white, steamed for 30 min #",Cereal Grains,83.0,37.0
+"Japonica rice (Matsusakabeikoku Incorporated Ltd, Matsusaka Mie, Japan), boiled in water #",Cereal Grains,88.0,40.0
+"Japonica, white rice (Koshihikari) #",Cereal Grains,89.0,40.0
+"Long grain, non-glutinous (non-waxy) rice variety RD 21/23 (low amylose), boiled for 20 min #",Cereal Grains,71.0,32.0
+"Long-grain white, fragrant, steamed for 40 min #",Cereal Grains,91.0,41.0
+"Glutinous (waxy) rice, low-amylose, boiled for 20 min #",Cereal Grains,75.0,34.0
+"Glutinous rice, steamed #",Cereal Grains,76.0,34.0
+"Calrose, white, medium grain, boiled (Rice Growers Co-op., Australia) #",Cereal Grains,83.0,37.0
+"Sungold, Pelde, parboiled (Rice Growers Co-op., Australia) #",Cereal Grains,87.0,39.0
+"Waxy (0-2% amylose) (Rice Growers Co-op., Australia) #",Cereal Grains,88.0,40.0
+"Pelde, white (Rice Growers Co-op., Australia) #",Cereal Grains,93.0,42.0
+Parboiled rice #,Cereal Grains,72.0,32.0
+"Parboiled, low-amylose, Pelde, Sungold (Rice Growers Co-op, Australia) #",Cereal Grains,87.0,39.0
+Polished rice #,Cereal Grains,70.0,32.0
+Polished rice #,Cereal Grains,72.0,32.0
+Polished rice #,Cereal Grains,82.0,37.0
+"Rice, boiled in water for 15 min, 76.9% starch gelatinization #",Cereal Grains,72.0,32.0
+"Jasmine rice, Della, cooked in rice cooker (Specialty Rice Inc., USA) #",Cereal Grains,96.0,43.0
+"Rice, white Adan #",Cereal Grains,72.0,32.0
+"Rice (Oryza sativa L.), white Mayas #",Cereal Grains,74.0,33.0
+"White rice, NS, boiled 13 min, then baked 10 min at 160°C #",Cereal Grains,94.0,42.0
+"White rice, steamed #",Cereal Grains,70.0,32.0
+"Rice, white, gruel, simmered over low heat with water for 45 min #",Cereal Grains,93.0,42.0
+"Rice cakes, white, prepared by steaming white rice flour over high heat for 30 min #",Cereal Grains,81.0,36.0
+"Glutinous rice balls, boiled rice cake balls in water for 15 min #",Cereal Grains,97.0,44.0
+"Rice, long grain, high resistant starch (4.4 g RS/50 g avCHO), prepared in rice cooker, refrigerated #",Cereal Grains,84.0,38.0
+"Rice, short grain, low resistant starch (0.4 g RS/50 g avCHO), prepared in pressure cooker, refrigerated #",Cereal Grains,78.0,35.0
+"Sago starch (Metroxylon spp.) with the addition of 20% red bean (Phaseolus vulgaris) flour, prepared as a rice analogue by extrusion and drying at 50°C for 12 h #",Cereal Grains,70.0,32.0
+"Sago starch (Metroxylon spp.) with the addition of 25% red bean (Phaseolus vulgaris) flour, prepared as a rice analogue by extrusion and drying at 50°C for 12 h #",Cereal Grains,77.0,35.0
+"Semolina, roasted at 105°C then gelatinized with water, with 5 g groundnut oil #",Cereal Grains,76.0,34.0
+"Biscuits (Dicofarm Spa, Rome, Italy) #",Cookies,72.0,14.0
+"Biscuit, commercially-available #",Cookies,80.0,16.0
+"Biscuit, NS #",Cookies,70.0,14.0
+"Fette Biscottate Le malto d'orzo (Mulino Bianco, Barilla) #",Cookies,84.0,17.0
+"Golden Fruit biscuit (Griffin's Foods Ltd., Auckland, New Zealand) #",Cookies,77.0,15.0
+"Graham Wafers (Christie Brown & Co., Toronto, Canada) #",Cookies,75.0,15.0
+"Morning Coffee™(Arnotts, Australia) #",Cookies,79.0,16.0
+"Vanilla Wafers (Christie Brown & Co., Canada) #",Cookies,78.0,16.0
+"Crackers, enriched with 1.9% ß-glucan #",Crackers,75.0,11.0
+"Kavli™ Norwegian Crispbread (Players Biscuits, Sydney, Australia) #",Crackers,71.0,11.0
+"Premium Soda Crackers (Christie Brown & Co., Canada) #",Crackers,75.0,11.0
+"Puffed Crispbread (Westons, Australia) #",Crackers,81.0,12.0
+"Puffed rice cakes, white (Rice Growers Co-op, Australia) #",Crackers,82.0,12.0
+Rice cake #,Crackers,82.0,12.0
+"Ryvita, whole-wheat snack bread (Ryvita Co Ltd., Poole, Dorset, UK) #",Crackers,75.0,11.0
+"Sao™, plain square crackers (Arnotts, Australia) #",Crackers,70.0,11.0
+"Water cracker (Arnotts, Australia) #",Crackers,78.0,12.0
+"Ice cream (half vanilla, half chocolate) #",Dairy Products and Alternatives,81.0,16.0
+"Tofu-based frozen dessert, chocolate with high-fructose (24%) corn syrup #",Dairy Products and Alternatives,115.0,23.0
+"Banana, NS #",Fruit and Fruit Products,70.0,11.0
+"Banana (Musa paradisiaca), yellow skin without green or brown discoloration #",Fruit and Fruit Products,75.0,11.0
+"Paw paw (Carica papaya), raw #",Fruit and Fruit Products,86.0,13.0
+"Pomelo, Majia variety (Citrus grandis cv. Majiayou), fresh #",Fruit and Fruit Products,72.0,11.0
+"Pomelo, Majia variety (Citrus grandis cv. Majiayou), fresh #",Fruit and Fruit Products,78.0,12.0
+"Rockmelon/Cantaloupe, raw #",Fruit and Fruit Products,70.0,11.0
+"Watermelon, raw #",Fruit and Fruit Products,72.0,11.0
+"Watermelon, raw #",Fruit and Fruit Products,80.0,12.0
+"Kidney beans, dried, soaked 12 h, stored moist 24 h, steamed 1 h #",Legumes,70.0,11.0
+"Broad beans, boiled in water with 2 g salt #",Legumes,79.0,12.0
+Chocolate soya weight management drink #,Meal Replacement & Weight Management Products,73.0,15.0
+"GatorPro®, chocolate flavor (Gatorade, Chicago, IL, USA) #",Meal Replacement & Weight Management Products,89.0,18.0
+"Optifuel (Twin Laboratories Inc, Ronkonkowa, NY, USA) #",Meal Replacement & Weight Management Products,78.0,16.0
+"Ensure™, vanilla flavor (Abbott Laboratories, Columbus, Ohio, USA) #",Nutrition Support Products,75.0,23.0
+"Fusilli pasta, gluten-free, Pasta Riso, containing rice flour and rice germ (Scotti, Italy), boiled in unsalted water #",Pasta and Noodles,75.0,30.0
+"Macaroni, gluten free, prepared with rice flour (Oryza sativa Indica), double extrusion process, boiled in water for 9 min, no salt added #",Pasta and Noodles,71.0,28.0
+"Rice pasta, brown, boiled 16 min (Rice Grower's Co-op, Australia) #",Pasta and Noodles,92.0,37.0
+"Noodles, made from wheat flour, boiled in water #",Pasta and Noodles,77.0,31.0
+"Wheat noodle, fresh #",Pasta and Noodles,82.0,33.0
+"Pasta, organic (Bionature), cooked in boiling water for 15 min #",Pasta and Noodles,78.0,31.0
+"Corn chips, plain, salted (Doritos™ original, Smith's Snack Food Co., Australia) #",Snack Foods and Confectionery,72.0,18.0
+"Corn chips, Nachips™ (Old El Paso Foods Co., Canada) #",Snack Foods and Confectionery,75.0,19.0
+"Popcorn, maize grains puffed for 10 min #",Snack Foods and Confectionery,70.0,18.0
+"Popcorn, plain, cooked in microwave oven (Uncle Toby's, Australia) #",Snack Foods and Confectionery,89.0,22.0
+"Burger Rings™, barbeque-flavored (Smith's Snack Food Co, Chatswood, NSW, Australia) #",Snack Foods and Confectionery,90.0,23.0
+"Pretzels, oven-baked, traditional wheat flavor (Parker's, Smith's Snack Food Co., Australia) #",Snack Foods and Confectionery,83.0,21.0
+Puffed rice squares #,Snack Foods and Confectionery,76.0,19.0
+Puffed rice squares #,Snack Foods and Confectionery,77.0,19.0
+Puffed rice squares #,Snack Foods and Confectionery,78.0,20.0
+Puffed rice square #,Snack Foods and Confectionery,105.0,26.0
+"Jelly beans, assorted colors (Allen's, Nestlé, Australia) #",Snack Foods and Confectionery,80.0,20.0
+"Life Savers®, peppermint candy (Nestlé, Australia) #",Snack Foods and Confectionery,70.0,18.0
+"Pocket Espresso to GO (Liquid praline, chocolate and coffee cream) (Ferrero, Italy) #",Snack Foods and Confectionery,71.0,18.0
+"Sago, with added sugar, cooked at low temperature to a jelly consistency #",Snack Foods and Confectionery,80.0,20.0
+"Clif bar, Cookies & Cream flavor (Clif Bar Inc, Berkeley, CA, USA) #",Snack Foods and Confectionery,101.0,25.0
+"MET-Rx bar, vanilla flavor (Met-Rx Substrate Technology Inc, Irvine, CA, USA) #",Snack Foods and Confectionery,74.0,19.0
+"Power Bar®, chocolate (Powerfood Inc, Berkeley, CA, USA) #",Snack Foods and Confectionery,83.0,21.0
+"PR-bar, Cookies 'N Cream flavor (Twin Laboratories Inc, Ronkonkowa, NY, USA) #",Snack Foods and Confectionery,81.0,20.0
+Glucose #,Sugars and Syrups,86.0,4.0
+Glucose #,Sugars and Syrups,93.0,5.0
+Glucose #,Sugars and Syrups,97.0,5.0
+Glucose #,Sugars and Syrups,96.0,5.0
+"Glucose (Bio-Health, Dawson Traders Ltd., Toronto, Canada) #",Sugars and Syrups,97.0,5.0
+"Glucose (Glucodin™ tablets, Australia) #",Sugars and Syrups,102.0,5.0
+"Glucose (Bio-Health, Canada) #",Sugars and Syrups,104.0,5.0
+"Glucose (Bio-Health, Canada) #",Sugars and Syrups,116.0,6.0
+"Glucose, 25 g portion, fed with 37.7 g oats #",Sugars and Syrups,93.0,5.0
+"25 g glucose (Glucodex) 40 min before 3 g dried ginseng (Chai-Na-Ta Corp, Langley, BC, Canada) #",Sugars and Syrups,76.0,4.0
+"25 g glucose (Glucodex solution, Rougier Inc., Chambly, Quebec) with 3 g dried ginseng (Chai-Na-Ta Corp, Langley, BC, Canada) #",Sugars and Syrups,78.0,4.0
+"25 g glucose (Glucodex) 40 min after 3 g dried ginseng (Chai-Na-Ta Corp, Langley, BC, Canada) #",Sugars and Syrups,80.0,4.0
+100 g Glucose + 20 g acacia gum #,Sugars and Syrups,85.0,4.0
+"100 g glucose + 20 g cellulose (CSIR Biochemical Unit, New Delhi, India) #",Sugars and Syrups,103.0,5.0
+"75 g glucose solution, consumed with capsules containing 6 g Cinnamomum zeylanicum #",Sugars and Syrups,109.0,5.0
+"25 g glucose + 25 g crystalline short-chain ?-glucan (CSCA) starch, suspended in 298 mL water #",Sugars and Syrups,71.0,4.0
+"25 g glucose solution, consumed with 236 mL diet cola sweetened with aspartame and acesulfame-K (Caffeine-Free Diet Coke®, Atlanta, GA, USA) #",Sugars and Syrups,104.0,5.0
+"Glucose solution with 0.7% (1.8 g) flaxseed gum (Nutunola health Biosciences Inc. Winchester, ON, Canada) #",Sugars and Syrups,124.0,6.0
+"25 g glucose + 30 g oat bran flour (Natureal® GI-flour, Finn Cereal, Vantaa, Finland) (oat bran flour contributed an additional 6.1 g avail carb) #",Sugars and Syrups,80.0,4.0
+75 g Glucose + 4.24 g salt #,Sugars and Syrups,86.0,4.0
+Christ thorn honey #,Sugars and Syrups,78.0,4.0
+"Citrus honey (Apivita S.A., Greece) #",Sugars and Syrups,81.0,4.0
+Forest honey (provided by German beekeeper association) #,Sugars and Syrups,89.0,4.0
+Heather honey (Apivita S.A.) #,Sugars and Syrups,75.0,4.0
+Lime-blossom honey #,Sugars and Syrups,77.0,4.0
+Mixed flora honey #,Sugars and Syrups,84.0,4.0
+"Pine honey (Apivita S.A., Greece) #",Sugars and Syrups,101.0,5.0
+Spanish thistle honey #,Sugars and Syrups,76.0,4.0
+"Sugar honey, non-floral, bees feed sugar solution 2:1 sugar in water #",Sugars and Syrups,81.0,4.0
+"Thyme honey (Apivita S.A., Greece) #",Sugars and Syrups,85.0,4.0
+"Honey, NS #",Sugars and Syrups,87.0,4.0
+Maltose #,Sugars and Syrups,105.0,5.0
+Sucrose #,Sugars and Syrups,74.0,4.0
+Sucrose #,Sugars and Syrups,78.0,4.0
+Sucrose #,Sugars and Syrups,81.0,4.0
+Sucrose #,Sugars and Syrups,82.0,4.0
+Sucrose #,Sugars and Syrups,94.0,5.0
+Sucrose #,Sugars and Syrups,110.0,6.0
+"Sucrose, portion adjusted based on kg body weight #",Sugars and Syrups,132.0,7.0
+"Sucrose, portion adjusted based on kg body weight #",Sugars and Syrups,119.0,6.0
+"Sucrose, portion adjusted based on kg body weight #",Sugars and Syrups,139.0,7.0
+"Sucrose, portion adjusted based on kg body weight #",Sugars and Syrups,128.0,6.0
+"Brown Sugar (HongMian, Guangzhou Light Industry & Trade Group, Guangzhou, China) #",Sugars and Syrups,71.0,4.0
+"Sugar blend, 78% maltodextrin and 22% sucrose, dissolved in water #",Sugars and Syrups,163.0,8.0
+Trehalose #,Sugars and Syrups,77.0,4.0
+Trehalose #,Sugars and Syrups,81.0,4.0
+Trehalose #,Sugars and Syrups,95.0,5.0
+"Malbit CH (99% maltitol) (Cerestar, Vilvoorde, Belgium) #",Sugars and Syrups,73.0,2.0
+"Maltidex 200 (50% maltitol) (Cerestar, Vilvoorde, Belgium) #",Sugars and Syrups,89.0,2.0
+"Banana, (Musa sapientum), Nendra variety, unripe, steamed 1 h #",Vegetables,70.0,14.0
+"Pumpkin, boiled for 30 min in water with 2 g salt, tested in young adults (17-18 y) #",Vegetables,75.0,8.0
+"Corn, fresh, roasted #",Vegetables,77.0,15.0
+"Corn, fresh, boiled #",Vegetables,82.0,16.0
+"Carrots, boiled in water with 2 g salt #",Vegetables,92.0,9.0
+"Cassava (Manihot esculenta), peeled, boiled 30 min, frozen, thawed and reheated for 1 min #",Vegetables,94.0,19.0
+"Parsnips, boiled in water with 2 g salt #",Vegetables,97.0,10.0
+"Swede (rutabaga), boiled in water with 2 g salt #",Vegetables,72.0,14.0
+"Potatoes, NS, baked for 30 min #",Vegetables,78.0,16.0
+"Purple Majesty potato, purple skin and flesh, skin on, cut into cubes, oven baked for 40 min #",Vegetables,77.0,15.0
+"Potato, Red-Y38 variety, red skin and flesh, skin on, cut into cubes, oven baked for 40 min #",Vegetables,78.0,16.0
+"Russet potatoes, baked without fat #",Vegetables,111.0,22.0
+"Russet potatoes, cut into quarters, baked in foil for 1 h at 230oC, peeled #",Vegetables,85.0,17.0
+"Russet potatoes, baked without fat, 45-60 min #",Vegetables,80.0,16.0
+"Russet potatoes, baked without fat #",Vegetables,94.0,19.0
+"Snowden potato, white skin and flesh, skin on, cut into cubes, oven baked for 40 min #",Vegetables,93.0,19.0
+"Yukon Gold potato, white skin and yellow flesh, skin on, cut into cubes, oven baked for 40 min #",Vegetables,81.0,16.0
+"Asterix potato, peeled, boiled for 18-20 min, served with 0.5 g NaCl #",Vegetables,79.0,16.0
+"Desiree potato, peeled, quartered, boiled 15 min in unsalted water #",Vegetables,77.0,15.0
+"Maris Peer potato, peeled, quartered, boiled 15 min in unsalted water #",Vegetables,94.0,19.0
+"Nardine potato, boiled #",Vegetables,70.0,14.0
+"Sava potato, peeled, boiled 21-30 min #",Vegetables,119.0,24.0
+"Potatoes, white, NS, boiled in water with 1 g salt #",Vegetables,77.0,15.0
+"Potatoes, NS, peeled, boiled #",Vegetables,87.0,17.0
+"Sava potato, peeled, boiled 21-30 min, refrigerated 24 h, consumed cold #",Vegetables,89.0,18.0
+"French fries, frozen, reheated in microwave (Cavendish Farms, New Annan, Canada) #",Vegetables,76.0,15.0
+"Instant, prepared with warm water #",Vegetables,74.0,15.0
+"Instant potatoes, prepared with water #",Vegetables,80.0,16.0
+Instant mashed potatoes #,Vegetables,81.0,16.0
+"Instant mashed potatoes (Edgell's Potato Whip, Edgell's, Australia), prepared with water #",Vegetables,86.0,17.0
+"Instant mashed potatoes (Carnation Foods Co. Ltd., Manitoba, Canada) #",Vegetables,87.0,17.0
+Instant mashed potatoes #,Vegetables,89.0,18.0
+Instant mashed potatoes #,Vegetables,98.0,20.0
+Instant mashed potatoes #,Vegetables,101.0,20.0
+"Potato, instant (Betty Crocker Idaho Potato Buds), prepared as mash with water #",Vegetables,120.0,24.0
+"Mashed potato, NS #",Vegetables,84.0,17.0
+"Mashed potato, NS, tested in young adults (17-18 y) #",Vegetables,71.0,14.0
+"Ontario potato, white, peeled, cubed, boiled 15 min, mashed #",Vegetables,74.0,15.0
+"Prince Edward Island potato, peeled, cubed, boiled 15 min, mashed #",Vegetables,74.0,15.0
+"Potato, NS, peeled, sliced, cooked in microwave for 2.5-3 min #",Vegetables,82.0,16.0
+"New potatoes, boiled in water with 2 g salt #",Vegetables,70.0,14.0
+"Potatoes, NS, steamed in high heat for 35 min #",Vegetables,94.0,19.0
+"Sweet potatoes, steamed in high heat for 35 min #",Vegetables,71.0,14.0
+"Sweet potato, orange #",Vegetables,77.0,15.0
+"Sweet potato, kumara #",Vegetables,78.0,16.0
+"Sweet potatoes, baked for 30 min #",Vegetables,91.0,18.0
+"Tapioca (Manihot Utilissima), steamed 1 h #",Vegetables,70.0,14.0
+"Tapioca boiled with milk (General Mills Canada Inc., Etobicoke, Canada) #",Vegetables,82.0,16.0
+"Tapioca, boiled #",Vegetables,93.0,19.0
+"Dasheen, peeled, boiled 30 min, uncrushed (whole), refrigerated, reheated for 1 min #",Vegetables,75.0,15.0
+"Yam (Dioscorea spp.), boiled #",Vegetables,74.0,15.0
+"Yam (Dioscorea spp.), boiled, consumed with 4.24 g salt #",Vegetables,74.0,15.0
+"Agidi, maize (Zea mays), powdered, prepared with hot water and consumed as a solid paste #",Regional or Traditional Foods,92.0,32.0
+"Amala, white yam (Dioscorea rotundata), powdered, prepared with hot water and consumed as a solid paste #",Regional or Traditional Foods,84.0,29.0
+"Banku, prepared from corn dough (80%) and cassava dough (20%), stirred in hot water to form a pulp, eaten with 110 g light soup and salmon #",Regional or Traditional Foods,73.0,26.0
+"Cassava starch (Manihot utilisima), powdered, prepared with hot water and consumed as a solid paste #",Regional or Traditional Foods,99.0,35.0
+"Garri, made from cassava (Manihot utilissima) which had been fermented for 72 h and dried into granules #",Regional or Traditional Foods,73.0,26.0
+"Garri/Eba, cassava (Manihot utilissima), grated, dried, shallow-fried, then prepared with hot water and consumed as a solid paste #",Regional or Traditional Foods,82.0,29.0
+"Maize meal porridge, unrefined, maize-meal:water = 1:3, cooked for 20-30 min, tested in young adults (17-18 y) #",Regional or Traditional Foods,71.0,25.0
+"Maize meal porridge, refined, maize-meal:water = 1:3, cooked for 20-30 min, tested in young adults (17-18 y) #",Regional or Traditional Foods,74.0,26.0
+"Maize meal porridge/gruel, prepared with water #",Regional or Traditional Foods,111.0,39.0
+"Millet flour porridge, prepared with water #",Regional or Traditional Foods,109.0,38.0
+"Pap, corn flour porridge #",Regional or Traditional Foods,72.0,25.0
+"Semolina, wheat (Triticum aestivum), powdered, prepared with hot water and consumed as a solid paste #",Regional or Traditional Foods,95.0,33.0
+"Semovita, wheat (Triticum aestivum), powdered + 10% corn supplement, prepared with hot water and consumed as a solid paste #",Regional or Traditional Foods,96.0,34.0
+"Tuwo Dawa, sorghum (Sorghum bicolor L. Moench), powdered, prepared with hot water and consumed as a solid paste #",Regional or Traditional Foods,85.0,30.0
+"Tuwo Gero, millet grains (Pennisetum typhoides), powdered, prepared with hot water and consumed as a solid paste #",Regional or Traditional Foods,94.0,33.0
+"Tuwo Masara, maize seeds (Zea mays), powdered, prepared with hot water and consumed as a solid paste #",Regional or Traditional Foods,87.0,30.0
+"Tuwo Shinkafa, rice (Oryza sativa), powdered, prepared with hot water and consumed as a solid paste #",Regional or Traditional Foods,95.0,33.0
+"Yam (D. rotunda), sliced, boiled, pounded to smooth dough consistency, eaten with 30 mL vegetable stew and 35 g beef #",Regional or Traditional Foods,82.0,29.0
+"Awama, deep fried dough balls soaked in syrup #",Regional or Traditional Foods,81.0,28.0
+"Fatayer pastry, stuffed with halloumi cheese, baked at 180°C for 30 min #",Regional or Traditional Foods,80.0,28.0
+"Fatayer pastry, topped with Zaatar, baked at 180°C for 30 min #",Regional or Traditional Foods,80.0,28.0
+"Fatayer pastry, stuffed with spinach, lemon juice and spices, baked at 180°C for 30 min #",Regional or Traditional Foods,78.0,27.0
+"Lebanese bread (white, unleavened), hummus, falafel and tabbouleh #",Regional or Traditional Foods,86.0,30.0
+Middle Eastern flatbread #,Regional or Traditional Foods,97.0,34.0
+"Muhalabea, made with rice, sugar and whole milk, boiled to thick consistency #",Regional or Traditional Foods,83.0,29.0
+"Qurs Aquili, enriched sweet dough, baked for 15 min #",Regional or Traditional Foods,83.0,29.0
+"Sago, with added sugar, cooked at low temperature to a jelly consistency #",Regional or Traditional Foods,80.0,28.0
+"Shearia (thinly threaded pasta-like durum wheat), shallow fried and boiled, sweetened with sugar #",Regional or Traditional Foods,84.0,29.0
+"Tanour white bread, unleavened, baked in tanour oven #",Regional or Traditional Foods,81.0,28.0
+"Turkish bread, white wheat flour #",Regional or Traditional Foods,87.0,30.0
+"Cake, cushaw and potato #",Regional or Traditional Foods,108.0,38.0
+"Dried Lily bulb (Lilium brownii var. viridulum Baker), pre-soaked at 4oC for 12 h, steamed for 30 min #",Regional or Traditional Foods,83.0,29.0
+"Dried Lily bulb (Lilium brownii var. viridulum Baker), pre-soaked at 4oC for 12 h, steamed for 60 min #",Regional or Traditional Foods,85.0,30.0
+"Gayam (Inocarfus fagifer Forst.) seed, boiled at 100°C for 15 min, peeled, dried for 48 h, ground to form flour #",Regional or Traditional Foods,75.0,26.0
+"Gayam (Inocarfus fagifer Forst.) seed, peeled, dried for 48 h, ground to form flour #",Regional or Traditional Foods,74.0,26.0
+"Glutinous rice, type NS (Esubi Shokuhin, Japan) #",Regional or Traditional Foods,86.0,30.0
+Glutinous rice cake with 1 g dried sea algae #,Regional or Traditional Foods,83.0,29.0
+"Lacy pancake, made from wheat flour, consumed with chicken curry containing potatoes and coconut milk #",Regional or Traditional Foods,81.0,28.0
+"Rice, white, gruel, simmered over low heat with water for 45 min #",Regional or Traditional Foods,93.0,33.0
+"Salted rice ball (Satou Co Ltd., Japan) #",Regional or Traditional Foods,80.0,28.0
+"Starch jelly, Acorn #",Regional or Traditional Foods,72.0,25.0
+"Stir-fried vegetables with chicken and boiled white rice, home made #",Regional or Traditional Foods,73.0,26.0
+White rice with 1 g dried fish strip (okaka) #,Regional or Traditional Foods,79.0,28.0
+White rice topped with 60 g raw egg and 2 g soy sauce #,Regional or Traditional Foods,72.0,25.0
+White rice with 2 g sea algae rolled in sheet of 1 g toasted sea algae #,Regional or Traditional Foods,77.0,27.0
+"Amaranth (Amaranthus esculentum) popped, eaten with 150 mL milk and non-nutritive sweetener #",Regional or Traditional Foods,97.0,34.0
+Appam (thin pancake made from fermented rice flour batter with tender coconut) eaten with Bengal gram curry #,Regional or Traditional Foods,90.0,32.0
+"Arrowroot (Canna indica), peeled, cut into pieces, boiled for 20-40 min, served with 45 g scraped coconut #",Regional or Traditional Foods,78.0,27.0
+"Chapatti, amaranth-wheat (50:50) composite flour, served with bottle gourd and tomato curry #",Regional or Traditional Foods,76.0,27.0
+"Chapatti, wheat flour, thin, with green gram (Phaseolus aureus) dhal #",Regional or Traditional Foods,81.0,28.0
+"Dosa, made from germinated whole finger millet (Eleusine coracana) flour and black gram dhal, cooked in fry pan, served with 30 g Bengal gram chutney #",Regional or Traditional Foods,71.0,25.0
+"Dosa, made from rice flour and black gram dhal, cooked in fry pan, served with 30 g Bengal gram chutney #",Regional or Traditional Foods,82.0,29.0
+"Dosai (parboiled and raw rice, soaked, ground, fermented and fried) with chutney #",Regional or Traditional Foods,77.0,27.0
+Idiappam (steamed rice flour dough with tender coconut) eaten with Bengal gram curry #,Regional or Traditional Foods,86.0,30.0
+"Idli (parboiled and raw rice + black dhal, soaked, ground, fermented, steamed) with chutney #",Regional or Traditional Foods,77.0,27.0
+"Jowar, roasted bread made from Jowar flour (Sorghum vulgare) #",Regional or Traditional Foods,77.0,27.0
+"Manioc (cassava), consumed with 25 g coconut sambol #",Regional or Traditional Foods,85.0,30.0
+"Millet/Ragi (Eleucine coracana), eaten with a traditional Indian meal #",Regional or Traditional Foods,84.0,29.0
+Millet/Ragi (Eleucine coracana) flour eaten as roasted bread #,Regional or Traditional Foods,104.0,36.0
+"Parboiled rice, eaten with a traditional Indian meal #",Regional or Traditional Foods,99.0,35.0
+"Pongal (rice and roasted green gram dhal, pressure cooked) #",Regional or Traditional Foods,90.0,32.0
+Poori (deep-fried wheat flour dough) with potato palya (mashed potato) #,Regional or Traditional Foods,82.0,29.0
+"Porridge, made from popped rice (aralu), consumed with Bengal gram, green gram and black gram #",Regional or Traditional Foods,77.0,27.0
+"Porridge, made from expanded rice (puri), consumed with Bengal gram, green gram and black gram #",Regional or Traditional Foods,75.0,26.0
+"Puttu/Pittu (rice flour, steamed with tender coconut) eaten with Bengal gram curry #",Regional or Traditional Foods,79.0,28.0
+"Puttu/Pittu, made from industrially-milled finger millet (Eucenea coracana) flour #",Regional or Traditional Foods,79.0,28.0
+"Red rice, served with 30 mL coconut gravy (kirihodi) #",Regional or Traditional Foods,70.0,25.0
+"Porridge, made from Ranawara (Cassia auriculata Linn.) green leaf extract, and coconut milk, and rice #",Regional or Traditional Foods,77.0,27.0
+"Semolina (Triticum aestivum), roasted at 105°C then gelatinized with water, with 5 g groundnut oil #",Regional or Traditional Foods,76.0,27.0
+"Stringhoppers, prepared with red rice flour, consumed with 25 g coconut sambol, boiled egg and 30 mL kirihodi coconut gravy #",Regional or Traditional Foods,73.0,26.0
+"Stringhoppers, prepared with wheat flour, consumed with 25 g coconut sambol, boiled egg, and 30 mL kirihodi coconut gravy #",Regional or Traditional Foods,74.0,26.0
+"Varagu (Paspalum scorbiculatum), pressure cooked15lb 12-15 min, consumed with green gram dhal (Phaseolus aureus Roxb) #",Regional or Traditional Foods,78.0,27.0
+"Wheat, cooked, eaten as part of a traditional Indian meal #",Regional or Traditional Foods,90.0,32.0
+"Melawach, fried wheat dough #",Regional or Traditional Foods,71.0,25.0
+Melawach + 15 g lupin (Lupinus albus) fiber #,Regional or Traditional Foods,72.0,25.0
+Cactus jam (Stenocereus thurberi) #,Regional or Traditional Foods,92.0,32.0
+Fruit Leather (Stenocereus thurberi) #,Regional or Traditional Foods,71.0,25.0
+"Arepa, corn bread cake, made with corn flour #",Regional or Traditional Foods,72.0,25.0
+"Arepa, made from ordinary dehulled dent corn flour (25% amylose) #",Regional or Traditional Foods,81.0,28.0
+"Corn tortilla, fried, with mashed potato, fresh tomato and lettuce #",Regional or Traditional Foods,79.0,28.0
+"Corn tortilla potato taco, corn tortilla served with mashed potato, lettuce and tomato #",Regional or Traditional Foods,86.0,30.0
+"Molletes (Terea white bread, mayocoba refried beans, manchego cheese) #",Regional or Traditional Foods,81.0,28.0
+"Tamales, made from maize (Zea mays var. Huimilpan) flour prepared using the traditional nixtamalization process with water and calcium hydroxide, steamed for 1.5 h #",Regional or Traditional Foods,82.0,29.0
+"Tamales, made from maize (Zea mays var. Huimilpan) flour prepared using the classical nixtamalization process with water and wood ash, steamed for 1.5 h #",Regional or Traditional Foods,73.0,26.0
+"Tamales, made from maize (Zea mays var. Huimilpan) flour prepared using the classical nixtamalization process with water, steamed for 1.5 h #",Regional or Traditional Foods,73.0,26.0
+Glucose drink with 5.6 g added whey protein and whey peptide blend powder (Glandia),Beverages,92.0,23.0
+Glucose drink with 11.2 g added whey protein and whey peptide blend powder (Glandia),Beverages,85.0,21.0
+Wholemeal wheat flour bread,Breads,70.0,11.0
+"Bread, white",Breads,81.0,12.0
+"Rice, white, NS, boiled for 45-60 min on mild heat #",Cereal Grains,73.0,33.0
+"Oat (Avena sativa L.) flakes, mixed with water, convection heated for 7 min #",Cereal Grains,76.0,34.0
+"Oat (Avena sativa L.) flakes, mixed with water, cooked in microwave for 5 min #",Cereal Grains,75.0,34.0
+"Rice, white, Sato-no-gohan, cooked in an electric rice cooker #",Cereal Grains,71.0,32.0
+"Rice, white, Hinohikari, cooked in an electric rice cooker #",Cereal Grains,74.0,33.0
+"Rice, white, Koshihikari, cooked in an electric rice cooker #",Cereal Grains,75.0,34.0
+"Rice, DRRH-3, boiled",Cereal Grains,78.0,35.0
+"Rice, Jaya, boiled",Cereal Grains,76.0,34.0
+"Rice, NDR-97, boiled",Cereal Grains,78.0,35.0
+"Rice, PR-113, boiled",Cereal Grains,77.0,35.0
+"Rice, Salivahana, boiled",Cereal Grains,80.0,36.0
+"Rice, Sasyasree, boiled",Cereal Grains,76.0,34.0
+"Rice, Savithri, boiled",Cereal Grains,70.0,32.0
+"Rice, TellaHamsa, boiled",Cereal Grains,77.0,35.0
+"Rice, Triguna, boiled",Cereal Grains,79.0,36.0
+"Rice, Varalu, boiled",Cereal Grains,78.0,35.0
+"Rice, white, Jasmine (Rambutan AAA, Jasmine Food Corp Pte Ltd, Malaysia), polished, cooked for 32 min in an electric rice cooker with 1:2 (w/w) rice-to-water ratio",Cereal Grains,77.0,35.0
+"Rice, white, Sinandomeng, milled, cooked in an electric rice cooker",Cereal Grains,75.0,34.0
+"Rice, white, NSIC Rc160, milled, cooked in an electric rice cooker",Cereal Grains,70.0,32.0
+"Rice, Japonica, white, steamed for 50 min #",Cereal Grains,84.0,38.0
+"Meal containing 50% pearled oats and 50% Japonica rice, cooked under high 70 kPa pressure pressure for 20 min #",Cereal Grains,70.0,32.0
+Chocolate cookie,Cookies,78.0,16.0
+"Strawberry jam, containing corn syrup and sugar #",Fruit and Fruit Products,76.0,11.0
+"Strawberry jam, containing sugar and glucose #",Fruit and Fruit Products,70.0,11.0
+Corn injera (flatbread,Regional or Traditional Foods,97.0,34.0
+"Foutou d'igname (pounded white yam, Dioscorea cayenensis-rotundata; variety Kponan)",Regional or Traditional Foods,85.0,30.0
+"Placali, cassava (Manihot esculenta Crantz) paste fermented",Regional or Traditional Foods,106.0,37.0
+"Foutou de banane, pounded plantain (Musa paradisiaca L.; variety ameletia)",Regional or Traditional Foods,91.0,32.0
+"Cabato_h, maize (Zea mays L.) meal porridge",Regional or Traditional Foods,74.0,26.0
+"Fat cakes, white wheat flour mised with water to make a dough, deep fried in sunflower oil",Regional or Traditional Foods,71.0,25.0
+Dumplings: white wheat flour mixed with water to make dough balls and boiled in water,Regional or Traditional Foods,73.0,26.0
+"Mapakiwa (baked bread), white wheat flour mixed with water to make dough, baked in an oven",Regional or Traditional Foods,79.0,28.0
+"Soft porridge with milk, millet meal boiled in water to a soft consistency and served with pasteurised full-cream milk",Regional or Traditional Foods,72.0,25.0
+"Poha, made from rice flakes, with onion and spices",Regional or Traditional Foods,74.0,26.0
+"Pasta, made from wheat, boiled, served with tomatoes, onions and spices",Regional or Traditional Foods,72.0,25.0
+"Fried rice in Yangzhou-style, instant",Regional or Traditional Foods,76.0,27.0
+"Plain steamed vermicelli roll, instant",Regional or Traditional Foods,93.0,33.0
+"Red bean dessert, instant",Regional or Traditional Foods,73.0,26.0
+"Pittu, made with wheat flour and coconut scrapings, steamed for 10 min #",Regional or Traditional Foods,80.0,28.0
+"Pittu, made with red rice flour and coconut scrapings, steamed for 10 min #",Regional or Traditional Foods,81.0,28.0
+"Hoppers, made with red rice flour, coconut water, coconut milk, and salt, cooked for 5 min #",Regional or Traditional Foods,95.0,33.0
+"Olu-milk rice; olu (water lily) rice, soaked overnight, boiled for 75 min, prepared with coconut milk #",Regional or Traditional Foods,72.0,25.0
+Extruded snack made from buckwheat flour,Snack Foods and Confectionery,70.0,18.0
+High fructose corn syrup (42% fructose),Sugars and Syrups,81.0,4.0
+"Yellow yam (Dioscorea cayenensis-rotundata), Yaobadou variety, peeled, cut into 18 mm slices, boiled in water for 10 min #",Vegetables,70.0,14.0
+"Potato, instant mashed",Vegetables,87.0,17.0
