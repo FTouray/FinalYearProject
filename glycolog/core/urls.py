@@ -1,5 +1,7 @@
 from django.urls import path
 from .views import (
+    list_categories,
+    list_food_items_by_category,
     log_glucose,
     log_meal, 
     register_user, 
@@ -32,4 +34,8 @@ urlpatterns = [
     
     # Glycaemic Response Tracker endpoints
     path('api/log_meal/', log_meal, name='log_meal'),  # Endpoint to log a meal
+    
+    # Food data endpoints
+    path('categories/', list_categories, name='list_categories'),
+    path('categories/<int:category_id>/food-items/', list_food_items_by_category, name='list_food_items_by_category'),
 ]

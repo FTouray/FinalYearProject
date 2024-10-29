@@ -3,8 +3,8 @@ from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
-from .serializers import GlucoseLogSerializer, MealSerializer, RegisterSerializer, LoginSerializer, SettingsSerializer
-from .models import CustomUser, GlucoseLog  
+from .serializers import FoodCategorySerializer, FoodItemSerializer, GlucoseLogSerializer, MealSerializer, RegisterSerializer, LoginSerializer, SettingsSerializer
+from .models import CustomUser, FoodCategory, FoodItem, GlucoseLog  
 from django.contrib.auth import get_user_model
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.permissions import AllowAny
@@ -166,3 +166,15 @@ def log_meal(request):
         return Response({"message": "Meal logged successfully", "meal": serializer.data}, status=status.HTTP_201_CREATED)
     else:
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+@api_view(['GET'])
+def list_categories(request):
+    categories = FoodCategory.objects.all()
+    serializer = FoodCategorySerializer(categories, many=True)
+    return Response(serializer.data)
+
+@api_view(['GET'])
+def list_food_items_by_category(request, category_id):
+    food_items = FoodItem.objects.filter(category_id=category_id)
+    serializer = FoodItemSerializer(food_items, many=True)
+    return Response(serializer.data)
