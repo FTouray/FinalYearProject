@@ -32,19 +32,26 @@ class GlucoseLog(models.Model):
     def __str__(self):
         return f"{self.user.username} - {self.glucose_level} at {self.timestamp}"
 
+class FoodCategory(models.Model):
+    name = models.CharField(max_length=100)  # Name of the category
+
+    def __str__(self):
+        return self.name
+
 # Model to store food items and their glycaemic index
 class FoodItem(models.Model):
-    foodId = models.AutoField(primary_key=True)  # Primary key for the food item
+    foodId = models.AutoField(primary_key=True, null=False)  # Primary key for the food item
     name = models.CharField(max_length=100)  # Name of the food item
     glycaemic_index = models.FloatField()  # Glycemic index of the food item
     carbs = models.FloatField(null=True, blank=True)  # Carbohydrate content, optional
+    category = models.ForeignKey(FoodCategory, on_delete=models.CASCADE, related_name='food_items')  # Link to the category
     
     def __str__(self):
         return self.name
 
 # Model to store meal details linked to the glycaemic response tracker
 class Meal(models.Model):
-    mealId = models.AutoField(primary_key=True)  # Primary key for the meal
+    mealId = models.AutoField(primary_key=True, null=False)  # Primary key for the meal
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='meals') # Foreign key linking to user
     tracker = models.ForeignKey('GlycaemicResponseTracker', on_delete=models.CASCADE, related_name='meals')  # Foreign key linking to the tracker
     food_items = models.ManyToManyField(FoodItem, related_name='meals')  # Link to multiple food items  # Field to store food items in the meal
@@ -54,10 +61,10 @@ class Meal(models.Model):
 
     class Meta:
         indexes = [models.Index(fields=['tracker']),]  # Index for faster lookups by tracker
-    
+
     def __str__(self):
         return f"Meal logged by {self.user.username} on {self.timestamp}"
-    
+
     @property # Calculate the total glycaemic index of the meal
     def total_glycaemic_index(self):
         return sum(item.glycaemic_index for item in self.food_items.all())
