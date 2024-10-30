@@ -7,7 +7,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **kwargs):
         try:
-            with open('GRTData\food_data.csv', 'r') as file:
+            with open('GRTData/food_data.csv', 'r') as file:
                 reader = csv.DictReader(file)
                 for row in reader:
                     category_name = row['Category']

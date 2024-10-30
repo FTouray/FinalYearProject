@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.db.models import Q
+from django.forms import JSONField
 
 # Custom user model extending Django's AbstractUser
 class CustomUser(AbstractUser):
@@ -12,26 +13,6 @@ class CustomUser(AbstractUser):
     def __str__(self):
         return self.username  # Return username when the user object is printed
 
-# Model to log glucose levels for each user
-class GlucoseLog(models.Model):
-    logID = models.AutoField(primary_key=True)  # Primary key for the log
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='glucose_logs')  # Foreign key linking to CustomUser
-    glucose_level = models.FloatField()  # Field to store glucose level
-    timestamp = models.DateTimeField(auto_now_add=True)  # Automatically set timestamp when log is created
-    meal_context = models.CharField(max_length=50, choices=[
-        ('fasting', 'Fasting'),
-        ('pre_meal', 'Pre-Meal'),
-        ('post_meal', 'Post-Meal'),
-    ])  # Context of glucose level logging    
-    class Meta:
-        indexes = [models.Index(fields=['user']),]  # Index for faster lookups by user
-        constraints = [
-            models.CheckConstraint(check=Q(glucose_level__gte=0), name='glucose_level_gte_0'),  # Constraint to ensure glucose level is non-negative
-        ]
-        
-    def __str__(self):
-        return f"{self.user.username} - {self.glucose_level} at {self.timestamp}"
-
 class FoodCategory(models.Model):
     name = models.CharField(max_length=100)  # Name of the category
 
@@ -41,7 +22,7 @@ class FoodCategory(models.Model):
 # Model to store food items and their glycaemic index
 class FoodItem(models.Model):
     foodId = models.AutoField(primary_key=True, null=False)  # Primary key for the food item
-    name = models.CharField(max_length=100)  # Name of the food item
+    name = models.CharField(max_length=255)  # Name of the food item
     glycaemic_index = models.FloatField()  # Glycemic index of the food item
     carbs = models.FloatField(null=True, blank=True)  # Carbohydrate content, optional
     category = models.ForeignKey(FoodCategory, on_delete=models.CASCADE, related_name='food_items')  # Link to the category
@@ -53,10 +34,8 @@ class FoodItem(models.Model):
 class Meal(models.Model):
     mealId = models.AutoField(primary_key=True, null=False)  # Primary key for the meal
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='meals') # Foreign key linking to user
-    tracker = models.ForeignKey('GlycaemicResponseTracker', on_delete=models.CASCADE, related_name='meals')  # Foreign key linking to the tracker
+    tracker = models.ForeignKey('GlycaemicResponseTracker', on_delete=models.CASCADE, related_name='meals_related', blank=True, null=True)  # Foreign key linking to the tracker
     food_items = models.ManyToManyField(FoodItem, related_name='meals')  # Link to multiple food items  # Field to store food items in the meal
-    total_glycaemic_index = models.FloatField()  # Glycaemic index of the meal
-    total_carbs = models.FloatField()  # Total carbs in the meal
     timestamp = models.DateTimeField(auto_now_add=True)  # Automatically set timestamp when meal is logged
 
     class Meta:
@@ -73,12 +52,38 @@ class Meal(models.Model):
     def total_carbs(self):
         return sum(item.carbs for item in self.food_items.all() if item.carbs is not None)
 
+# Model to log glucose levels for each user
+class GlucoseLog(models.Model):
+    logID = models.AutoField(primary_key=True)  # Primary key for the log
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='glucose_logs')  # Foreign key linking to CustomUser
+    glucose_level = models.FloatField()  # Field to store glucose level
+    timestamp = models.DateTimeField(auto_now_add=True)  # Automatically set timestamp when log is created
+    meal_context = models.CharField(max_length=50, choices=[
+        ('fasting', 'Fasting'),
+        ('pre_meal', 'Pre-Meal'),
+        ('post_meal', 'Post-Meal'),
+    ])  # Context of glucose level logging    
+    meal = models.ForeignKey(Meal, on_delete=models.SET_NULL, null=True, blank=True)  # Add foreign key to Meal
+    class Meta:
+        indexes = [models.Index(fields=['user']),]  # Index for faster lookups by user
+        constraints = [
+            models.CheckConstraint(check=Q(glucose_level__gte=0), name='glucose_level_gte_0'),  # Constraint to ensure glucose level is non-negative
+        ]
+        
+    def __str__(self):
+        return f"{self.user.username} - {self.glucose_level} at {self.timestamp}"
+
+
 # Model to track glycaemic responses linked to a user
 class GlycaemicResponseTracker(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='response_trackers')  # Foreign key linking to user
-    user_data = models.TextField()  # Field to store user-specific data, potentially in JSON format
+    user_data = JSONField()  # Field to store user-specific data, potentially in JSON format
     response_patterns = models.TextField(blank=True, null=True)  # Field to store observed response patterns
-    meal_log = models.TextField(blank=True, null=True)  # Summary of meals logged by the user
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    meals = models.ManyToManyField(
+        Meal, related_name="response_trackers_meals", blank=True
+    )  # Add many-to-many relationship
 
 # Virtual health coach model to provide personalized health guidance
 class VirtualHealthCoach(models.Model):

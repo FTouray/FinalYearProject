@@ -4,12 +4,12 @@ from rest_framework.decorators import api_view
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
 from .serializers import FoodCategorySerializer, FoodItemSerializer, GlucoseLogSerializer, MealSerializer, RegisterSerializer, LoginSerializer, SettingsSerializer
-from .models import CustomUser, FoodCategory, FoodItem, GlucoseLog  
+from .models import CustomUser, FoodCategory, FoodItem, GlucoseLog, GlycaemicResponseTracker  
 from django.contrib.auth import get_user_model
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.permissions import AllowAny
 from rest_framework.decorators import api_view, permission_classes
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, render
 from django.db.models import Q
 
 
@@ -54,7 +54,7 @@ def login_user(request):
             return Response({"error": "Username or password is incorrect."}, status=status.HTTP_401_UNAUTHORIZED)
     else:
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+
 @api_view(['GET','POST'])
 @permission_classes([IsAuthenticated])  # Ensure the user is authenticated
 def log_glucose(request):
@@ -74,7 +74,7 @@ def log_glucose(request):
         else:
             print("Serializer errors:", serializer.errors) # Log the errors to the console
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-  
+
 @api_view(['GET']) 
 @permission_classes([IsAuthenticated]) 
 def glucose_log_history(request):
@@ -122,7 +122,7 @@ def glucose_log_details(request, id):
     log = get_object_or_404(GlucoseLog, id=id, user=request.user)  # Ensure the log belongs to the user
     serializer = GlucoseLogSerializer(log)
     return Response(serializer.data, status=status.HTTP_200_OK)
-    
+
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])  # Ensure the user is authenticated
 def settings_view(request):
@@ -149,7 +149,44 @@ def settings_view(request):
         user.save()
 
         return Response({"message": "Settings updated successfully"}, status=status.HTTP_200_OK)
-    
+
+
+@api_view(["GET", "POST"])
+@permission_classes([IsAuthenticated])
+def glycaemic_response_main(request):
+    # Retrieve recent glycaemic logs for this user
+    user = request.user  # Get current user
+    logs = GlycaemicResponseTracker.objects.filter(user=user).order_by("-created_at")[
+        :10
+    ]  # Most recent 10 logs
+
+    # Calculate last, average, and graph points for glycaemic response
+    last_log = logs[0].gi_level if logs else None
+    average_log = sum(log.gi_level for log in logs) / len(logs) if logs else None
+    graph_data = [
+        {"timestamp": log.created_at, "gi_level": log.gi_level} for log in logs
+    ]  # Data formatted for JSON
+
+    # JSON response with computed data
+    response_data = {
+        "last_log": last_log,
+        "average_log": average_log,
+        "graph_data": graph_data,
+        "recent_logs": [
+            {
+                "id": log.id,
+                "created_at": log.created_at,
+                "gi_level": log.gi_level,
+                "response_patterns": log.response_patterns,
+                # Include other relevant fields if needed
+            }
+            for log in logs
+        ],
+    }
+
+    return Response(response_data, status=status.HTTP_200_OK)
+
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def log_meal(request):
@@ -166,7 +203,7 @@ def log_meal(request):
         return Response({"message": "Meal logged successfully", "meal": serializer.data}, status=status.HTTP_201_CREATED)
     else:
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+
 @api_view(['GET'])
 def list_categories(request):
     categories = FoodCategory.objects.all()

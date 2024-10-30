@@ -40,12 +40,12 @@ class RegisterSerializer(serializers.ModelSerializer):
 class LoginSerializer(serializers.Serializer):
     username = serializers.CharField(required=True)
     password = serializers.CharField(write_only=True, required=True)
-    
+
 # Glucose Log Serializer
 class GlucoseLogSerializer(serializers.ModelSerializer):
     class Meta:
         model = GlucoseLog
-        fields = ['logID', 'user', 'glucose_level', 'timestamp', 'meal_context']
+        fields = ["logID", "user", "glucose_level", "timestamp", "meal_context", "meal"]
         read_only_fields = ['user']  # Make the user field read-only
 
     def create(self, validated_data):
@@ -62,63 +62,78 @@ class GlucoseLogSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Glucose level must be a positive number.")
         return value
 
-    
+
 class SettingsSerializer(serializers.Serializer):
     selectedUnit = serializers.ChoiceField(choices=['mmol/L', 'mg/dL'])  # Limit choices for units
     notificationsEnabled = serializers.BooleanField(required=False)  # Optional field
     darkModeEnabled = serializers.BooleanField(required=False)  # Optional field
 
-# Glycaemic Response Tracker Serializer
-class GlycaemicResponseTrackerSerializer(serializers.ModelSerializer):
-    user_data = serializers.JSONField()  # Handle the user data as JSON
 
-    class Meta:
-        model = GlycaemicResponseTracker
-        fields = ['trackerID', 'userID', 'user_data', 'responsePatterns', 'mealLog']
-
-    
-    def validate_user_data(self, value):
-        # Custom validation logic for user_data if needed
-        return value
-    
 class FoodCategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = FoodCategory
-        fields = ['id', 'name']
+        fields = ["id", "name"]
+
 
 # Food Item Serializer
 class FoodItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = FoodItem
-        fields = ['foodId', 'name', 'glycaemic_index', 'carbs']
+        fields = ["foodId", "name", "glycaemic_index", "carbs"]
+
 
 # Meal Serializer
 class MealSerializer(serializers.ModelSerializer):
     food_items = FoodItemSerializer(many=True)
+    tracker = serializers.PrimaryKeyRelatedField(
+        queryset=GlycaemicResponseTracker.objects.all(), required=False
+    )  # Ensure tracker can be linked
 
     class Meta:
         model = Meal
-        fields = ['mealId', 'user', 'trackerID', 'food_items', 'total_glycaemic_index', 'total_carbs', 'timestamp']
-        read_only_fields = ['user']  # Make the user field read-only
-    
+        fields = [
+            "mealId",
+            "user",
+            "trackerID",
+            "food_items",
+            "total_glycaemic_index",
+            "total_carbs",
+            "timestamp",
+        ]
+        read_only_fields = [
+            "user",
+            "total_glycaemic_index",
+            "total_carbs",
+        ]  # Make these fields read-only
+
     def create(self, validated_data):
         # Extract food items data
-        food_items_data = validated_data.pop('food_items')
+        food_items_data = validated_data.pop("food_items")
         meal = Meal.objects.create(**validated_data)
-        
+
         # Get FoodItem instances and add to the meal
         for food_item_data in food_items_data:
             food_item, created = FoodItem.objects.get_or_create(
-                name=food_item_data['name'],
+                name=food_item_data["name"],
                 defaults={
-                    'glycaemic_index': food_item_data['glycaemic_index'],
-                    'carbs': food_item_data.get('carbs')
-                }
+                    "glycaemic_index": food_item_data["glycaemic_index"],
+                    "carbs": food_item_data.get("carbs"),
+                },
             )
             meal.food_items.add(food_item)
-        
-        # Calculate totals for the meal
-        meal.calculate_totals()
+
         return meal
 
 
+# Glycaemic Response Tracker Serializer
+class GlycaemicResponseTrackerSerializer(serializers.ModelSerializer):
+    user_data = serializers.JSONField()  # Handle the user data as JSON
+    meals = MealSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = GlycaemicResponseTracker
+        fields = ['id', 'user', 'user_data', 'responsePatterns', 'meals']
+
+    def validate_user_data(self, value):
+        # Custom validation logic for user_data if needed
+        return value

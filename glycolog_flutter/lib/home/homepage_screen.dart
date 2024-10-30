@@ -89,13 +89,20 @@ class _HomePageState extends State<HomePage> {
                     },
                   ),
                   FeatureIcon(
+                    icon: Icons
+                        .track_changes, // Icons.track_changes, Icons.show_chart, Icons.insights
+                    label: 'Glycaemic Tracker',
+                    onTap: () {
+                      Navigator.pushNamed(context, '/glycaemic-response-main');
+                    },
+                  ),
+                  FeatureIcon(
                     icon: Icons.settings,
                     label: 'Settings',
                     onTap: () {
                       Navigator.pushNamed(context, '/settings');
                     },
-                  ),
-                  // Additional feature icons can be added here
+                  ),                  
                   FeatureIcon(
                     icon: Icons.help,
                     label: 'Help',

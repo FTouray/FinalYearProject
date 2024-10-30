@@ -8,6 +8,7 @@ import 'loginRegister/login_screen.dart';
 import 'home/homepage_screen.dart';
 import 'loginRegister/register_screen.dart';
 import 'home/settings_screen.dart';
+import 'glycaemicResponseTracker/gRT_main_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -150,6 +151,7 @@ class _MyAppState extends State<MyApp> {
           return LogDetailsScreen(
               logDetails: args ?? {}); // Pass log details or an empty map
         },
+        '/glycaemic-response-main': (context) => GRTMainScreen(),
       },
     );
   }
