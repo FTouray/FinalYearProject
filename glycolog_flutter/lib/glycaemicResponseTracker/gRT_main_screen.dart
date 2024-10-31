@@ -125,7 +125,7 @@ class _GRTMainScreenState extends State<GRTMainScreen> {
                               color: Colors.blue[300]!,
                               icon: Icons.add,
                               onTap: () {
-                                Navigator.pushNamed(context, '/grt-add-log');
+                                Navigator.pushNamed(context, '/log-meal');
                               },
                             ),
                             // Average Response Circle

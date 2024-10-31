@@ -1,3 +1,4 @@
+from django.shortcuts import get_object_or_404
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
@@ -84,10 +85,9 @@ class FoodItemSerializer(serializers.ModelSerializer):
 
 # Meal Serializer
 class MealSerializer(serializers.ModelSerializer):
-    food_items = FoodItemSerializer(many=True)
-    tracker = serializers.PrimaryKeyRelatedField(
-        queryset=GlycaemicResponseTracker.objects.all(), required=False
-    )  # Ensure tracker can be linked
+    food_item_ids = serializers.ListField(
+        child=serializers.IntegerField(), write_only=True
+    )  # IDs for food items to log
 
     class Meta:
         model = Meal
@@ -95,7 +95,7 @@ class MealSerializer(serializers.ModelSerializer):
             "mealId",
             "user",
             "trackerID",
-            "food_items",
+            "food_item_ids",
             "total_glycaemic_index",
             "total_carbs",
             "timestamp",
@@ -104,23 +104,29 @@ class MealSerializer(serializers.ModelSerializer):
             "user",
             "total_glycaemic_index",
             "total_carbs",
-        ]  # Make these fields read-only
+        ]  # These fields are read-only
 
     def create(self, validated_data):
-        # Extract food items data
-        food_items_data = validated_data.pop("food_items")
-        meal = Meal.objects.create(**validated_data)
+        food_item_ids = validated_data.pop("food_item_ids")  # Extract food item IDs
+        meal = Meal.objects.create(**validated_data)  # Create the meal instance
 
-        # Get FoodItem instances and add to the meal
-        for food_item_data in food_items_data:
-            food_item, created = FoodItem.objects.get_or_create(
-                name=food_item_data["name"],
-                defaults={
-                    "glycaemic_index": food_item_data["glycaemic_index"],
-                    "carbs": food_item_data.get("carbs"),
-                },
-            )
+        # Calculate total GI and carbs
+        total_glycaemic_index = 0
+        total_carbs = 0
+
+        for food_item_id in food_item_ids:
+            food_item = get_object_or_404(
+                FoodItem, foodId=food_item_id
+            )  # Fetch food item by ID
+            total_glycaemic_index += food_item.glycaemic_index
+            total_carbs += food_item.carbs or 0  # Handle optional carbs
+
+            # Optionally, you could link food items to the meal if needed
             meal.food_items.add(food_item)
+
+        meal.total_glycaemic_index = total_glycaemic_index  # Set total GI
+        meal.total_carbs = total_carbs  # Set total carbs
+        meal.save()  # Save the updated meal instance
 
         return meal
 

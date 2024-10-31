@@ -1,3 +1,4 @@
+import 'package:Glycolog/glycaemicResponseTracker/gRT_meal_log_screen.dart';
 import 'package:Glycolog/services/auth_service.dart';
 import 'package:flutter/material.dart';
 import 'glucoseLog/gL_add_level_screen.dart';
@@ -152,6 +153,7 @@ class _MyAppState extends State<MyApp> {
               logDetails: args ?? {}); // Pass log details or an empty map
         },
         '/glycaemic-response-main': (context) => GRTMainScreen(),
+        '/log-meal': (context) => MealSelectionScreen(),
       },
     );
   }
