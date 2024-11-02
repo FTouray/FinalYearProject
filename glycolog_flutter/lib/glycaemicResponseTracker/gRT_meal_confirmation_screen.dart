@@ -1,4 +1,10 @@
+import 'dart:convert';
+
+import 'package:Glycolog/glycaemicResponseTracker/gRT_main_screen.dart';
+import 'package:Glycolog/services/auth_service.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
 import 'gRT_meal_log_screen.dart';
 
 class MealConfirmationScreen extends StatefulWidget {
@@ -29,6 +35,52 @@ class _MealConfirmationScreenState extends State<MealConfirmationScreen> {
 
   void _addMoreItems(BuildContext context) {
     Navigator.pop(context);
+  }
+
+   Future<void> _saveMeal() async {
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String? token = prefs.getString('access_token');
+
+      if (token == null) {
+        print('No access token found');
+        await AuthService().logout(context);
+        return;
+      }
+
+      final response = await http.post(
+        Uri.parse('http://192.168.1.19:8000/api/log-meal/'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: json.encode({
+          'timestamp': widget.timestamp.toIso8601String(),
+          'food_item_ids': widget.selectedItems.map((item) => item.foodId).toList(),
+        }),
+      );
+
+      if (response.statusCode == 201) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Meal saved successfully!')),
+        );
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => GRTMainScreen()),
+          (Route<dynamic> route) => false,
+        );
+      } else {
+        print('Failed to save meal. Status code: ${response.statusCode}');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to save meal.')),
+        );
+      }
+    } catch (e) {
+      print('Failed to save meal. Error: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to save meal.')),
+      );
+    }
   }
 
   @override
@@ -130,10 +182,7 @@ class _MealConfirmationScreenState extends State<MealConfirmationScreen> {
                   ),
                 ),
                 ElevatedButton(
-                  onPressed: () {
-                    // Placeholder for saving meal logic
-                    Navigator.pop(context, true);
-                  },
+                  onPressed: _saveMeal,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue[800],
                     padding: const EdgeInsets.symmetric(

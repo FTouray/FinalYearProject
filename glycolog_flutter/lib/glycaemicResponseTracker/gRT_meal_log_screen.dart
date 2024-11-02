@@ -13,16 +13,18 @@ class FoodCategory {
 }
 
 class FoodItem {
+  final int foodId;
   final String name;
   final double gi;
   final double carbs;
 
-  FoodItem({required this.name, required this.gi, required this.carbs});
+  FoodItem({required this.foodId,required this.name, required this.gi, required this.carbs});
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other is FoodItem &&
+          other.foodId == foodId &&
             other.name == name &&
             other.gi == gi &&
             other.carbs == carbs);
@@ -104,9 +106,10 @@ class _MealSelectionScreenState extends State<MealSelectionScreen> {
         setState(() {
           _cachedFoodItems[categoryId] = (json.decode(response.body) as List)
               .map((data) => FoodItem(
+                    foodId: data['foodId'],     
                     name: data['name'],
                     gi: data['glycaemic_index'],
-                    carbs: data['carbs'],
+                    carbs: data['carbs'], 
                   ))
               .toList();
         });

@@ -94,7 +94,6 @@ class MealSerializer(serializers.ModelSerializer):
         fields = [
             "mealId",
             "user",
-            "trackerID",
             "food_item_ids",
             "total_glycaemic_index",
             "total_carbs",
@@ -107,26 +106,20 @@ class MealSerializer(serializers.ModelSerializer):
         ]  # These fields are read-only
 
     def create(self, validated_data):
+        request = self.context.get("request")
+        if request and hasattr(request, "user"):
+            validated_data["user"] = request.user  # Set the logged-in user
         food_item_ids = validated_data.pop("food_item_ids")  # Extract food item IDs
         meal = Meal.objects.create(**validated_data)  # Create the meal instance
 
-        # Calculate total GI and carbs
-        total_glycaemic_index = 0
-        total_carbs = 0
 
         for food_item_id in food_item_ids:
             food_item = get_object_or_404(
                 FoodItem, foodId=food_item_id
             )  # Fetch food item by ID
-            total_glycaemic_index += food_item.glycaemic_index
-            total_carbs += food_item.carbs or 0  # Handle optional carbs
 
-            # Optionally, you could link food items to the meal if needed
+            # Link food items to the meal if needed
             meal.food_items.add(food_item)
-
-        meal.total_glycaemic_index = total_glycaemic_index  # Set total GI
-        meal.total_carbs = total_carbs  # Set total carbs
-        meal.save()  # Save the updated meal instance
 
         return meal
 
