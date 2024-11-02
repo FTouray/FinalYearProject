@@ -212,6 +212,9 @@ def list_categories(request):
 
 @api_view(['GET'])
 def list_food_items_by_category(request, category_id):
-    food_items = FoodItem.objects.filter(category_id=category_id)
-    serializer = FoodItemSerializer(food_items, many=True)
-    return Response(serializer.data)
+    try:
+        food_items = FoodItem.objects.filter(category_id=category_id)
+        serializer = FoodItemSerializer(food_items, many=True)
+        return Response(serializer.data)
+    except Exception as e:
+        return Response({"error": str(e)}, status=500)
