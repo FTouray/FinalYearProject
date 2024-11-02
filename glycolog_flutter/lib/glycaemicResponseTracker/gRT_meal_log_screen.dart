@@ -22,6 +22,18 @@ class FoodItem {
   final double carbs;
 
   FoodItem({required this.name, required this.gi, required this.carbs});
+   @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+
+    return other is FoodItem &&
+        other.name == name &&
+        other.gi == gi &&
+        other.carbs == carbs;
+  }
+
+  @override
+  int get hashCode => name.hashCode ^ gi.hashCode ^ carbs.hashCode;
 }
 
 // StatefulWidget for Meal Selection Screen
@@ -35,7 +47,7 @@ class MealSelectionScreen extends StatefulWidget {
 class _MealSelectionScreenState extends State<MealSelectionScreen> {
   // Lists to hold categories and selected items
   List<FoodCategory> _categories = [];
-  List<FoodItem> _selectedItems = [];
+  List<FoodItem> selectedItems = [];
   int? _expandedCategoryId;
 
   @override
@@ -118,10 +130,10 @@ Future<List<FoodItem>> _fetchFoodItems(int categoryId) async {
   // Method to toggle selection of a food item
   void _toggleSelection(FoodItem item) {
     setState(() {
-      if (_selectedItems.contains(item)) {
-        _selectedItems.remove(item);
+      if (selectedItems.contains(item)) {
+        selectedItems.remove(item);
       } else {
-        _selectedItems.add(item);
+        selectedItems.add(item);
       }
     });
   }
@@ -129,14 +141,20 @@ Future<List<FoodItem>> _fetchFoodItems(int categoryId) async {
   // Method to navigate to the confirmation screen
   void _goToConfirmation() {
     Navigator.push(
-      context,
+     context,
       MaterialPageRoute(
         builder: (context) => MealConfirmationScreen(
-          selectedItems: _selectedItems,
+          selectedItems: selectedItems,
           timestamp: DateTime.now(),
         ),
       ),
-    );
+    ).then((updatedItems) {
+      if (updatedItems != null) {
+        setState(() {
+          selectedItems = updatedItems;
+        });
+      }
+    });
   }
 
 @override
@@ -227,10 +245,12 @@ Future<List<FoodItem>> _fetchFoodItems(int categoryId) async {
                                           subtitle: Text(
                                               'GI: ${foodItem.gi}, Carbs: ${foodItem.carbs}g'),
                                           trailing: Checkbox(
-                                            value: _selectedItems
+                                            value: selectedItems
                                                 .contains(foodItem),
                                             onChanged: (bool? value) {
+                                              if (value != null) {
                                               _toggleSelection(foodItem);
+                                            }
                                             },
                                           ),
                                         );
@@ -254,7 +274,7 @@ Future<List<FoodItem>> _fetchFoodItems(int categoryId) async {
                     ),
                     const SizedBox(height: 20),
                     Text(
-                      'Selected Items: ${_selectedItems.length}', // Count of selected items
+                      'Selected Items: ${selectedItems.length}', // Count of selected items
                       style: const TextStyle(fontSize: 16, color: Colors.blue),
                       textAlign: TextAlign.center,
                     ),
@@ -269,7 +289,7 @@ Future<List<FoodItem>> _fetchFoodItems(int categoryId) async {
                             horizontal: 40, vertical: 15),
                       ),
                       onPressed:
-                          _selectedItems.isEmpty ? null : _goToConfirmation,
+                          selectedItems.isEmpty ? null : _goToConfirmation,
                       child: const Text(
                         'Review Meal',
                         style: TextStyle(fontSize: 18, color: Colors.white),
