@@ -1,13 +1,10 @@
-// ignore_for_file: avoid_print
-
-import 'package:Glycolog/glycaemicResponseTracker/gRT_meal_confirmation_screen.dart';
-import 'package:Glycolog/services/auth_service.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'gRT_meal_confirmation_screen.dart';
+import 'package:Glycolog/services/auth_service.dart';
 
-// Model class for FoodCategory
 class FoodCategory {
   final int id;
   final String name;
@@ -15,28 +12,26 @@ class FoodCategory {
   FoodCategory({required this.id, required this.name});
 }
 
-// Model class for FoodItem
 class FoodItem {
   final String name;
   final double gi;
   final double carbs;
 
   FoodItem({required this.name, required this.gi, required this.carbs});
-   @override
-  bool operator ==(Object other) {
-    if (identical(this, other)) return true;
 
-    return other is FoodItem &&
-        other.name == name &&
-        other.gi == gi &&
-        other.carbs == carbs;
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other is FoodItem &&
+            other.name == name &&
+            other.gi == gi &&
+            other.carbs == carbs);
   }
 
   @override
   int get hashCode => name.hashCode ^ gi.hashCode ^ carbs.hashCode;
 }
 
-// StatefulWidget for Meal Selection Screen
 class MealSelectionScreen extends StatefulWidget {
   const MealSelectionScreen({Key? key}) : super(key: key);
 
@@ -45,22 +40,19 @@ class MealSelectionScreen extends StatefulWidget {
 }
 
 class _MealSelectionScreenState extends State<MealSelectionScreen> {
-  // Lists to hold categories and selected items
   List<FoodCategory> _categories = [];
   List<FoodItem> selectedItems = [];
   int? _expandedCategoryId;
+  Map<int, List<FoodItem>> _cachedFoodItems = {}; // Cache for food items
 
   @override
   void initState() {
     super.initState();
-    // Fetch categories when the screen initializes
     _fetchCategories();
   }
 
-  // Method to fetch categories from the server
   Future<void> _fetchCategories() async {
     try {
-      // Retrieve the stored access token
       SharedPreferences prefs = await SharedPreferences.getInstance();
       String? token = prefs.getString('access_token');
 
@@ -76,13 +68,11 @@ class _MealSelectionScreenState extends State<MealSelectionScreen> {
       );
 
       if (response.statusCode == 200) {
-        // Parse the response and update the categories list
         setState(() {
           _categories = (json.decode(response.body) as List)
               .map((data) => FoodCategory(id: data['id'], name: data['name']))
               .toList();
         });
-        print('Categories loaded: $_categories');
       } else {
         print('Failed to load categories. Status code: ${response.statusCode}');
       }
@@ -91,8 +81,9 @@ class _MealSelectionScreenState extends State<MealSelectionScreen> {
     }
   }
 
-  // Method to fetch food items for a selected category
-Future<List<FoodItem>> _fetchFoodItems(int categoryId) async {
+  Future<void> _fetchFoodItems(int categoryId) async {
+    if (_cachedFoodItems.containsKey(categoryId)) return;
+
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       String? token = prefs.getString('access_token');
@@ -100,7 +91,7 @@ Future<List<FoodItem>> _fetchFoodItems(int categoryId) async {
       if (token == null) {
         print('No access token found');
         await AuthService().logout(context);
-        return [];
+        return;
       }
 
       final response = await http.get(
@@ -110,24 +101,23 @@ Future<List<FoodItem>> _fetchFoodItems(int categoryId) async {
       );
 
       if (response.statusCode == 200) {
-        return (json.decode(response.body) as List)
-            .map((data) => FoodItem(
-                  name: data['name'],
-                  gi: data['glycaemic_index'],
-                  carbs: data['carbs'],
-                ))
-            .toList();
+        setState(() {
+          _cachedFoodItems[categoryId] = (json.decode(response.body) as List)
+              .map((data) => FoodItem(
+                    name: data['name'],
+                    gi: data['glycaemic_index'],
+                    carbs: data['carbs'],
+                  ))
+              .toList();
+        });
       } else {
         print('Failed to load food items. Status code: ${response.statusCode}');
-        return [];
       }
     } catch (e) {
       print('Failed to load food items. Error: $e');
-      return [];
     }
   }
 
-  // Method to toggle selection of a food item
   void _toggleSelection(FoodItem item) {
     setState(() {
       if (selectedItems.contains(item)) {
@@ -138,10 +128,9 @@ Future<List<FoodItem>> _fetchFoodItems(int categoryId) async {
     });
   }
 
-  // Method to navigate to the confirmation screen
   void _goToConfirmation() {
     Navigator.push(
-     context,
+      context,
       MaterialPageRoute(
         builder: (context) => MealConfirmationScreen(
           selectedItems: selectedItems,
@@ -157,13 +146,12 @@ Future<List<FoodItem>> _fetchFoodItems(int categoryId) async {
     });
   }
 
-@override
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Select Meal Items'),
         backgroundColor: Colors.blue,
-        elevation: 4,
       ),
       body: _categories.isEmpty
           ? Center(
@@ -175,7 +163,6 @@ Future<List<FoodItem>> _fetchFoodItems(int categoryId) async {
               child: Padding(
                 padding: const EdgeInsets.all(12.0),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     ExpansionPanelList(
                       expandedHeaderPadding:
@@ -217,29 +204,14 @@ Future<List<FoodItem>> _fetchFoodItems(int categoryId) async {
                               ),
                             );
                           },
-                          body: isExpanded // Display food items when expanded
-                              ? FutureBuilder<List<FoodItem>>(
-                                  future: _fetchFoodItems(category.id),
-                                  builder: (context, snapshot) {
-                                    if (snapshot.connectionState ==
-                                        ConnectionState.waiting) {
-                                      return const Center(
-                                          child: CircularProgressIndicator());
-                                    } else if (snapshot.hasError) {
-                                      return Center(
-                                          child:
-                                              Text('Error: ${snapshot.error}'));
-                                    } else if (!snapshot.hasData ||
-                                        snapshot.data!.isEmpty) {
-                                      return const Center(
-                                          child: Text('No food items found.'));
-                                    }
-
-                                    // Display food items when fetched
-                                    return ListView(
+                          body: isExpanded
+                              ? (_cachedFoodItems.containsKey(category.id)
+                                  ? ListView(
                                       shrinkWrap: true,
-                                      physics: NeverScrollableScrollPhysics(),
-                                      children: snapshot.data!.map((foodItem) {
+                                      physics:
+                                          const NeverScrollableScrollPhysics(),
+                                      children: _cachedFoodItems[category.id]!
+                                          .map((foodItem) {
                                         return ListTile(
                                           title: Text(foodItem.name),
                                           subtitle: Text(
@@ -248,33 +220,39 @@ Future<List<FoodItem>> _fetchFoodItems(int categoryId) async {
                                             value: selectedItems
                                                 .contains(foodItem),
                                             onChanged: (bool? value) {
-                                              if (value != null) {
                                               _toggleSelection(foodItem);
-                                            }
                                             },
                                           ),
                                         );
                                       }).toList(),
-                                    );
-                                  },
-                                )
-                              : SizedBox(), // Return an empty container when not expanded
+                                    )
+                                  : FutureBuilder<void>(
+                                      future: _fetchFoodItems(category.id),
+                                      builder: (context, snapshot) {
+                                        if (snapshot.connectionState ==
+                                            ConnectionState.waiting) {
+                                          return const Center(
+                                              child:
+                                                  CircularProgressIndicator());
+                                        } else {
+                                          return const SizedBox();
+                                        }
+                                      },
+                                    ))
+                              : const SizedBox(),
                           isExpanded: isExpanded,
                         );
                       }).toList(),
                       expansionCallback: (int index, bool isExpanded) {
-                       print('Index: $index, IsExpanded: $isExpanded');
-                       print(
-                            'Before setState - Index: $index, IsExpanded: $isExpanded, Current Expanded ID: $_expandedCategoryId');
                         setState(() {
-                          _expandedCategoryId = isExpanded ?  _categories[index].id : null;
-                          print('Expanded Category ID: $_expandedCategoryId');
+                          _expandedCategoryId =
+                              isExpanded ?  _categories[index].id : null;
                         });
                       },
                     ),
                     const SizedBox(height: 20),
                     Text(
-                      'Selected Items: ${selectedItems.length}', // Count of selected items
+                      'Selected Items: ${selectedItems.length}',
                       style: const TextStyle(fontSize: 16, color: Colors.blue),
                       textAlign: TextAlign.center,
                     ),
