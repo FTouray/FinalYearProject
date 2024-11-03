@@ -1,16 +1,17 @@
+from audioop import avg
 from rest_framework import status
 from rest_framework.response import Response
-from rest_framework.decorators import api_view
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
 from .serializers import FoodCategorySerializer, FoodItemSerializer, GlucoseLogSerializer, MealSerializer, RegisterSerializer, LoginSerializer, SettingsSerializer
-from .models import CustomUser, FoodCategory, FoodItem, GlucoseLog, GlycaemicResponseTracker  
+from .models import CustomUser, FoodCategory, FoodItem, GlucoseLog, GlycaemicResponseTracker, Meal  
 from django.contrib.auth import get_user_model
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.permissions import AllowAny
 from rest_framework.decorators import api_view, permission_classes
 from django.shortcuts import get_object_or_404, render
 from django.db.models import Q
+from django.db.models import Avg
 
 
 User = get_user_model()
@@ -163,25 +164,31 @@ def glycaemic_response_main(request):
     # Calculate last, average, and graph points for glycaemic response
     last_log = logs[0].gi_level if logs else None
     average_log = sum(log.gi_level for log in logs) / len(logs) if logs else None
-    graph_data = [
-        {"timestamp": log.created_at, "gi_level": log.gi_level} for log in logs
-    ]  # Data formatted for JSON
 
+    # Retrieve the last meal for the user
+    last_meal = Meal.objects.filter(user=user).order_by("-timestamp").first()
+    if last_meal is None:
+        print("No meals found for the user.")
+    else:
+        print(f"Last meal found: {last_meal.mealId}, Total GI: {last_meal.total_glycaemic_index}")
+
+    meals = Meal.objects.filter(user=user)
+    avg_response = sum(meal.total_glycaemic_index for meal in meals) / len(meals) if meals else 0
     # JSON response with computed data
     response_data = {
         "last_log": last_log,
         "average_log": average_log,
-        "graph_data": graph_data,
         "recent_logs": [
             {
                 "id": log.id,
                 "created_at": log.created_at,
                 "gi_level": log.gi_level,
                 "response_patterns": log.response_patterns,
-                # Include other relevant fields if needed
             }
             for log in logs
         ],
+        "lastResponse": (last_meal.total_glycaemic_index if last_meal else 0),
+        "avgResponse": avg_response,
     }
 
     return Response(response_data, status=status.HTTP_200_OK)
