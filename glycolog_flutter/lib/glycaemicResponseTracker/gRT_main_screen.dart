@@ -1,3 +1,5 @@
+// ignore_for_file: avoid_print
+
 import 'package:Glycolog/services/auth_service.dart';
 import 'package:flutter/material.dart';
 import 'package:Glycolog/home/base_screen.dart';
@@ -17,6 +19,7 @@ class _GRTMainScreenState extends State<GRTMainScreen> {
   double dailyGoalProgress = 0;
   String? mealInsight;
   List<dynamic> mealLogHistory = [];
+  List<dynamic> allMealLogs = [];
 
   @override
   void initState() {
@@ -46,8 +49,10 @@ class _GRTMainScreenState extends State<GRTMainScreen> {
               (data['dailyGoalProgress'] as num?)?.toDouble() ?? 0.0;
           mealInsight = data['mealInsight'] ?? "No insights available";
           mealLogHistory = data['mealLogHistory'] ?? [];
+          allMealLogs = data['allMealLogs'] ?? [];
           isLoading = false;
         });
+        print('Fetched allMealLogs: $allMealLogs and Fetched mealLogHistory: $mealLogHistory');
       } else {
         setState(() {
           errorMessage = 'Failed to load data';
@@ -141,7 +146,7 @@ class _GRTMainScreenState extends State<GRTMainScreen> {
                   ),
                   const SizedBox(height: 30),
 
-                  // Meal Log History Section
+                  // Recent Meal Log History Section
                   Container(
                     width: screenWidth,
                     decoration: BoxDecoration(
@@ -160,7 +165,7 @@ class _GRTMainScreenState extends State<GRTMainScreen> {
                     child: Column(
                       children: [
                         Text(
-                          "Meal Log History",
+                          "Recent Meal Logs",
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
@@ -170,11 +175,11 @@ class _GRTMainScreenState extends State<GRTMainScreen> {
                         const SizedBox(height: 10),
                         SizedBox(
                           height: 250,
-                          child: mealLogHistory.isNotEmpty
+                          child: allMealLogs.isNotEmpty
                               ? ListView.builder(
-                                  itemCount: mealLogHistory.length,
+                                  itemCount: allMealLogs.length,
                                   itemBuilder: (context, index) {
-                                    final meal = mealLogHistory[index];
+                                    final meal = allMealLogs[index];
                                     return ListTile(
                                       title: Text(meal['name']),
                                       subtitle: Text(meal['timestamp']),
@@ -182,11 +187,11 @@ class _GRTMainScreenState extends State<GRTMainScreen> {
                                   },
                                 )
                               : Center(
-                                  child: Text('No meal history available')),
+                                  child: Text('No recent meal logs available')),
                         ),
                         ElevatedButton(
                           onPressed: () {
-                            Navigator.pushNamed(context, '/grt-log-history');
+                            Navigator.pushNamed(context, '/meal-log-history');
                           },
                           child: const Text("See All Logs"),
                         ),

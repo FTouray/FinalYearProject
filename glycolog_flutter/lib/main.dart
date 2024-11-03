@@ -1,3 +1,5 @@
+import 'package:Glycolog/glycaemicResponseTracker/gRT_history_detail_screen.dart';
+import 'package:Glycolog/glycaemicResponseTracker/gRT_meal_log_history_screen.dart';
 import 'package:Glycolog/glycaemicResponseTracker/gRT_meal_log_screen.dart';
 import 'package:Glycolog/services/auth_service.dart';
 import 'package:flutter/material.dart';
@@ -154,6 +156,12 @@ class _MyAppState extends State<MyApp> {
         },
         '/glycaemic-response-main': (context) => GRTMainScreen(),
         '/log-meal': (context) => MealSelectionScreen(),
+        '/meal-log-history': (context) => MealLogHistoryScreen(),
+        '/meal-log-details': (context) {
+          final args = ModalRoute.of(context)?.settings.arguments
+              as Map<String, dynamic>?;
+          return MealDetailScreen(meal: args ?? {});
+        },
       },
     );
   }

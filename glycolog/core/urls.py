@@ -4,7 +4,9 @@ from .views import (
     list_categories,
     list_food_items_by_category,
     log_glucose,
-    log_meal, 
+    log_meal,
+    meal_log_detail,
+    meal_log_history, 
     register_user, 
     login_user, 
     settings_view, 
@@ -38,6 +40,9 @@ urlpatterns = [
     # Glycaemic Response Tracker endpoints
     path("glycaemic-response-main/", glycaemic_response_main, name="glycaemic-response-main" ),
     path("log-meal/", log_meal, name="log-meal"),  # Endpoint to log a meal
+    # Meal log endpoints
+    path("meal-log/history/", meal_log_history, name="meal-log-history"),  # Endpoint to get meal log history
+    path("meal-log/<int:meal_id>/", meal_log_detail, name="meal-log-detail"),  # Endpoint to get meal details by ID
     
     # Food data endpoints
     path("categories/", list_categories, name="list_categories"),

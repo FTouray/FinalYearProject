@@ -157,16 +157,17 @@ def settings_view(request):
 def glycaemic_response_main(request):
     # Retrieve recent glycaemic logs for this user
     user = request.user  # Get current user
-    logs = GlycaemicResponseTracker.objects.filter(user=user).order_by("-created_at")[
-        :10
-    ]  # Most recent 10 logs
+    logs = GlycaemicResponseTracker.objects.filter(user=user).order_by("-created_at")
 
     # Calculate last, average, and graph points for glycaemic response
     last_log = logs[0].gi_level if logs else None
     average_log = sum(log.gi_level for log in logs) / len(logs) if logs else None
 
+    # Retrieve all meal logs for the user
+    all_meal_logs = Meal.objects.filter(user=user).order_by("-timestamp")
+
     # Retrieve the last meal for the user
-    last_meal = Meal.objects.filter(user=user).order_by("-timestamp").first()
+    last_meal = all_meal_logs.first()
     if last_meal is None:
         print("No meals found for the user.")
     else:
@@ -189,8 +190,17 @@ def glycaemic_response_main(request):
         ],
         "lastResponse": (last_meal.total_glycaemic_index if last_meal else 0),
         "avgResponse": avg_response,
+        "all_meal_logs": [
+            {
+                "mealId": meal.mealId,
+                "timestamp": meal.timestamp,
+                "total_glycaemic_index": meal.total_glycaemic_index,
+                "total_carbs": meal.total_carbs,
+            }
+            for meal in all_meal_logs
+        ],
     }
-
+    print(all_meal_logs)
     return Response(response_data, status=status.HTTP_200_OK)
 
 
@@ -225,3 +235,31 @@ def list_food_items_by_category(request, category_id):
         return Response(serializer.data)
     except Exception as e:
         return Response({"error": str(e)}, status=500)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def meal_log_history(request):
+    user = request.user  # Get the current authenticated user
+    meals = Meal.objects.filter(user=user).order_by(
+        "-timestamp"
+    )  # Get all meals for the user
+
+    # Retrieve filter parameters from the request
+    start_date = request.GET.get("start_date")
+    end_date = request.GET.get("end_date")
+
+    # Apply date range filtering if both dates are provided
+    if start_date and end_date:
+        meals = meals.filter(timestamp__range=[start_date, end_date])
+
+    # Serialize the meals data
+    serializer = MealSerializer(meals, many=True)
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def meal_log_detail(request, meal_id):
+    meal = get_object_or_404(Meal, id=meal_id, user=request.user)  # Ensure the meal belongs to the user
+    serializer = MealSerializer(meal)
+    return Response(serializer.data, status=status.HTTP_200_OK)
