@@ -18,7 +18,6 @@ class _GRTMainScreenState extends State<GRTMainScreen> {
   int? avgResponse;
   double dailyGoalProgress = 0;
   String? mealInsight;
-  List<dynamic> mealLogHistory = [];
   List<dynamic> allMealLogs = [];
 
   @override
@@ -48,11 +47,10 @@ class _GRTMainScreenState extends State<GRTMainScreen> {
           dailyGoalProgress =
               (data['dailyGoalProgress'] as num?)?.toDouble() ?? 0.0;
           mealInsight = data['mealInsight'] ?? "No insights available";
-          mealLogHistory = data['mealLogHistory'] ?? [];
-          allMealLogs = data['allMealLogs'] ?? [];
+          allMealLogs = data['all_meal_logs'] ?? [];
           isLoading = false;
         });
-        print('Fetched allMealLogs: $allMealLogs and Fetched mealLogHistory: $mealLogHistory');
+        print('Fetched allMealLogs: $allMealLogs');
       } else {
         setState(() {
           errorMessage = 'Failed to load data';
@@ -177,11 +175,11 @@ class _GRTMainScreenState extends State<GRTMainScreen> {
                           height: 250,
                           child: allMealLogs.isNotEmpty
                               ? ListView.builder(
-                                  itemCount: allMealLogs.length,
+                                  itemCount: allMealLogs.length > 5 ? 5 : allMealLogs.length,
                                   itemBuilder: (context, index) {
                                     final meal = allMealLogs[index];
                                     return ListTile(
-                                      title: Text(meal['name']),
+                                      title: Text('Meal ID: ${meal['mealId'].toString()}'),
                                       subtitle: Text(meal['timestamp']),
                                     );
                                   },
