@@ -214,6 +214,10 @@ def log_meal(request):
 
     serializer = MealSerializer(data=data, context={'request': request})
 
+    # Ensure 'food_item_ids' holds the food IDs for the meal
+    food_item_ids = data.pop("food_items", [])
+    data["food_items"] = food_item_ids  # Prepare to save food item IDs
+
     if serializer.is_valid():
         serializer.save()  # This calls the `create` method on the serializer
         return Response({"message": "Meal logged successfully", "meal": serializer.data}, status=status.HTTP_201_CREATED)

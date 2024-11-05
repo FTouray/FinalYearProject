@@ -19,6 +19,8 @@ class _MealLogHistoryScreenState extends State<MealLogHistoryScreen> {
   String? errorMessage;
   DateTime? _startDate;
   DateTime? _endDate;
+  double? _minGI;
+  double? _maxGI;
 
   @override
   void initState() {
@@ -95,7 +97,15 @@ class _MealLogHistoryScreenState extends State<MealLogHistoryScreen> {
               (logDate.isBefore(_endDate!) ||
                   logDate.isAtSameMomentAs(_endDate!));
         }
-        return dateFilter;
+        bool giFilter = true;
+        if (_minGI != null) {
+          giFilter = giFilter && (log['total_glycaemic_index'] >= _minGI!);
+        }
+        if (_maxGI != null) {
+          giFilter = giFilter && (log['total_glycaemic_index'] <= _maxGI!);
+        }
+
+        return dateFilter && giFilter;
       }).toList();
     });
   }
@@ -134,6 +144,9 @@ class _MealLogHistoryScreenState extends State<MealLogHistoryScreen> {
                   // Date Range Filter Section
                   _buildDateFilterSection(),
                   const SizedBox(height: 20),
+                   // Total GI Filter Section
+                  _buildGIInputSection(),
+                  const SizedBox(height: 20),
                   // Apply Filters Button
                   Center(
                     child: ElevatedButton(
@@ -146,7 +159,8 @@ class _MealLogHistoryScreenState extends State<MealLogHistoryScreen> {
                           borderRadius: BorderRadius.circular(12.0),
                         ),
                       ),
-                      child: const Text('Apply Filters'),
+                      child: const Text('Apply Filters',
+                          style: TextStyle(fontSize: 18, color: Colors.white)),
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -229,5 +243,50 @@ class _MealLogHistoryScreenState extends State<MealLogHistoryScreen> {
       ),
     );
   }
-}
 
+  Widget _buildGIInputSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Filter by Total GI:',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                decoration: const InputDecoration(
+                  labelText: 'Min GI',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.number,
+                onChanged: (value) {
+                  setState(() {
+                    _minGI = value.isNotEmpty ? double.tryParse(value) : null;
+                  });
+                },
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: TextField(
+                decoration: const InputDecoration(
+                  labelText: 'Max GI',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.number,
+                onChanged: (value) {
+                  setState(() {
+                    _maxGI = value.isNotEmpty ? double.tryParse(value) : null;
+                  });
+                },
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}

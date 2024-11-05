@@ -201,12 +201,6 @@ class _GlucoseLogScreenState extends State<GlucoseLogScreen> {
   // Function to get graph data points (only for today)
   List<FlSpot> getGraphData() {
     List<Map<String, dynamic>> todayLogs = filterLogsForToday(glucoseLogs);
-    // return todayLogs
-    //     .asMap()
-    //     .entries
-    //     .map((e) => FlSpot(
-    //         e.key.toDouble(), parseDouble(e.value['glucose_level']) ?? 0.0))
-    //     .toList();
     return todayLogs.map((log) {
       DateTime logDate = DateTime.parse(log['timestamp']);
       double hour =
@@ -484,50 +478,58 @@ class _GlucoseLogScreenState extends State<GlucoseLogScreen> {
                         ),
                       ),
                       ),
-                      const SizedBox(height: 10),
-                      // Log History section
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "Recent Logs",
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.blue[800],
+                      const SizedBox(height: 30),
+                      // Recent Glucose Log History Section
+                      Container(
+                        width: screenWidth,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16.0),
+                          boxShadow: [
+                            BoxShadow(
+                              blurRadius: 8,
+                              color: Colors.grey.shade300,
+                              spreadRadius: 3,
+                              offset: Offset(0, 4),
                             ),
-                          ),
-                          const SizedBox(height: 10),
-                          // Limiting the height of recent logs to a fixed size
-                          SizedBox(
-                            height:
-                                250, // Set a fixed height for the log history
-                            child: ListView.builder(
-                              itemCount: glucoseLogs.length > 5
-                                  ? 5
-                                  : glucoseLogs.length,
-                              shrinkWrap:
-                                  true, // Makes the ListView take up only as much space as needed
-                              physics:
-                                  NeverScrollableScrollPhysics(), // Disable scrolling for the logs
-                              itemBuilder: (context, index) {
-                                final log = glucoseLogs[index];
-                                return ListTile(
-                                  title: Text(
-                                    'Glucose Level: ${log['glucose_level']?.toStringAsFixed(measurementUnit == 'mg/dL' ? 0 : 1) ?? 'N/A'} $measurementUnit',
-                                  ),
-                                  subtitle: Text('Date: ${log['timestamp']}'),
-                                );
+                          ],
+                        ),
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          children: [
+                            Text(
+                              "Recent Glucose Logs",
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.blue[800],
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            SizedBox(
+                              height: 250,
+                              child: glucoseLogs.isNotEmpty
+                                  ? ListView.builder(
+                                      itemCount: glucoseLogs.length > 5 ? 5 : glucoseLogs.length,
+                                      itemBuilder: (context, index) {
+                                        final log = glucoseLogs[index];
+                                        return ListTile(
+                                          title: Text('Glucose Level: ${log['glucose_level']?.toStringAsFixed(measurementUnit == 'mg/dL' ? 0 : 1) ?? 'N/A'} $measurementUnit'),
+                                          subtitle: Text('Timestamp: ${log['timestamp']}'),
+                                        );
+                                      },
+                                    )
+                                  : Center(
+                                      child: Text('No recent glucose logs available')),
+                            ),
+                            ElevatedButton(
+                              onPressed: () {
+                                Navigator.pushNamed(context, '/log-history');
                               },
+                              child: const Text("See All Logs"),
                             ),
-                          ),
-                          ElevatedButton(
-                            onPressed: () {
-                              Navigator.pushNamed(context, '/log-history');
-                            },
-                            child: const Text("See All Logs"),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -573,8 +575,7 @@ class CircleDisplay extends StatelessWidget {
               child: icon != null
                   ? Icon(icon, size: 40, color: Colors.white)
                   : Text(
-                      formattedValue ??
-                          value.toString(), // Use formatted value if provided
+                      formattedValue ?? value.toString(), // Use formatted value if provided
                       style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,

@@ -85,16 +85,14 @@ class FoodItemSerializer(serializers.ModelSerializer):
 
 # Meal Serializer
 class MealSerializer(serializers.ModelSerializer):
-    food_item_ids = serializers.ListField(
-        child=serializers.IntegerField(), write_only=True
-    )  # IDs for food items to log
+    food_items = FoodItemSerializer(many=True, read_only=True)
 
     class Meta:
         model = Meal
         fields = [
             "mealId",
             "user",
-            "food_item_ids",
+            "food_items",
             "total_glycaemic_index",
             "total_carbs",
             "timestamp",
@@ -109,9 +107,8 @@ class MealSerializer(serializers.ModelSerializer):
         request = self.context.get("request")
         if request and hasattr(request, "user"):
             validated_data["user"] = request.user  # Set the logged-in user
-        food_item_ids = validated_data.pop("food_item_ids")  # Extract food item IDs
+        food_item_ids = validated_data.pop("food_items", [])  # Extract food item IDs
         meal = Meal.objects.create(**validated_data)  # Create the meal instance
-
 
         for food_item_id in food_item_ids:
             food_item = get_object_or_404(
