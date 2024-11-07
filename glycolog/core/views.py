@@ -1,3 +1,6 @@
+from datetime import datetime
+from django.http import JsonResponse
+import pandas as pd
 from rest_framework import status
 from rest_framework.response import Response
 from django.contrib.auth import authenticate
@@ -11,9 +14,18 @@ from rest_framework.decorators import api_view, permission_classes
 from django.shortcuts import get_object_or_404, render
 from django.db.models import Q
 from django.db.models import Avg
+import joblib
 
 
 User = get_user_model()
+
+
+def parse_date(date_str):
+    try:
+        return datetime.strptime(date_str, "%d-%m-%Y")
+    except ValueError:
+        return None
+
 
 @api_view(['POST'])
 @permission_classes([AllowAny])  # Allow any user to access this endpoint
@@ -86,8 +98,8 @@ def glucose_log_history(request):
     logs = GlucoseLog.objects.filter(user=user)  # Get all logs for the user
 
     # Retrieve filter parameters from the request
-    start_date = request.GET.get('start_date')
-    end_date = request.GET.get('end_date')
+    start_date = parse_date(request.GET.get("start_date"))
+    end_date = parse_date(request.GET.get("end_date"))
     glucose_level = request.GET.get('glucose_level')
     filter_type = request.GET.get('filter_type', 'equal')  # Optional, defaults to 'equal'
 
@@ -183,7 +195,6 @@ def glycaemic_response_main(request):
                 "id": log.id,
                 "created_at": log.created_at,
                 "gi_level": log.gi_level,
-                "response_patterns": log.response_patterns,
             }
             for log in logs
         ],
@@ -249,8 +260,8 @@ def meal_log_history(request):
     )  # Get all meals for the user
 
     # Retrieve filter parameters from the request
-    start_date = request.GET.get("start_date")
-    end_date = request.GET.get("end_date")
+    start_date = parse_date(request.GET.get("start_date"))
+    end_date = parse_date(request.GET.get("end_date"))
 
     # Apply date range filtering if both dates are provided
     if start_date and end_date:
@@ -266,3 +277,151 @@ def meal_log_detail(request, meal_id):
     meal = get_object_or_404(Meal, id=meal_id, user=request.user)  # Ensure the meal belongs to the user
     serializer = MealSerializer(meal)
     return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def glycaemic_response_analysis(request):
+    user = request.user
+    insights = generate_insight(user)
+    return Response({"insights": insights})
+
+glycaemic_model = joblib.load("ml/ml_models/gly_glucose_response_model.joblib")
+
+
+def generate_insight(user):
+    meals = user.meals.all()  # Fetch meals for the user
+    insights = []
+
+    for meal in meals:
+        food_items = [item.name for item in meal.food_items.all()]
+        total_gi = meal.total_glycaemic_index  # The total GI of the meal
+        total_carbs = meal.total_carbs  # The total carbs in the meal
+
+        # Predict the glucose response based on meal's total GI and total carbs
+        features = [[total_gi, total_carbs]]
+        response = glycaemic_model.predict(features)[0]
+
+        if user.profile.measurement_unit == "mmol/L":
+            response = response / 18.01559  # Convert mg/dL to mmol/L if needed
+
+        # Meal-based recommendation
+        meal_recommendation = generate_recommendation(user, response)
+
+        # Detailed insights per food item
+        food_item_insights = []
+        for food in meal.food_items.all():
+            food_gi = food.glycaemic_index
+            food_recommendation = generate_recommendation(
+                user, response, food_item=food.name
+            )
+            food_item_insights.append(
+                {
+                    "food_item": food.name,
+                    "food_gi": food_gi,
+                    "recommendation": food_recommendation,
+                }
+            )
+
+        # Add insights to the list for this meal
+        insights.append(
+            {
+                "meal_id": meal.mealId,
+                "food_items": food_items,
+                "total_glycaemic_index": total_gi,
+                "total_carbs": total_carbs,
+                "avg_glucose_level": response,
+                "meal_recommendation": meal_recommendation,
+                "food_item_insights": food_item_insights,
+                "timestamp": meal.timestamp.strftime("%d-%m-%Y %H:%M:%S"),
+            }
+        )
+
+    return insights
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def get_insights(request):
+    user = request.user
+    meals = Meal.objects.filter(user=user).prefetch_related("food_items")
+    insights = []
+
+    for meal in meals:
+        food_items = [item.name for item in meal.food_items.all()]
+        total_gi = sum(item.glycaemic_index for item in meal.food_items.all())
+        total_carbs = sum(
+            item.carbs for item in meal.food_items.all() if item.carbs is not None
+        )
+
+        # Generate a dataframe for meal prediction
+        df = pd.DataFrame(
+            {
+                "food_items": [", ".join(food_items)],
+                "total_glycaemic_index": [total_gi],
+                "total_carbs": [total_carbs],
+            }
+        )
+        predictions = glycaemic_model.predict(df)
+
+        meal_recommendation = generate_recommendation(user, predictions[0])
+
+        food_item_insights = []
+        for food_item in meal.food_items.all():
+            food_gi = food_item.glycaemic_index
+            food_item_recommendation = generate_recommendation(
+                user, predictions[0], food_item=food_item.name
+            )
+            food_item_insights.append(
+                {
+                    "food_item": food_item.name,
+                    "food_gi": food_gi,
+                    "recommendation": food_item_recommendation,
+                }
+            )
+
+        insights.append(
+            {
+                "meal_id": meal.mealId,
+                "food_items": food_items,
+                "total_glycaemic_index": total_gi,
+                "total_carbs": total_carbs,
+                "avg_glucose_level": predictions[0],
+                "meal_recommendation": meal_recommendation,
+                "food_item_insights": food_item_insights,
+            }
+        )
+
+    return JsonResponse({"insights": insights})
+
+
+def generate_recommendation(user, predicted_glucose_level, food_item=None):
+    """
+    Generate a recommendation based on the predicted glucose level, GI of food, or meal characteristics.
+    """
+    if user.profile.measurement_unit == "mmol/L":
+        # Convert mg/dL to mmol/L if necessary
+        if predicted_glucose_level > 10:
+            recommendation = "High glucose response detected. Consider reducing high-GI foods in this meal."
+        elif predicted_glucose_level > 7.8:
+            recommendation = "Moderate glucose response. You may want to balance the meal with more fiber or protein."
+        elif predicted_glucose_level < 3.9:
+            recommendation = "Low glucose response. Ensure you have enough energy sources in your meals."
+        else:
+            recommendation = "Normal glucose response. Keep up the good work!"
+    else:
+        # Default to mg/dL
+        if predicted_glucose_level > 180:
+            recommendation = "High glucose response detected. Consider reducing high-GI foods in this meal."
+        elif predicted_glucose_level > 140:
+            recommendation = "Moderate glucose response. You may want to balance the meal with more fiber or protein."
+        elif predicted_glucose_level < 70:
+            recommendation = "Low glucose response. Ensure you have enough energy sources in your meals."
+        else:
+            recommendation = "Normal glucose response. Keep up the good work!"
+
+    # Food item-specific recommendation
+    if food_item:
+        recommendation = f"Food: {food_item}. " + recommendation
+
+    return recommendation
