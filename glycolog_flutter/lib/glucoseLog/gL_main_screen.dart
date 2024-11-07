@@ -73,7 +73,9 @@ class _GlucoseLogScreenState extends State<GlucoseLogScreen> {
     if (token != null) {
       try {
         final response = await http.get(
-          Uri.parse('http://192.168.1.19:8000/api/glucose-log/'),
+          Uri.parse('http://192.168.1.19:8000/api/glucose-log/'), // Physical Device
+        // Uri.parse('http://147.252.148.38:8000/api/glucose-log/'),
+        // Uri.parse('http://172.20.10.3:8000/api/glucose-log/'), // Hotspot
           headers: {
             'Authorization': 'Bearer $token', // Include token in headers
           },

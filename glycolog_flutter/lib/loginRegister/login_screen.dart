@@ -32,7 +32,7 @@ class _LoginScreenState extends State<LoginScreen> {
       final response = await http.post(
         // Uri.parse('http://10.0.2.2:8000/api/login/'), // For Android Emulator
         Uri.parse('http://192.168.1.19:8000/api/login/'), // For Physical Device
-        // Uri.parse('http://147.252.148.38:8000/api/login/'), // For Eduroam API endpoint
+       // Uri.parse('http://172.20.10.3:8000/api/login/'), // Hotspot
         // Uri.parse('http://192.168.40.184:8000/api/login/'), // Ethernet IP
 
         headers: {'Content-Type': 'application/json'},

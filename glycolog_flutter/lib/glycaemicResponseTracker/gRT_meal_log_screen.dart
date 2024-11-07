@@ -65,7 +65,8 @@ class _MealSelectionScreenState extends State<MealSelectionScreen> {
       }
 
       final response = await http.get(
-        Uri.parse('http://192.168.1.19:8000/api/categories'),
+        Uri.parse('http://192.168.1.19:8000/api/categories'), // Physical Device
+        // Uri.parse('http://172.20.10.3:8000/api/categories/'), // Hotspot
         headers: {'Authorization': 'Bearer $token'},
       );
 
@@ -97,8 +98,8 @@ class _MealSelectionScreenState extends State<MealSelectionScreen> {
       }
 
       final response = await http.get(
-        Uri.parse(
-            'http://192.168.1.19:8000/api/categories/$categoryId/food-items/'),
+        Uri.parse('http://192.168.1.19:8000/api/categories/$categoryId/food-items/'), // Physical Device
+       // Uri.parse('http://172.20.10.3:8000/api/categories/$categoryId/food-items/'), // Hotspot
         headers: {'Authorization': 'Bearer $token'},
       );
 

@@ -262,11 +262,10 @@ class _AddGlucoseLevelScreenState extends State<AddGlucoseLevelScreen> {
     String? token = await AuthService().getAccessToken();
     final response = await http.post(
       // Uri.parse('http://10.0.2.2:8000/api/glucose-log/'), // For Emulator API endpoint
-      Uri.parse(
-          'http://192.168.1.19:8000/api/glucose-log/'), // For Physical Device API endpoint
-      // Uri.parse('http://147.252.148.38:8000/api/glucose-log/'), // For Eduroam API endpoint
+      Uri.parse('http://192.168.1.19:8000/api/glucose-log/'), // For Physical Device API endpoint
+         // Uri.parse('http://172.20.10.3:8000/api/glucose-log/'), // Hotspot
       // Uri.parse('http://192.168.40.184:8000/api/glucose-log/'), // Ethernet IP
-
+      
       headers: {
         'Authorization': 'Bearer $token', // Send the token in the header
         'Content-Type': 'application/json',

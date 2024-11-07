@@ -6,6 +6,8 @@ import 'package:Glycolog/home/base_screen.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
+import 'package:shared_preferences/shared_preferences.dart';
+
 class GRTMainScreen extends StatefulWidget {
   @override
   _GRTMainScreenState createState() => _GRTMainScreenState();
@@ -19,35 +21,33 @@ class _GRTMainScreenState extends State<GRTMainScreen> {
   double dailyGoalProgress = 0;
   String? mealInsight;
   List<dynamic> allMealLogs = [];
+  List<dynamic> insights = [];
+  String measurementUnit = 'mg/dL'; // Default measurement unit
 
   @override
   void initState() {
     super.initState();
-    _fetchGlycemicData();
+    _fetchGlycaemicData();
+    _fetchInsights();
   }
 
-  Future<void> _fetchGlycemicData() async {
+  Future<void> _fetchGlycaemicData() async {
     String? token = await AuthService().getAccessToken();
     try {
       final response = await http.get(
-        Uri.parse(
-            'http://192.168.1.19:8000/api/glycaemic-response-main'), 
+        Uri.parse('http://192.168.1.19:8000/api/glycaemic-response-main'),
         headers: {
-          'Authorization': 'Bearer $token', 
+          'Authorization': 'Bearer $token',
         },
       );
-
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         setState(() {
-          lastResponse =
-              (data['lastResponse'] as num?)?.toInt() ?? 0; // Convert to int
-          avgResponse =
-              (data['avgResponse'] as num?)?.toInt() ?? 0; // Convert to int
-          dailyGoalProgress =
-              (data['dailyGoalProgress'] as num?)?.toDouble() ?? 0.0;
+          lastResponse = (data['lastResponse'] as num?)?.toInt() ?? 0;
+          avgResponse = (data['avgResponse'] as num?)?.toInt() ?? 0;
+          dailyGoalProgress = (data['dailyGoalProgress'] as num?)?.toDouble() ?? 0.0;
           mealInsight = data['mealInsight'] ?? "No insights available";
-          allMealLogs = data['all_meal_logs'] ?? [];
+          allMealLogs = data['allMealLogs'] ?? [];
           isLoading = false;
         });
         print('Fetched allMealLogs: $allMealLogs');
@@ -64,6 +64,72 @@ class _GRTMainScreenState extends State<GRTMainScreen> {
       });
     }
   }
+
+   // Fetch user's preferred measurement unit
+  Future<void> _loadUserSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      measurementUnit =
+          prefs.getString('selectedUnit') ?? 'mg/dL'; // Default to mg/dL
+    });
+  }
+
+  // Conversion function to convert mg/dL to mmol/L if necessary
+  double convertToMmolL(double value) {
+    return value / 18.01559; // Convert mg/dL to mmol/L
+  }
+
+  // Function to format the glucose values based on the unit
+  String formatGlucoseValue(double? value) {
+    if (value == null) return '-'; // Return a placeholder if the value is null
+    if (measurementUnit == 'mmol/L') {
+      return value.toStringAsFixed(1); // One decimal point for mmol/L
+    } else {
+      return value.round().toString(); // Nearest whole number for mg/dL
+    }
+  }
+
+ Future<void> _fetchInsights() async {
+    String? token = await AuthService().getAccessToken();
+    try {
+      final response = await http.get(
+        Uri.parse('http://192.168.1.19:8000/api/glycaemic-response-analysis'), // Physical Device
+        // Uri.parse('http://172.20.10.3:8000/api/glycaemic-response-analysis/'), // Hotspot
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      );
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+
+        setState(() {
+          insights = data['insights'].map((insight) {
+            double avgGlucose = insight['avg_glucose_level'];
+            if (measurementUnit == 'mmol/L') {
+              convertToMmolL(avgGlucose);
+            }
+            return {
+              ...insight,
+              'avg_glucose_level': avgGlucose.toStringAsFixed(1),
+              'glucose_unit': measurementUnit,
+            };
+          }).toList();
+          isLoading = false;
+        });
+      } else {
+        setState(() {
+          errorMessage = 'Failed to load insights';
+          isLoading = false;
+        });
+      }
+    } catch (error) {
+      setState(() {
+        errorMessage = 'An error occurred: $error';
+        isLoading = false;
+      });
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -175,11 +241,14 @@ class _GRTMainScreenState extends State<GRTMainScreen> {
                           height: 250,
                           child: allMealLogs.isNotEmpty
                               ? ListView.builder(
-                                  itemCount: allMealLogs.length > 5 ? 5 : allMealLogs.length,
+                                  itemCount: allMealLogs.length > 5
+                                      ? 5
+                                      : allMealLogs.length,
                                   itemBuilder: (context, index) {
                                     final meal = allMealLogs[index];
                                     return ListTile(
-                                      title: Text('Meal ID: ${meal['mealId'].toString()}'),
+                                      title: Text(
+                                          'Meal ID: ${meal['mealId'].toString()}'),
                                       subtitle: Text(meal['timestamp']),
                                     );
                                   },
@@ -196,12 +265,10 @@ class _GRTMainScreenState extends State<GRTMainScreen> {
                       ],
                     ),
                   ),
-
                   const SizedBox(height: 30),
 
-                  // Daily Goals and Insights Section
+                  // Analysis Insights Section
                   Container(
-                    padding: const EdgeInsets.all(16.0),
                     width: screenWidth,
                     decoration: BoxDecoration(
                       color: Colors.white,
@@ -215,10 +282,11 @@ class _GRTMainScreenState extends State<GRTMainScreen> {
                         ),
                       ],
                     ),
+                    padding: const EdgeInsets.all(16.0),
                     child: Column(
                       children: [
                         Text(
-                          "Daily Goals & Insights",
+                          "Glycaemic Response Analysis",
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
@@ -226,27 +294,62 @@ class _GRTMainScreenState extends State<GRTMainScreen> {
                           ),
                         ),
                         const SizedBox(height: 10),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: [
-                            Text("Goal Progress:"),
-                            CircularProgressIndicator(
-                              value: dailyGoalProgress,
-                              backgroundColor: Colors.grey.shade200,
-                              valueColor: AlwaysStoppedAnimation(Colors.blue),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        Text(
-                          "Meal Insights:\n$mealInsight",
-                          style: TextStyle(fontSize: 14, color: Colors.black54),
-                          textAlign: TextAlign.center,
-                        ),
+                        insights.isNotEmpty
+                            ? Column(
+                                children: insights.map((insight) {
+                                  return Card(
+                                    margin: const EdgeInsets.symmetric(
+                                        vertical: 10),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(16.0),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            "Meal ID: ${insight['meal_id']}",
+                                            style: TextStyle(
+                                                fontSize: 18,
+                                                fontWeight: FontWeight.bold),
+                                          ),
+                                          const SizedBox(height: 10),
+                                          Text(
+                                              "Timestamp: ${insight['meal_timestamp']}"),
+                                          const SizedBox(height: 10),
+                                          Text(
+                                              "Average Glucose Level: ${insight['avg_glucose_level']}"),
+                                          const SizedBox(height: 10),
+                                          Text(
+                                              "Total Glycaemic Index: ${insight['total_glycaemic_index']}"),
+                                          const SizedBox(height: 10),
+                                          Text(
+                                              "Total Carbs: ${insight['total_carbs']}"),
+                                          const SizedBox(height: 10),
+                                          Text("Food Items:"),
+                                          ...insight['food_items']
+                                              .map<Widget>((item) {
+                                            return Text(
+                                              "- ${item['name']}: GI ${item['glycaemic_index']}, Carbs ${item['carbs']}g",
+                                            );
+                                          }).toList(),
+                                          const SizedBox(height: 10),
+                                          Text(
+                                            "Recommendation: ${insight['recommendation']}",
+                                            style: TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.green),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                              )
+                            : Center(child: Text("No insights available")),
                       ],
                     ),
                   ),
-
                   const SizedBox(height: 30),
 
                   // Feedback Section
@@ -289,6 +392,7 @@ class _GRTMainScreenState extends State<GRTMainScreen> {
               ),
             ),
     );
+
   }
 }
 
