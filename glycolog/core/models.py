@@ -77,19 +77,19 @@ class GlucoseLog(models.Model):
 # Model to track glycaemic responses linked to a user
 class GlycaemicResponseTracker(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='response_trackers')  # Foreign key linking to user
-    # user_data = JSONField()  # Field to store user-specific data, potentially in JSON format
-    # response_patterns = models.TextField(blank=True, null=True)  # Field to store observed response patterns
+    user_data = JSONField()  # Field to store user-specific data, potentially in JSON format
+    response_patterns = models.TextField(blank=True, null=True)  # Field to store observed response patterns
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     meals = models.ManyToManyField(Meal, related_name="response_trackers_meals", blank=True)  # Add many-to-many relationship
-    insights = models.JSONField(default=dict, blank=True)  # Store insights as a JSON field
+    # insights = models.JSONField(default=dict, blank=True)  # Store insights as a JSON field
 
-    def save_insights(self, insights):
-        """
-        Save the generated insights into the `insights` field.
-        """
-        self.insights = insights
-        self.save()
+    # def save_insights(self, insights):
+    #     """
+    #     Save the generated insights into the `insights` field.
+    #     """
+    #     self.insights = insights
+    #     self.save()
 
 # Virtual health coach model to provide personalized health guidance
 class VirtualHealthCoach(models.Model):

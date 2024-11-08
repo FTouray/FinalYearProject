@@ -128,7 +128,8 @@ class GlycaemicResponseTrackerSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = GlycaemicResponseTracker
-        fields = ["id", "user", "meals", "insights"]
+        fields = ["id", "user", "user_data", "response_patterns", "meals"]
+        # fields = ["id", "user", "meals", "insights"]
 
     def validate_user_data(self, value):
         # Custom validation logic for user_data if needed

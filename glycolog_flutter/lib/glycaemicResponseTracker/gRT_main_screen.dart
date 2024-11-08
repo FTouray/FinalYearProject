@@ -27,8 +27,14 @@ class _GRTMainScreenState extends State<GRTMainScreen> {
   @override
   void initState() {
     super.initState();
-    _fetchGlycaemicData();
-    _fetchInsights();
+    _loadUserSettings(); // Load user settings to get the preferred measurement unit
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _fetchGlycaemicData(); 
+    // _fetchInsights();
   }
 
   Future<void> _fetchGlycaemicData() async {
@@ -47,7 +53,7 @@ class _GRTMainScreenState extends State<GRTMainScreen> {
           avgResponse = (data['avgResponse'] as num?)?.toInt() ?? 0;
           dailyGoalProgress = (data['dailyGoalProgress'] as num?)?.toDouble() ?? 0.0;
           mealInsight = data['mealInsight'] ?? "No insights available";
-          allMealLogs = data['allMealLogs'] ?? [];
+          allMealLogs = data['all_meal_logs'] ?? [];
           isLoading = false;
         });
         print('Fetched allMealLogs: $allMealLogs');
@@ -268,89 +274,89 @@ class _GRTMainScreenState extends State<GRTMainScreen> {
                   const SizedBox(height: 30),
 
                   // Analysis Insights Section
-                  Container(
-                    width: screenWidth,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16.0),
-                      boxShadow: [
-                        BoxShadow(
-                          blurRadius: 8,
-                          color: Colors.grey.shade300,
-                          spreadRadius: 3,
-                          offset: Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      children: [
-                        Text(
-                          "Glycaemic Response Analysis",
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.blue[800],
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        insights.isNotEmpty
-                            ? Column(
-                                children: insights.map((insight) {
-                                  return Card(
-                                    margin: const EdgeInsets.symmetric(
-                                        vertical: 10),
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(16.0),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            "Meal ID: ${insight['meal_id']}",
-                                            style: TextStyle(
-                                                fontSize: 18,
-                                                fontWeight: FontWeight.bold),
-                                          ),
-                                          const SizedBox(height: 10),
-                                          Text(
-                                              "Timestamp: ${insight['meal_timestamp']}"),
-                                          const SizedBox(height: 10),
-                                          Text(
-                                              "Average Glucose Level: ${insight['avg_glucose_level']}"),
-                                          const SizedBox(height: 10),
-                                          Text(
-                                              "Total Glycaemic Index: ${insight['total_glycaemic_index']}"),
-                                          const SizedBox(height: 10),
-                                          Text(
-                                              "Total Carbs: ${insight['total_carbs']}"),
-                                          const SizedBox(height: 10),
-                                          Text("Food Items:"),
-                                          ...insight['food_items']
-                                              .map<Widget>((item) {
-                                            return Text(
-                                              "- ${item['name']}: GI ${item['glycaemic_index']}, Carbs ${item['carbs']}g",
-                                            );
-                                          }).toList(),
-                                          const SizedBox(height: 10),
-                                          Text(
-                                            "Recommendation: ${insight['recommendation']}",
-                                            style: TextStyle(
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.bold,
-                                                color: Colors.green),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  );
-                                }).toList(),
-                              )
-                            : Center(child: Text("No insights available")),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 30),
+                  // Container(
+                  //   width: screenWidth,
+                  //   decoration: BoxDecoration(
+                  //     color: Colors.white,
+                  //     borderRadius: BorderRadius.circular(16.0),
+                  //     boxShadow: [
+                  //       BoxShadow(
+                  //         blurRadius: 8,
+                  //         color: Colors.grey.shade300,
+                  //         spreadRadius: 3,
+                  //         offset: Offset(0, 4),
+                  //       ),
+                  //     ],
+                  //   ),
+                  //   padding: const EdgeInsets.all(16.0),
+                  //   child: Column(
+                  //     children: [
+                  //       Text(
+                  //         "Glycaemic Response Analysis",
+                  //         style: TextStyle(
+                  //           fontSize: 18,
+                  //           fontWeight: FontWeight.bold,
+                  //           color: Colors.blue[800],
+                  //         ),
+                  //       ),
+                  //       const SizedBox(height: 10),
+                  //       insights.isNotEmpty
+                  //           ? Column(
+                  //               children: insights.map((insight) {
+                  //                 return Card(
+                  //                   margin: const EdgeInsets.symmetric(
+                  //                       vertical: 10),
+                  //                   child: Padding(
+                  //                     padding: const EdgeInsets.all(16.0),
+                  //                     child: Column(
+                  //                       crossAxisAlignment:
+                  //                           CrossAxisAlignment.start,
+                  //                       children: [
+                  //                         Text(
+                  //                           "Meal ID: ${insight['meal_id']}",
+                  //                           style: TextStyle(
+                  //                               fontSize: 18,
+                  //                               fontWeight: FontWeight.bold),
+                  //                         ),
+                  //                         const SizedBox(height: 10),
+                  //                         Text(
+                  //                             "Timestamp: ${insight['meal_timestamp']}"),
+                  //                         const SizedBox(height: 10),
+                  //                         Text(
+                  //                             "Average Glucose Level: ${insight['avg_glucose_level']}"),
+                  //                         const SizedBox(height: 10),
+                  //                         Text(
+                  //                             "Total Glycaemic Index: ${insight['total_glycaemic_index']}"),
+                  //                         const SizedBox(height: 10),
+                  //                         Text(
+                  //                             "Total Carbs: ${insight['total_carbs']}"),
+                  //                         const SizedBox(height: 10),
+                  //                         Text("Food Items:"),
+                  //                         ...insight['food_items']
+                  //                             .map<Widget>((item) {
+                  //                           return Text(
+                  //                             "- ${item['name']}: GI ${item['glycaemic_index']}, Carbs ${item['carbs']}g",
+                  //                           );
+                  //                         }).toList(),
+                  //                         const SizedBox(height: 10),
+                  //                         Text(
+                  //                           "Recommendation: ${insight['recommendation']}",
+                  //                           style: TextStyle(
+                  //                               fontSize: 16,
+                  //                               fontWeight: FontWeight.bold,
+                  //                               color: Colors.green),
+                  //                         ),
+                  //                       ],
+                  //                     ),
+                  //                   ),
+                  //                 );
+                  //               }).toList(),
+                  //             )
+                  //           : Center(child: Text("No insights available")),
+                  //     ],
+                  //   ),
+                  // ),
+                  // const SizedBox(height: 30),
 
                   // Feedback Section
                   Container(

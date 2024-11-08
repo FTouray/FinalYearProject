@@ -63,7 +63,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           'phone_number': phone,
           'first_name': firstName,
           'last_name': lastName,
-          'password1': password,
+          'password': password,
           'password2': passwordConfirm,
         }),
       );
