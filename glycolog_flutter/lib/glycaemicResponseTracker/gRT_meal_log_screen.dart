@@ -21,17 +21,11 @@ class FoodItem {
   FoodItem({required this.foodId,required this.name, required this.gi, required this.carbs});
 
   @override
-  bool operator ==(Object other) {
-    return identical(this, other) ||
-        (other is FoodItem &&
-          other.foodId == foodId &&
-            other.name == name &&
-            other.gi == gi &&
-            other.carbs == carbs);
-  }
+bool operator ==(Object other) =>
+      identical(this, other) || (other is FoodItem && other.foodId == foodId);
 
   @override
-  int get hashCode => name.hashCode ^ gi.hashCode ^ carbs.hashCode;
+  int get hashCode => foodId.hashCode;
 }
 
 class MealSelectionScreen extends StatefulWidget {
@@ -46,11 +40,16 @@ class _MealSelectionScreenState extends State<MealSelectionScreen> {
   List<FoodItem> selectedItems = [];
   int? _expandedCategoryId;
   Map<int, List<FoodItem>> _cachedFoodItems = {}; // Cache for food items
+  List<FoodItem> _allFoodItems = [];
+  List<FoodItem> _filteredFoodItems = [];
+  TextEditingController _searchController = TextEditingController();
+  bool _isSearching = false;
 
   @override
   void initState() {
     super.initState();
     _fetchCategories();
+    _searchController.addListener(_filterFoodItems);
   }
 
   Future<void> _fetchCategories() async {
@@ -58,7 +57,7 @@ class _MealSelectionScreenState extends State<MealSelectionScreen> {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       String? token = prefs.getString('access_token');
 
-      if (token == null) {
+      if (token == null || token.isEmpty) {
         print('No access token found');
         await AuthService().logout(context);
         return;
@@ -83,6 +82,7 @@ class _MealSelectionScreenState extends State<MealSelectionScreen> {
       print('Failed to load categories. Error: $e');
     }
   }
+
 
   Future<void> _fetchFoodItems(int categoryId) async {
     if (_cachedFoodItems.containsKey(categoryId)) return;
@@ -113,6 +113,7 @@ class _MealSelectionScreenState extends State<MealSelectionScreen> {
                     carbs: data['carbs'], 
                   ))
               .toList();
+          _allFoodItems.addAll(_cachedFoodItems[categoryId]!);
         });
       } else {
         print('Failed to load food items. Status code: ${response.statusCode}');
@@ -122,6 +123,23 @@ class _MealSelectionScreenState extends State<MealSelectionScreen> {
     }
   }
 
+void _filterFoodItems() {
+  setState(() {
+    _isSearching = _searchController.text.isNotEmpty;
+    if (_isSearching) {
+      if (_expandedCategoryId != null) {
+        // Filter within the expanded category
+        _filteredFoodItems = _cachedFoodItems[_expandedCategoryId]?.where((item) => item.name.toLowerCase().contains(_searchController.text.toLowerCase())).toList() ?? [];
+      } else {
+        // Global search across all items
+        _filteredFoodItems = _allFoodItems.where((item) => item.name.toLowerCase().contains(_searchController.text.toLowerCase())).toList();
+      }
+    } else {
+      _filteredFoodItems = [];
+    }
+  });
+}
+
   void _toggleSelection(FoodItem item) {
     setState(() {
       if (selectedItems.contains(item)) {
@@ -129,6 +147,13 @@ class _MealSelectionScreenState extends State<MealSelectionScreen> {
       } else {
         selectedItems.add(item);
       }
+    });
+  }
+
+  void _clearSearch() {
+    setState(() {
+      _searchController.clear();
+      _isSearching = false;
     });
   }
 
@@ -150,137 +175,182 @@ class _MealSelectionScreenState extends State<MealSelectionScreen> {
     });
   }
 
-  @override
+ 
+@override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Select Meal Items'),
-        backgroundColor: Colors.blue,
-      ),
-      body: _categories.isEmpty
-          ? Center(
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
-              ),
-            )
-          : SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: Column(
-                  children: [
-                    ExpansionPanelList(
-                      expandedHeaderPadding:
-                          const EdgeInsets.symmetric(vertical: 8.0),
-                      elevation: 1,
-                      children: _categories.map<ExpansionPanel>((category) {
-                        final isExpanded = _expandedCategoryId == category.id;
-                        return ExpansionPanel(
-                          headerBuilder:
-                              (BuildContext context, bool isExpanded) {
-                            return Container(
-                              padding: const EdgeInsets.all(8.0),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(15),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black12,
-                                    blurRadius: 8,
-                                    spreadRadius: 2,
-                                    offset: Offset(0, 4),
-                                  ),
-                                ],
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(Icons.fastfood, color: Colors.blue[700]),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      category.name,
-                                      style: const TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          },
-                          body: isExpanded
-                              ? (_cachedFoodItems.containsKey(category.id)
-                                  ? ListView(
-                                      shrinkWrap: true,
-                                      physics:
-                                          const NeverScrollableScrollPhysics(),
-                                      children: _cachedFoodItems[category.id]!
-                                          .map((foodItem) {
-                                        return ListTile(
-                                          title: Text(foodItem.name),
-                                          subtitle: Text(
-                                              'GI: ${foodItem.gi}, Carbs: ${foodItem.carbs}g'),
-                                          trailing: Checkbox(
-                                            value: selectedItems
-                                                .contains(foodItem),
-                                            onChanged: (bool? value) {
-                                              _toggleSelection(foodItem);
-                                            },
-                                          ),
-                                        );
-                                      }).toList(),
-                                    )
-                                  : FutureBuilder<void>(
-                                      future: _fetchFoodItems(category.id),
-                                      builder: (context, snapshot) {
-                                        if (snapshot.connectionState ==
-                                            ConnectionState.waiting) {
-                                          return const Center(
-                                              child:
-                                                  CircularProgressIndicator());
-                                        } else {
-                                          return const SizedBox();
-                                        }
-                                      },
-                                    ))
-                              : const SizedBox(),
-                          isExpanded: isExpanded,
-                        );
-                      }).toList(),
-                      expansionCallback: (int index, bool isExpanded) {
-                        setState(() {
-                          _expandedCategoryId =
-                              isExpanded ?  _categories[index].id : null;
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 20),
-                    Text(
-                      'Selected Items: ${selectedItems.length}',
-                      style: const TextStyle(fontSize: 16, color: Colors.blue),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 20),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blueAccent,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 40, vertical: 15),
-                      ),
-                      onPressed:
-                          selectedItems.isEmpty ? null : _goToConfirmation,
-                      child: const Text(
-                        'Review Meal',
-                        style: TextStyle(fontSize: 18, color: Colors.white),
-                      ),
-                    ),
-                  ],
+    return GestureDetector(
+      onTap: () {
+        // Clear search results on tapping outside
+        FocusScope.of(context).unfocus();
+        _clearSearch();
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Select Meal Items'),
+          backgroundColor: Colors.blue,
+        ),
+        body: _categories.isEmpty
+            ? Center(
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
                 ),
+              )
+            : Column(
+                children: [
+                  // Search Bar
+                  Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: TextField(
+                      controller: _searchController,
+                      onChanged: (value) => _filterFoodItems(),
+                      decoration: InputDecoration(
+                        hintText: 'Search Food Items...',
+                        prefixIcon: Icon(Icons.search),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(15.0),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+
+                  // Dynamic Content based on Search
+                  Expanded(
+                    child: _searchController.text.isNotEmpty &&
+                            _filteredFoodItems.isNotEmpty
+                        ? _buildSearchResults()
+                        : _buildCategoryList(),
+                  ),
+
+                  // Selected Items and Review Button
+                  Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Column(
+                      children: [
+                        Text(
+                          'Selected Items: ${selectedItems.length}',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            color: Colors.blue,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 20),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blueAccent,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 40, vertical: 15),
+                          ),
+                          onPressed:
+                              selectedItems.isEmpty ? null : _goToConfirmation,
+                          child: const Text(
+                            'Review Meal',
+                            style: TextStyle(fontSize: 18, color: Colors.white),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-            ),
+      ),
     );
   }
+
+
+// Widget to display search results
+Widget _buildSearchResults() {
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const BouncingScrollPhysics(),
+      itemCount: _filteredFoodItems.length,
+      itemBuilder: (context, index) {
+        final foodItem = _filteredFoodItems[index];
+        return ListTile(
+          title: Text(foodItem.name),
+          subtitle: Text('GI: ${foodItem.gi}, Carbs: ${foodItem.carbs}g'),
+          trailing: Checkbox(
+            value: selectedItems.contains(foodItem),
+            onChanged: (bool? value) {
+              _toggleSelection(foodItem);
+            },
+          ),
+        );
+      },
+    );
+  }
+
+// Widget to display categories with expandable food items
+Widget _buildCategoryList() {
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const BouncingScrollPhysics(),
+      itemCount: _categories.length,
+      itemBuilder: (context, index) {
+        final category = _categories[index];
+        final isExpanded = _expandedCategoryId == category.id;
+        return Card(
+          elevation: 4, // Adds shadow to the card
+          margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: ExpansionTile(
+            title: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Row(
+                children: [
+                  // Static fast food icon for all categories
+                  Icon(Icons.fastfood, color: Colors.blue),
+                  SizedBox(width: 8),
+                  // Dynamically scale the category name
+                  Expanded(
+                    child: FittedBox(
+                      // Automatically adjusts text size
+                      fit: BoxFit.scaleDown, // Ensures it does not overflow
+                      child: Text(
+                        category.name,
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            initiallyExpanded: isExpanded,
+            onExpansionChanged: (isExpanded) {
+              setState(() {
+                _expandedCategoryId = isExpanded ? category.id : null;
+                if (isExpanded && !_cachedFoodItems.containsKey(category.id)) {
+                  _fetchFoodItems(category.id);
+                }
+              });
+            },
+            children: (_cachedFoodItems[category.id] ?? []).map((foodItem) {
+              return ListTile(
+                title: Text(foodItem.name),
+                subtitle: Text('GI: ${foodItem.gi}, Carbs: ${foodItem.carbs}g'),
+                trailing: Checkbox(
+                  value: selectedItems.contains(foodItem),
+                  onChanged: (bool? value) {
+                    _toggleSelection(foodItem);
+                  },
+                ),
+              );
+            }).toList(),
+          ),
+        );
+      },
+    );
+  }
+
+ @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
 }
