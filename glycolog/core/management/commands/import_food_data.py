@@ -2,6 +2,7 @@ import csv
 from django.core.management.base import BaseCommand
 from core.models import FoodItem, FoodCategory
 
+# File Not In Use - Added As A Back Up In Case High GI Food Cannot Be Gotten From The API
 class Command(BaseCommand):
     help = 'Imports food data from CSV into the database'
 

@@ -1,6 +1,7 @@
 from bs4 import BeautifulSoup
 import pandas as pd
 
+# File Not In Use - Added As A Back Up In Case High GI Food Cannot Be Gotten From The API
 # Step 1: Load the HTML file
 with open('GI WebP.html', 'r', encoding='utf-8') as file:
     html_content = file.read()
