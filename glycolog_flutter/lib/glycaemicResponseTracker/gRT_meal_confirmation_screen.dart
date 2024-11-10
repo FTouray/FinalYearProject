@@ -27,6 +27,8 @@ class _MealConfirmationScreenState extends State<MealConfirmationScreen> {
   double get totalCarbs =>
       widget.selectedItems.fold(0, (sum, item) => sum + item.carbs);
 
+  final TextEditingController mealNameController = TextEditingController();
+
   void _removeItem(FoodItem item) {
     setState(() {
       widget.selectedItems.remove(item);
@@ -56,6 +58,7 @@ class _MealConfirmationScreenState extends State<MealConfirmationScreen> {
           'Content-Type': 'application/json',
         },
         body: json.encode({
+          'name': mealNameController.text.isEmpty ? null : mealNameController.text,
           'timestamp': widget.timestamp.toIso8601String(),
           'food_item_ids': widget.selectedItems.map((item) => item.foodId).toList(),
         }),
@@ -102,6 +105,35 @@ class _MealConfirmationScreenState extends State<MealConfirmationScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            TextField(
+              controller: mealNameController,
+              decoration: InputDecoration(
+                labelText: 'Meal Name (Optional)',
+                hintText: 'Enter a name for your meal...',
+                prefixIcon: Icon(Icons.restaurant, color: Colors.blue[700]),
+                filled: true,
+                fillColor: Colors.blue[50],
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide:
+                      BorderSide(color: Colors.blue.shade200, width: 1.5),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide:
+                      BorderSide(color: Colors.blue.shade800, width: 2.0),
+                ),
+                contentPadding:
+                    const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                hintStyle: TextStyle(color: Colors.blueGrey[300]),
+              ),
+              style: const TextStyle(fontSize: 16),
+            ),
+            const SizedBox(height: 20),
             Expanded(
               child: ListView.separated(
                 itemCount: widget.selectedItems.length,
