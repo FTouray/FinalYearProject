@@ -5,8 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:Glycolog/home/base_screen.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:Glycolog/utils.dart';
 
 class GRTMainScreen extends StatefulWidget {
   @override
@@ -255,7 +255,7 @@ class _GRTMainScreenState extends State<GRTMainScreen> {
                                     return ListTile(
                                       title: Text(
                                           'Meal ID: ${meal['mealId'].toString()}'),
-                                      subtitle: Text(meal['timestamp']),
+                                      subtitle: Text('Timestamp: ${formatTimestamp(meal['timestamp'])}'),
                                     );
                                   },
                                 )

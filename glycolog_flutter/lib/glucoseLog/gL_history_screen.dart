@@ -4,6 +4,7 @@ import 'package:Glycolog/services/auth_service.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'gL_detail_screen.dart';
+import 'package:Glycolog/utils.dart';
 
 class GlucoseLogHistoryScreen extends StatefulWidget {
   const GlucoseLogHistoryScreen({super.key});
@@ -38,14 +39,6 @@ class _GlucoseLogHistoryScreenState extends State<GlucoseLogHistoryScreen> {
     setState(() {
       measurementUnit = prefs.getString('selectedUnit') ?? 'mg/dL';
     });
-  }
-
-  double convertToMmolL(double value) {
-    return value / 18.01559;
-  }
-
-  double convertToMgdL(double value) {
-    return value * 18.01559;
   }
 
   Future<void> fetchGlucoseLogs() async {
@@ -329,7 +322,7 @@ class _GlucoseLogHistoryScreenState extends State<GlucoseLogHistoryScreen> {
           style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         subtitle: Text(
-          'Date: ${log['timestamp']}',
+          'Date: ${formatTimestamp(log['timestamp'])}',
           style: const TextStyle(fontSize: 16, color: Colors.black54),
         ),
         onTap: () {

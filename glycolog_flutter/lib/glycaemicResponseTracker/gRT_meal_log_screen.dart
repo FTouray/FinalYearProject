@@ -127,13 +127,8 @@ void _filterFoodItems() {
   setState(() {
     _isSearching = _searchController.text.isNotEmpty;
     if (_isSearching) {
-      if (_expandedCategoryId != null) {
-        // Filter within the expanded category
-        _filteredFoodItems = _cachedFoodItems[_expandedCategoryId]?.where((item) => item.name.toLowerCase().contains(_searchController.text.toLowerCase())).toList() ?? [];
-      } else {
         // Global search across all items
         _filteredFoodItems = _allFoodItems.where((item) => item.name.toLowerCase().contains(_searchController.text.toLowerCase())).toList();
-      }
     } else {
       _filteredFoodItems = [];
     }

@@ -1,11 +1,11 @@
 import 'dart:convert';
-
 import 'package:Glycolog/glycaemicResponseTracker/gRT_main_screen.dart';
 import 'package:Glycolog/services/auth_service.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'gRT_meal_log_screen.dart';
+import 'package:Glycolog/utils.dart';
 
 class MealConfirmationScreen extends StatefulWidget {
   final List<FoodItem> selectedItems;
@@ -59,7 +59,7 @@ class _MealConfirmationScreenState extends State<MealConfirmationScreen> {
         },
         body: json.encode({
           'name': mealNameController.text.isEmpty ? null : mealNameController.text,
-          'timestamp': widget.timestamp.toIso8601String(),
+          'timestamp': formatTimestamp(widget.timestamp.toIso8601String()),
           'food_item_ids': widget.selectedItems.map((item) => item.foodId).toList(),
         }),
       );

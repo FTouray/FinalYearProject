@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:Glycolog/utils.dart';
 
 class LogDetailsScreen extends StatelessWidget {
   final Map<String, dynamic> logDetails;
@@ -31,7 +32,7 @@ class LogDetailsScreen extends StatelessWidget {
             _buildInfoCard(
               icon: Icons.calendar_today,
               title: 'Date',
-              content: '${logDetails['timestamp']}',
+              content: formatTimestamp(logDetails['timestamp']),
               context: context,
             ),
             const SizedBox(height: 20),

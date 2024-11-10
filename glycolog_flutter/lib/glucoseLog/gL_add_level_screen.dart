@@ -9,7 +9,7 @@ import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'dart:convert';
 import 'gL_confirmation_screen.dart';
-import 'package:intl/intl.dart';
+import 'package:Glycolog/utils.dart';
 
 class AddGlucoseLevelScreen extends StatefulWidget {
   const AddGlucoseLevelScreen({super.key});
@@ -272,7 +272,7 @@ class _AddGlucoseLevelScreenState extends State<AddGlucoseLevelScreen> {
       },
       body: json.encode({
         'glucose_level': glucoseLevel,
-        'timestamp': _formatTimestamp(
+        'timestamp': formatDateTime(
             _selectedDate, _selectedTime), // Use the selected date and time
         'meal_context': _mealContext, // Include meal context
       }),
@@ -293,13 +293,6 @@ class _AddGlucoseLevelScreenState extends State<AddGlucoseLevelScreen> {
         SnackBar(content: Text('Failed to add glucose log. Please try again.')),
       );
     }
-  }
-
-  String _formatTimestamp(DateTime date, TimeOfDay time) {
-    final DateTime dateTime =
-        DateTime(date.year, date.month, date.day, time.hour, time.minute);
-    final DateFormat formatter = DateFormat('dd-MM-yyyy THH:mm:ss');
-    return formatter.format(dateTime);
   }
 
   @override
@@ -376,14 +369,14 @@ class _AddGlucoseLevelScreenState extends State<AddGlucoseLevelScreen> {
 
             // Date Picker
             ListTile(
-              title: Text("Date: ${_selectedDate.toLocal()}".split(' ')[0]),
+              title: Text("Date: ${formatDate(_selectedDate)}"),
               trailing: const Icon(Icons.calendar_today),
               onTap: () => _selectDate(context),
             ),
 
             // Time Picker
             ListTile(
-              title: Text("Time: ${_selectedTime.format(context)}"),
+              title: Text("Time: ${formatTime(_selectedTime)}"),
               trailing: const Icon(Icons.access_time),
               onTap: () => _selectTime(context),
             ),
@@ -436,7 +429,7 @@ class _AddGlucoseLevelScreenState extends State<AddGlucoseLevelScreen> {
     );
   }
 
-  // D                ropdown menu
+  // Dropdown menu
   Widget _buildDropdownMenu({
     required String value,
     required String label,
@@ -455,9 +448,4 @@ class _AddGlucoseLevelScreenState extends State<AddGlucoseLevelScreen> {
       onChanged: onChanged,
     );
   }
-}
-
-// Conversion function to convert mmol/L to mg/dL
-double convertToMgdL(double value) {
-  return value * 18.01559; // Convert mmol/L to mg/dL
 }

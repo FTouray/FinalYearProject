@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:Glycolog/utils.dart';
 
 class GlucoseLogConfirmationScreen extends StatelessWidget {
   final double glucoseLevel;
@@ -47,7 +48,7 @@ class GlucoseLogConfirmationScreen extends StatelessWidget {
             // Date Display
             _buildInfoTile(
               label: 'Date',
-              value: '${selectedDate.toLocal()}'.split(' ')[0],
+              value: formatDate(selectedDate),
               icon: Icons.calendar_today,
               color: Colors.green[600],
             ),
@@ -57,7 +58,7 @@ class GlucoseLogConfirmationScreen extends StatelessWidget {
             // Time Display
             _buildInfoTile(
               label: 'Time',
-              value: selectedTime.format(context),
+              value: formatTime(selectedTime),
               icon: Icons.access_time,
               color: Colors.orange[600],
             ),

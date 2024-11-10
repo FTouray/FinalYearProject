@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:Glycolog/services/auth_service.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:Glycolog/utils.dart';
 
 class MealLogHistoryScreen extends StatefulWidget {
   const MealLogHistoryScreen({super.key});
@@ -225,7 +226,7 @@ class _MealLogHistoryScreenState extends State<MealLogHistoryScreen> {
           style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         subtitle: Text(
-          'Timestamp: ${log['timestamp']}',
+          'Timestamp: ${formatTimestamp(log['timestamp'])}',
           style: const TextStyle(fontSize: 16, color: Colors.black54),
         ),
         trailing: Text(

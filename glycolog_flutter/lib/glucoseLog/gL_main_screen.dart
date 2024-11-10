@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'dart:convert'; // For JSON handling
 import 'package:shared_preferences/shared_preferences.dart'; // For retrieving user settings
 import '../home/base_screen.dart'; // Import BaseScreen
+import 'package:Glycolog/utils.dart';
 
 class GlucoseLogScreen extends StatefulWidget {
   const GlucoseLogScreen({super.key});
@@ -45,25 +46,10 @@ class _GlucoseLogScreenState extends State<GlucoseLogScreen> {
     });
   }
 
-  // Conversion function to convert mg/dL to mmol/L if necessary
-  double convertToMmolL(double value) {
-    return value / 18.01559; // Convert mg/dL to mmol/L
-  }
-
   // Safe parsing for double values, returns null if the value cannot be parsed
   double? parseDouble(dynamic value) {
     if (value == null) return null;
     return double.tryParse(value.toString());
-  }
-
-  // Function to format the glucose values based on the unit
-  String formatGlucoseValue(double? value) {
-    if (value == null) return '-'; // Return a placeholder if the value is null
-    if (measurementUnit == 'mmol/L') {
-      return value.toStringAsFixed(1); // One decimal point for mmol/L
-    } else {
-      return value.round().toString(); // Nearest whole number for mg/dL
-    }
   }
 
   // Fetch glucose logs from the server
@@ -172,8 +158,7 @@ class _GlucoseLogScreenState extends State<GlucoseLogScreen> {
           : lastLog;
 
       // Re-filter today's logs for the graph
-      glucoseLogs = filterLogsForToday(
-          glucoseLogs); // This can be removed if the graph only uses all logs
+      glucoseLogs = filterLogsForToday(glucoseLogs); 
       // Update the graph data points
       graphData = getGraphData();
 
@@ -313,8 +298,7 @@ class _GlucoseLogScreenState extends State<GlucoseLogScreen> {
                                   label: "Last Log",
                                   color: getPointColor(lastLog ?? 0.0),
                                   measurementUnit: measurementUnit,
-                                  formattedValue: formatGlucoseValue(
-                                      lastLog), // Use formatted value
+                                  formattedValue: formatGlucoseValue(lastLog, measurementUnit), // Use formatted value
                                 ),
                                 // Add Log Circle
                                 CircleDisplay(
@@ -332,8 +316,7 @@ class _GlucoseLogScreenState extends State<GlucoseLogScreen> {
                                   label: "Average",
                                   color: getPointColor(averageLog ?? 0.0),
                                   measurementUnit: measurementUnit,
-                                  formattedValue: formatGlucoseValue(
-                                      averageLog), // Use formatted value
+                                  formattedValue: formatGlucoseValue(averageLog, measurementUnit), // Use formatted value
                                 ),
                               ],
                             ),
@@ -517,7 +500,7 @@ class _GlucoseLogScreenState extends State<GlucoseLogScreen> {
                                         final log = glucoseLogs[index];
                                         return ListTile(
                                           title: Text('Glucose Level: ${log['glucose_level']?.toStringAsFixed(measurementUnit == 'mg/dL' ? 0 : 1) ?? 'N/A'} $measurementUnit'),
-                                          subtitle: Text('Timestamp: ${log['timestamp']}'),
+                                          subtitle: Text('Timestamp: ${formatTimestamp(log['timestamp'])}'),
                                         );
                                       },
                                     )
