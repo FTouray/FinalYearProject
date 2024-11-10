@@ -9,10 +9,12 @@ class CustomUser(AbstractUser):
     phone_number = models.CharField(max_length=15, blank=True, null=True)  # Optional phone number field
     first_name = models.CharField(max_length=30, blank=False, null=False)  # First name, required
     last_name = models.CharField(max_length=30, blank=False, null=False)  # Last name, required
+    meal_count = models.IntegerField(default=0) # Field to store the number of meals logged by the user
 
     def __str__(self):
         return self.username  # Return username when the user object is printed
 
+# Model to store food categories
 class FoodCategory(models.Model):
     name = models.CharField(max_length=100)  # Name of the category
 
@@ -29,17 +31,18 @@ class FoodItem(models.Model):
     
     def __str__(self):
         return self.name
-
+    
 # Model to store meal details linked to the glycaemic response tracker
 class Meal(models.Model):
     mealId = models.AutoField(primary_key=True, null=False)  # Primary key for the meal
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='meals') # Foreign key linking to user
-    tracker = models.ForeignKey('GlycaemicResponseTracker', on_delete=models.CASCADE, related_name='meals_related', blank=True, null=True)  # Foreign key linking to the tracker
+    user_meal_id = models.IntegerField()
+    name = models.CharField(max_length=100, blank=True, null=True)  # Optional meal name
     food_items = models.ManyToManyField(FoodItem, related_name='meals')  # Link to multiple food items  # Field to store food items in the meal
     timestamp = models.DateTimeField(auto_now_add=True)  # Automatically set timestamp when meal is logged
 
     class Meta:
-        indexes = [models.Index(fields=['tracker']),]  # Index for faster lookups by tracker
+        unique_together = ("user", "user_meal_id")  # Ensures unique user-specific IDs
 
     def __str__(self):
         return f"Meal logged by {self.user.username} on {self.timestamp}"
@@ -63,16 +66,16 @@ class GlucoseLog(models.Model):
         ('pre_meal', 'Pre-Meal'),
         ('post_meal', 'Post-Meal'),
     ])  # Context of glucose level logging    
-    meal = models.ForeignKey(Meal, on_delete=models.SET_NULL, null=True, blank=True)  # Add foreign key to Meal
+    # meal = models.ForeignKey(Meal, on_delete=models.SET_NULL, null=True, blank=True)  # Add foreign key to Meal
     class Meta:
         indexes = [models.Index(fields=['user']),]  # Index for faster lookups by user
         constraints = [
             models.CheckConstraint(check=Q(glucose_level__gte=0), name='glucose_level_gte_0'),  # Constraint to ensure glucose level is non-negative
         ]
-        
+
+
     def __str__(self):
         return f"{self.user.username} - {self.glucose_level} at {self.timestamp}"
-
 
 # Model to track glycaemic responses linked to a user
 class GlycaemicResponseTracker(models.Model):
@@ -90,7 +93,7 @@ class GlycaemicResponseTracker(models.Model):
     #     """
     #     self.insights = insights
     #     self.save()
-
+    
 # Virtual health coach model to provide personalized health guidance
 class VirtualHealthCoach(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='health_coach')  # Foreign key linking to user
@@ -101,19 +104,19 @@ class VirtualHealthCoach(models.Model):
         constraints = [
             models.CheckConstraint(check=Q(motivational_messages__isnull=False), name='motivational_messages_not_null'),  # Ensure messages are not null
         ]
-
+        
 # Model to store medication details
 class Medication(models.Model):
     name = models.CharField(max_length=100, unique=True)  # Unique name for each medication
     dosage = models.CharField(max_length=100)  # Dosage instructions for the medication
     frequency = models.CharField(max_length=100)  # Frequency of medication intake
-
+    
 # Model to track medication adherence for each user
 class MedicationTracker(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='medication_trackers')  # Foreign key linking to user
     medication_list = models.ManyToManyField(Medication)  # Many-to-many relationship with Medication
     adherence_data = models.TextField(blank=True, null=True)  # Field to store adherence logs or notes
-
+    
 # Model to log hypo/hyperglycaemia alerts for users
 class HypoHyperGlycaemiaAlert(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='alerts')  # Foreign key linking to user
