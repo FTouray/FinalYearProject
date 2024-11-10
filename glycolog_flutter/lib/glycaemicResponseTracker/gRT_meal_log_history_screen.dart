@@ -222,7 +222,7 @@ class _MealLogHistoryScreenState extends State<MealLogHistoryScreen> {
       child: ListTile(
         contentPadding: const EdgeInsets.all(16.0),
         title: Text(
-          'Meal ID: ${log['mealId']}',
+            'Meal ID: ${log['user_meal_id']}${log['name'] != null ? ' - ${log['name']}' : ''}', 
           style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         subtitle: Text(

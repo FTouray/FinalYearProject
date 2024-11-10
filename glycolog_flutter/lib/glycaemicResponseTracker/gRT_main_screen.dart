@@ -253,8 +253,7 @@ class _GRTMainScreenState extends State<GRTMainScreen> {
                                   itemBuilder: (context, index) {
                                     final meal = allMealLogs[index];
                                     return ListTile(
-                                      title: Text(
-                                          'Meal ID: ${meal['mealId'].toString()}'),
+                                      title: Text('Meal ID: ${meal['user_meal_id']}${meal['name'] != null ? ' - ${meal['name']}' : ''}'),
                                       subtitle: Text('Timestamp: ${formatTimestamp(meal['timestamp'])}'),
                                     );
                                   },

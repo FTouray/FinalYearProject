@@ -28,8 +28,8 @@ class MealDetailScreen extends StatelessWidget {
             // Meal ID Card
             _buildInfoCard(
               icon: Icons.fastfood,
-              title: 'Meal ID',
-              content: '${meal['mealId']}',
+              title: 'Meal',
+                content: 'Meal ID: ${meal['user_meal_id']}${meal['name'] != null ? ' - ${meal['name']}' : ''}',
               context: context,
             ),
             const SizedBox(height: 20),

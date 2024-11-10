@@ -46,7 +46,7 @@ class LoginSerializer(serializers.Serializer):
 class GlucoseLogSerializer(serializers.ModelSerializer):
     class Meta:
         model = GlucoseLog
-        fields = ["logID", "user", "glucose_level", "timestamp", "meal_context", "meal"]
+        fields = ["logID", "user", "glucose_level", "timestamp", "meal_context"]
         read_only_fields = ['user']  # Make the user field read-only
 
     def create(self, validated_data):
@@ -91,23 +91,8 @@ class MealSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Meal
-        fields = [
-            "mealId",
-            "user",
-            "user_meal_id",
-            "name",
-            "food_items",
-            "food_item_ids",
-            "total_glycaemic_index",
-            "total_carbs",
-            "timestamp",
-        ]
-        read_only_fields = [
-            "user",
-            "user_meal_id",
-            "total_glycaemic_index",
-            "total_carbs",
-        ]  # These fields are read-only
+        fields = ["mealId", "user", "user_meal_id", "name", "food_items", "food_item_ids", "total_glycaemic_index", "total_carbs", "timestamp",]
+        read_only_fields = ["user", "user_meal_id", "total_glycaemic_index", "total_carbs",]  # These fields are read-only
 
     def create(self, validated_data):
         request = self.context.get("request")

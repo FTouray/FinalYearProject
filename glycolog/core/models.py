@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.db.models import Q
 from django.forms import JSONField
+from datetime import datetime
 
 # Custom user model extending Django's AbstractUser
 class CustomUser(AbstractUser):
@@ -31,7 +32,7 @@ class FoodItem(models.Model):
     
     def __str__(self):
         return self.name
-    
+
 # Model to store meal details linked to the glycaemic response tracker
 class Meal(models.Model):
     mealId = models.AutoField(primary_key=True, null=False)  # Primary key for the meal
@@ -45,7 +46,8 @@ class Meal(models.Model):
         unique_together = ("user", "user_meal_id")  # Ensures unique user-specific IDs
 
     def __str__(self):
-        return f"Meal logged by {self.user.username} on {self.timestamp}"
+        formatted_timestamp = self.timestamp.strftime("%d/%m/%Y %H:%M:%S")
+        return f"Meal logged by {self.user.username} on {formatted_timestamp}"
 
     @property # Calculate the total glycaemic index of the meal
     def total_glycaemic_index(self):
@@ -73,9 +75,9 @@ class GlucoseLog(models.Model):
             models.CheckConstraint(check=Q(glucose_level__gte=0), name='glucose_level_gte_0'),  # Constraint to ensure glucose level is non-negative
         ]
 
-
     def __str__(self):
-        return f"{self.user.username} - {self.glucose_level} at {self.timestamp}"
+        formatted_timestamp = self.timestamp.strftime('%d/%m/%Y %H:%M:%S')
+        return f"{self.user.username} - {self.glucose_level} at {formatted_timestamp}"
 
 # Model to track glycaemic responses linked to a user
 class GlycaemicResponseTracker(models.Model):
@@ -93,7 +95,7 @@ class GlycaemicResponseTracker(models.Model):
     #     """
     #     self.insights = insights
     #     self.save()
-    
+
 # Virtual health coach model to provide personalized health guidance
 class VirtualHealthCoach(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='health_coach')  # Foreign key linking to user
@@ -104,19 +106,19 @@ class VirtualHealthCoach(models.Model):
         constraints = [
             models.CheckConstraint(check=Q(motivational_messages__isnull=False), name='motivational_messages_not_null'),  # Ensure messages are not null
         ]
-        
+
 # Model to store medication details
 class Medication(models.Model):
     name = models.CharField(max_length=100, unique=True)  # Unique name for each medication
     dosage = models.CharField(max_length=100)  # Dosage instructions for the medication
     frequency = models.CharField(max_length=100)  # Frequency of medication intake
-    
+
 # Model to track medication adherence for each user
 class MedicationTracker(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='medication_trackers')  # Foreign key linking to user
     medication_list = models.ManyToManyField(Medication)  # Many-to-many relationship with Medication
     adherence_data = models.TextField(blank=True, null=True)  # Field to store adherence logs or notes
-    
+
 # Model to log hypo/hyperglycaemia alerts for users
 class HypoHyperGlycaemiaAlert(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='alerts')  # Foreign key linking to user
