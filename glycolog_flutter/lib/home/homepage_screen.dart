@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'base_screen.dart'; // Import BaseScreen
 import 'package:Glycolog/services/auth_service.dart'; // Import AuthServiceScreen
 
@@ -11,25 +12,27 @@ class HomePage extends StatefulWidget {
   _HomePageState createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
-  int _selectedIndex = 0; // Index for bottom navigation
+class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
+  int _selectedIndex = 0;
 
-  // Navigation for Bottom Bar
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _checkAuthentication();
+    _handleFirstLaunch();
+  }
 
-    // Handle navigation based on the selected index
-    if (index == 0) {
-      // Home
-      Navigator.pushNamed(context, '/home');
-    } else if (index == 1) {
-      // Community Forum
-      Navigator.pushNamed(context, '/community');
-    } else if (index == 2) {
-      // Profile
-      Navigator.pushNamed(context, '/profile');
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _handleFirstLaunch();
     }
   }
 
@@ -46,10 +49,98 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  @override
-  void initState() {
-    super.initState();
-    _checkAuthentication(); // Check if the user is authenticated when the page initialises
+  Future<void> _handleFirstLaunch() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    bool wasAppOpened = prefs.getBool('wasAppOpened') ?? false;
+
+    if (!wasAppOpened) {
+      // Mark the app as opened to prevent showing the pop-up again
+      await prefs.setBool('wasAppOpened', true);
+      _showFeelingPopup(context);
+    }
+  }
+
+  void _showFeelingPopup(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20.0),
+          ),
+          title: const Text(
+            "How Are You Feeling?",
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _FeelingOption(
+                icon: Icons.sentiment_very_satisfied,
+                color: Colors.green,
+                label: "Good",
+                onTap: () {
+                  Navigator.pop(context);
+                  _navigateToInsights("good");
+                },
+              ),
+              const SizedBox(height: 15),
+              _FeelingOption(
+                icon: Icons.sentiment_neutral,
+                color: Colors.amber,
+                label: "Okay",
+                onTap: () {
+                  Navigator.pop(context);
+                  _navigateToInsights("okay");
+                },
+              ),
+              const SizedBox(height: 15),
+              _FeelingOption(
+                icon: Icons.sentiment_dissatisfied,
+                color: Colors.red,
+                label: "Bad",
+                onTap: () {
+                  Navigator.pop(context);
+                  _navigateToInsights("bad");
+                },
+              ),
+              const SizedBox(height: 20),
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+                child: const Text(
+                  "Skip",
+                  style: TextStyle(fontSize: 16, color: Colors.blue),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _navigateToInsights(String feeling) {
+    Navigator.pushNamed(context, '/insights', arguments: {"feeling": feeling});
+  }
+
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+
+    if (index == 0) {
+      Navigator.pushNamed(context, '/home');
+    } else if (index == 1) {
+      Navigator.pushNamed(context, '/community');
+    } else if (index == 2) {
+      Navigator.pushNamed(context, '/profile');
+    }
   }
 
   @override
@@ -73,10 +164,9 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
               const SizedBox(height: 30),
-              // Feature Icons
               GridView.count(
                 shrinkWrap: true,
-                crossAxisCount: 2, // Two icons per row
+                crossAxisCount: 2,
                 crossAxisSpacing: 10,
                 mainAxisSpacing: 10,
                 physics: const NeverScrollableScrollPhysics(),
@@ -102,7 +192,7 @@ class _HomePageState extends State<HomePage> {
                     onTap: () {
                       Navigator.pushNamed(context, '/settings');
                     },
-                  ),                  
+                  ),
                   FeatureIcon(
                     icon: Icons.help,
                     label: 'Help',
@@ -113,8 +203,13 @@ class _HomePageState extends State<HomePage> {
                   FeatureIcon(
                     icon: Icons.info,
                     label: 'About',
+                    onTap: () {},
+                  ),
+                  FeatureIcon(
+                    icon: Icons.sentiment_satisfied,
+                    label: 'How Are You Feeling?',
                     onTap: () {
-                      // Navigate to about page
+                      _showFeelingPopup(context);
                     },
                   ),
                 ],
@@ -168,6 +263,43 @@ class FeatureIcon extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _FeelingOption extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final String label;
+  final VoidCallback onTap;
+
+  const _FeelingOption({
+    required this.icon,
+    required this.color,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 24,
+            backgroundColor: color,
+            child: Icon(icon, color: Colors.white, size: 30),
+          ),
+          const SizedBox(width: 15),
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+            ),
+          ),
+        ],
       ),
     );
   }
