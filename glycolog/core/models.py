@@ -2,7 +2,7 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.db.models import Q
 from django.forms import JSONField
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # Custom user model extending Django's AbstractUser
 class CustomUser(AbstractUser):
@@ -96,7 +96,61 @@ class GlycaemicResponseTracker(models.Model):
     #     self.insights = insights
     #     self.save()
 
-# Virtual health coach model to provide personalized health guidance
+# Model to track how thw user is feeling
+class FeelingCheck(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='feeling_checks')
+    feeling = models.CharField(
+        max_length=20,
+        choices=[
+            ('good', 'Good'),
+            ('okay', 'Okay'),
+            ('bad', 'Bad'),
+        ]
+    )
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user.username} - Feeling {self.feeling} at {self.timestamp.strftime('%d/%m/%Y %H:%M:%S')}"
+
+    # def recent_exercise_logs(self):
+    #     """Fetch exercise logs within the last X days (e.g., 7 days)."""
+    #     return self.user.exercise_logs.filter(
+    #         timestamp__gte=self.timestamp - timedelta(days=7)
+    #     )
+
+    def recent_food_logs(self):
+        """Fetch food logs within the last X days (e.g., 3 days)."""
+        return self.user.food_logs.filter(
+            timestamp__gte=self.timestamp - timedelta(days=3)
+        )
+
+# Model to store questions asked to determine why user if feeling unwell and their response
+class FollowUpQuestion(models.Model):
+    feeling_check = models.ForeignKey(
+        FeelingCheck, on_delete=models.CASCADE, related_name="follow_up_questions"
+    )
+    question = models.TextField()
+    response = models.TextField(blank=True, null=True)
+
+    def __str__(self):
+        return f"Follow-up for {self.feeling_check} - {self.question[:30]}..."
+
+# Model to store insights generated based on user activity
+class Insight(models.Model):
+    user = models.ForeignKey(
+        CustomUser, on_delete=models.CASCADE, related_name="insights"
+    )
+    feeling_check = models.ForeignKey(
+        FeelingCheck, on_delete=models.SET_NULL, null=True, blank=True
+    )
+    insight = models.TextField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Insight for {self.user.username} - {self.timestamp.strftime('%d/%m/%Y %H:%M:%S')}"
+
+
+# Virtual health coach model to provide personalised health guidance
 class VirtualHealthCoach(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='health_coach')  # Foreign key linking to user
     user_patterns =models.TextField(default='', blank=True)  # Field to store patterns from user activity logs
