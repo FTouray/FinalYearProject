@@ -16,6 +16,12 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscureText = true; // Track password visibility
   String? errorMessage;
 
+  Future<void> resetOnboardingStatus() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.remove('onboardingCompleted');
+    print('Onboarding status reset for testing.');
+  }
+
   Future<void> login() async {
     String username = usernameController.text;
     String password = passwordController.text;
@@ -57,8 +63,16 @@ class _LoginScreenState extends State<LoginScreen> {
           errorMessage = null; // Clear error if login is successful
         });
 
-        // Navigate to the Home Page and pass the first name
-        Navigator.pushNamed(context, '/home', arguments: firstName);
+         // Check if onboarding is completed
+        bool onboardingCompleted = prefs.getBool('onboardingCompleted') ?? false;
+
+        if (onboardingCompleted) {
+          // Navigate to HomePage if onboarding is done
+          Navigator.pushNamed(context, '/home', arguments: firstName);
+        } else {
+          // Navigate to OnboardingScreen if onboarding is incomplete
+          Navigator.pushNamed(context, '/onboarding');
+        }
       } else {
         final data = json.decode(response.body);
         setState(() {

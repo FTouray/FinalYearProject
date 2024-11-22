@@ -7,6 +7,7 @@ import 'glucoseLog/gL_add_level_screen.dart';
 import 'glucoseLog/gL_history_screen.dart';
 import 'glucoseLog/gL_detail_screen.dart';
 import 'glucoseLog/gL_main_screen.dart';
+import 'home/onboarding_screen.dart';
 import 'loginRegister/login_screen.dart';
 import 'home/homepage_screen.dart';
 import 'loginRegister/register_screen.dart';
@@ -139,6 +140,7 @@ class _MyAppState extends State<MyApp> {
                 firstName: 'User'); // Default name if argument is not found
           }
         },
+        '/onboarding': (context) => OnboardingScreen(),
         '/register': (context) => const RegisterScreen(),
         '/glucose-log': (context) => const GlucoseLogScreen(),
         '/settings': (context) => SettingsScreen(
