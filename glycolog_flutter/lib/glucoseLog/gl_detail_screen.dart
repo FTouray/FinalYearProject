@@ -31,7 +31,7 @@ class LogDetailsScreen extends StatelessWidget {
             // Date Card
             _buildInfoCard(
               icon: Icons.calendar_today,
-              title: 'Date',
+              title: 'Date & Time',
               content: formatTimestamp(logDetails['timestamp']),
               context: context,
             ),

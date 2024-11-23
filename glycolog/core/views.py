@@ -206,6 +206,8 @@ def glycaemic_response_main(request):
         "all_meal_logs": [
             {
                 "mealId": meal.mealId,
+                "user_meal_id": meal.user_meal_id,
+                "name": meal.name,
                 "timestamp": meal.timestamp,
                 "total_glycaemic_index": meal.total_glycaemic_index,
                 "total_carbs": meal.total_carbs,

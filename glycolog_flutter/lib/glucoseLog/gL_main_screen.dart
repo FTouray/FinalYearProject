@@ -500,7 +500,7 @@ class _GlucoseLogScreenState extends State<GlucoseLogScreen> {
                                         final log = glucoseLogs[index];
                                         return ListTile(
                                           title: Text('Glucose Level: ${log['glucose_level']?.toStringAsFixed(measurementUnit == 'mg/dL' ? 0 : 1) ?? 'N/A'} $measurementUnit'),
-                                          subtitle: Text('Timestamp: ${formatTimestamp(log['timestamp'])}'),
+                                          subtitle: Text('Date & Time: ${formatTimestamp(log['timestamp'])}'),
                                         );
                                       },
                                     )

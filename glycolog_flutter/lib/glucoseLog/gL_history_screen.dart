@@ -322,7 +322,7 @@ class _GlucoseLogHistoryScreenState extends State<GlucoseLogHistoryScreen> {
           style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         subtitle: Text(
-          'Date: ${formatTimestamp(log['timestamp'])}',
+          'Date & Time: ${formatTimestamp(log['timestamp'])}',
           style: const TextStyle(fontSize: 16, color: Colors.black54),
         ),
         onTap: () {
