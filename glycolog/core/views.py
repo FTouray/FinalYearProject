@@ -5,8 +5,8 @@ from rest_framework import status
 from rest_framework.response import Response
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
-from .serializers import FoodCategorySerializer, FoodItemSerializer, GlucoseLogSerializer, MealSerializer, RegisterSerializer, LoginSerializer, SettingsSerializer
-from .models import CustomUser, FoodCategory, FoodItem, GlucoseLog, GlycaemicResponseTracker, Meal  
+from .serializers import FoodCategorySerializer, FoodItemSerializer, GlucoseLogSerializer, MealSerializer, QuestionnaireSessionSerializer, RegisterSerializer, LoginSerializer, SettingsSerializer, SymptomCheckSerializer
+from .models import CustomUser, FeelingCheck, FoodCategory, FoodItem, GlucoseLog, GlycaemicResponseTracker, Meal, QuestionnaireSession  
 from django.contrib.auth import get_user_model
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.permissions import AllowAny
@@ -280,6 +280,50 @@ def meal_log_detail(request, meal_id):
     meal = get_object_or_404(Meal, id=meal_id, user=request.user)  # Ensure the meal belongs to the user
     serializer = MealSerializer(meal)
     return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def start_questionnaire(request):
+    user = request.user
+    feeling = request.data.get("feeling")
+
+    if not feeling:
+        return Response(
+            {"error": "Feeling is required to start the questionnaire"}, status=400
+        )
+
+    # Create FeelingCheck
+    feeling_check = FeelingCheck.objects.create(user=user, feeling=feeling)
+
+    # Start QuestionnaireSession
+    session = QuestionnaireSession.objects.create(
+        user=user, feeling_check=feeling_check
+    )
+
+    serializer = QuestionnaireSessionSerializer(session)
+    return Response(serializer.data, status=201)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def symptom_step(request, session_id):
+    user = request.user
+    session = get_object_or_404(QuestionnaireSession, id=session_id, user=user)
+
+    # Validate session step
+    if session.current_step != 1:
+        return Response({"error": "You are not on the symptom step."}, status=400)
+
+    # Save symptoms
+    serializer = SymptomCheckSerializer(data=request.data, context={"request": request})
+    if serializer.is_valid():
+        serializer.save(session=session)
+        session.current_step += 1
+        session.save()
+        return Response({"message": "Symptoms logged successfully"}, status=201)
+    else:
+        return Response(serializer.errors, status=400)
 
 
 # @api_view(["GET"])
