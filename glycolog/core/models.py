@@ -96,6 +96,17 @@ class GlycaemicResponseTracker(models.Model):
     #     self.insights = insights
     #     self.save()
 
+# Model to track the questionnaire session for each user
+class QuestionnaireSession(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="questionnaire_sessions"    )
+    feeling_check = models.ForeignKey("FeelingCheck", on_delete=models.SET_NULL, null=True, blank=True, related_name="questionnaire_sessions"    )
+    current_step = models.IntegerField(default=1)  # Tracks progress in the questionnaire
+    completed = models.BooleanField(default=False)  # Marks when the session is finished
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"QuestionnaireSession for {self.user.username} - Step {self.current_step}"
+
 # Model to track how thw user is feeling
 class FeelingCheck(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='feeling_checks')
@@ -112,17 +123,16 @@ class FeelingCheck(models.Model):
     def __str__(self):
         return f"{self.user.username} - Feeling {self.feeling} at {self.timestamp.strftime('%d/%m/%Y %H:%M:%S')}"
 
-    # def recent_exercise_logs(self):
-    #     """Fetch exercise logs within the last X days (e.g., 7 days)."""
-    #     return self.user.exercise_logs.filter(
-    #         timestamp__gte=self.timestamp - timedelta(days=7)
-    #     )
+# Model to store symptoms reported by the user
+class SymptomCheck(models.Model):
+    session = models.OneToOneField("QuestionnaireSession", on_delete=models.CASCADE, related_name="symptom_check")
+    symptoms = models.JSONField()  
+    created_at = models.DateTimeField(auto_now_add=True)
 
-    def recent_food_logs(self):
-        """Fetch food logs within the last X days (e.g., 3 days)."""
-        return self.user.food_logs.filter(
-            timestamp__gte=self.timestamp - timedelta(days=3)
-        )
+    def __str__(self):
+        symptom_summary = ", ".join(f"{k}: {v}" for k, v in self.symptoms.items())
+        return f"SymptomCheck for {self.session.user.username} - {symptom_summary}"
+
 
 # Model to store questions asked to determine why user if feeling unwell and their response
 class FollowUpQuestion(models.Model):
