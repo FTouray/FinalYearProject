@@ -27,5 +27,5 @@ urlpatterns = [
     path("categories/<int:category_id>/food-items/", list_food_items_by_category, name="list_food_items_by_category" ),
     # Questionnaire endpoints
     path("questionnaire/start/", start_questionnaire, name="start_questionnaire"),  # Start the questionnaire
-    path("questionnaire/symptom-step/", symptom_step, name="symptom_step"),  # Handle symptom step  
+    path("questionnaire/symptom-step/<int:session_id>/", symptom_step, name="symptom_step"),  # Handle symptom step
 ]

@@ -318,8 +318,8 @@ def symptom_step(request, session_id):
     # Save symptoms
     serializer = SymptomCheckSerializer(data=request.data, context={"request": request})
     if serializer.is_valid():
-        serializer.save(session=session)
-        session.current_step += 1
+        serializer.save(session=session)  # Link symptoms to the session
+        session.current_step += 1  # Move to the next step
         session.save()
         return Response({"message": "Symptoms logged successfully"}, status=201)
     else:
