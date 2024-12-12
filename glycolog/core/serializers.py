@@ -3,7 +3,7 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
-from .models import FeelingCheck, FollowUpQuestion, FoodCategory, FoodItem, GlycaemicResponseTracker, Insight, Meal, GlucoseLog  # Import your models
+from .models import FeelingCheck, FollowUpQuestion, FoodCategory, FoodItem, GlycaemicResponseTracker, Insight, Meal, GlucoseLog, QuestionnaireSession, SymptomCheck  # Import your models
 
 # Get the custom user model
 User = get_user_model()
@@ -129,6 +129,21 @@ class GlycaemicResponseTrackerSerializer(serializers.ModelSerializer):
         # Custom validation logic for user_data if needed
         return value
 
+# Questionnaire Session Serializer
+class QuestionnaireSessionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = QuestionnaireSession
+        fields = ["id", "user", "feeling_check", "current_step", "completed", "created_at"]
+        read_only_fields = ["id", "created_at"]
+
+# Symptom Check Serializer
+class SymptomCheckSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SymptomCheck
+        fields = ["id", "session", "symptoms", "created_at"]
+        read_only_fields = ["id", "created_at"]
+
+# Feeling Check Serializer
 class FeelingCheckSerializer(serializers.ModelSerializer):
     class Meta:
         model = FeelingCheck
