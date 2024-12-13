@@ -18,6 +18,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
+import 'questionnaire/glucose_step.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized(); // Ensure bindings are initialized
   final darkMode =
@@ -164,12 +166,8 @@ class _MyAppState extends State<MyApp> {
               as Map<String, dynamic>?;
           return MealDetailScreen(meal: args ?? {});
         },
-        '/symptom-step': (context) {
-          final args = ModalRoute.of(context)?.settings.arguments 
-              as Map<String, dynamic>;
-          final sessionId = args['sessionId'];
-          return SymptomStepPage(sessionId: sessionId);
-        },
+        '/symptom-step': (context) => SymptomStepScreen(),
+        '/glucose-step': (context) => GlucoseStepScreen(),
       },
     );
   }

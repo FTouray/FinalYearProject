@@ -1,19 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/auth_service.dart';
 
-class SymptomStepPage extends StatefulWidget {
-  final int sessionId; // Session ID passed from the previous step
-  const SymptomStepPage({Key? key, required this.sessionId}) : super(key: key);
+class SymptomStepScreen extends StatefulWidget {
+  const SymptomStepScreen({Key? key}) : super(key: key);
 
   @override
-  _SymptomStepPageState createState() => _SymptomStepPageState();
+  _SymptomStepScreenState createState() => _SymptomStepScreenState();
 }
 
-class _SymptomStepPageState extends State<SymptomStepPage> {
+class _SymptomStepScreenState extends State<SymptomStepScreen> {
   final Map<String, bool> selectedSymptoms = {};
   final Map<String, dynamic> responseValues = {};
 
@@ -294,9 +292,7 @@ class _SymptomStepPageState extends State<SymptomStepPage> {
           .toList(),
       "responses": responseValues,
     };
-
-    final String url =
-        'http://192.168.1.19:8000/api/questionnaire/symptom-step/${widget.sessionId}/';
+    
     String? token = await AuthService().getAccessToken();
 
     if (token == null) {
@@ -311,7 +307,8 @@ class _SymptomStepPageState extends State<SymptomStepPage> {
 
     try {
       final response = await http.post(
-        Uri.parse(url),
+        Uri.parse('http://192.168.1.19:8000/api/questionnaire/symptom-step/'),
+        
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
@@ -322,8 +319,7 @@ class _SymptomStepPageState extends State<SymptomStepPage> {
       if (response.statusCode == 201) {
         Navigator.pushNamed(
           context,
-          '/next-step',
-          arguments: {"sessionId": widget.sessionId},
+          '/glucose-step'
         );
       } else {
         final error = jsonDecode(response.body);

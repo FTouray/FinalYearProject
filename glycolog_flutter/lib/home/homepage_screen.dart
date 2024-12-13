@@ -153,14 +153,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       );
 
       if (response.statusCode == 201) {
-        final responseData = json.decode(response.body);
-        final sessionId = responseData['id'];
-        print("Session started successfully, session ID: $sessionId");
-        Navigator.pushNamed(
-          context,
-          '/symptom-step',
-          arguments: {'sessionId': sessionId},
-        );
+        Navigator.pushNamed(context, '/symptom-step');
       } else {
         final error = json.decode(response.body);
         print("Failed to start questionnaire: ${error['error']}");
