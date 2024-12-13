@@ -1,0 +1,138 @@
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import '../services/auth_service.dart';
+
+class GlucoseStepScreen extends StatefulWidget {
+  const GlucoseStepScreen({Key? key}) : super(key: key);
+
+  @override
+  _GlucoseStepScreenState createState() => _GlucoseStepScreenState();
+}
+
+class _GlucoseStepScreenState extends State<GlucoseStepScreen> {
+  final TextEditingController _glucoseController = TextEditingController();
+  bool _isLoading = false;
+  String? _error;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Log Glucose Level'),
+        backgroundColor: Colors.blue[800],
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: ListView(
+          children: [
+            LinearProgressIndicator(
+              value: 0.66, // Adjust progress value as needed
+              backgroundColor: Colors.grey[300],
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.blue[800]!),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'Enter your glucose level:',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _glucoseController,
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                labelText: 'Glucose Level',
+                errorText: _error,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12.0),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            if (_isLoading) Center(child: CircularProgressIndicator()),
+            const SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                  child: const Text(
+                    'Back',
+                    style: TextStyle(fontSize: 16),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: _isLoading ? null : _submitData,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue[800],
+                  ),
+                  child: const Text(
+                    'Next',
+                    style: TextStyle(fontSize: 16),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _submitData() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    final String glucoseLevel = _glucoseController.text;
+
+    if (glucoseLevel.isEmpty) {
+      setState(() {
+        _isLoading = false;
+        _error = 'Please enter a glucose level.';
+      });
+      return;
+    }
+
+    try {
+      String? token = await AuthService().getAccessToken();
+
+      if (token == null) {
+        throw Exception('User is not authenticated.');
+      }
+
+      final data = {
+        'glucose_level': glucoseLevel,
+      };
+
+      final response = await http.post(
+        Uri.parse('http://192.168.1.19:8000/api/questionnaire/glucose-step/'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(data),
+      );
+
+      if (response.statusCode == 201) {
+        Navigator.pushNamed(context, '/next-step');
+      } else {
+        final error = jsonDecode(response.body);
+        setState(() {
+          _error = error['error'] ?? 'An error occurred.';
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _error = 'An error occurred: $e';
+      });
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+}
