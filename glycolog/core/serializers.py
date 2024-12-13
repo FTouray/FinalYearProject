@@ -3,7 +3,7 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
-from .models import FeelingCheck, FollowUpQuestion, FoodCategory, FoodItem, GlycaemicResponseTracker, Insight, Meal, GlucoseLog, QuestionnaireSession, SymptomCheck  # Import your models
+from .models import FeelingCheck, FollowUpQuestion, FoodCategory, FoodItem, GlucoseCheck, GlycaemicResponseTracker, Insight, Meal, GlucoseLog, QuestionnaireSession, SymptomCheck  # Import your models
 
 # Get the custom user model
 User = get_user_model()
@@ -142,6 +142,25 @@ class SymptomCheckSerializer(serializers.ModelSerializer):
         model = SymptomCheck
         fields = ["id", "session", "symptoms", "created_at"]
         read_only_fields = ["id", "created_at"]
+
+class GlucoseCheckSerializer(serializers.ModelSerializer):
+    evaluation = serializers.SerializerMethodField()
+
+    class Meta:
+        model = GlucoseCheck
+        fields = ['id', 'session', 'glucose_level', 'target_min', 'target_max', 'timestamp', 'evaluation']
+        read_only_fields = ["id", "target_min", "target_max", "evaluation", "timestamp"]
+
+    def get_evaluation(self, obj):
+        """
+        Calls the evaluate_target method on the model to determine the evaluation status.
+        """
+        return obj.evaluate_target()
+    
+    def validate_glucose_level(self, value):
+        if value < 0:
+            raise serializers.ValidationError("Glucose level must be non-negative.")
+        return value
 
 # Feeling Check Serializer
 class FeelingCheckSerializer(serializers.ModelSerializer):

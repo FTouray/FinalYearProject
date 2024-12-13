@@ -5,8 +5,8 @@ from rest_framework import status
 from rest_framework.response import Response
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
-from .serializers import FoodCategorySerializer, FoodItemSerializer, GlucoseLogSerializer, MealSerializer, QuestionnaireSessionSerializer, RegisterSerializer, LoginSerializer, SettingsSerializer, SymptomCheckSerializer
-from .models import CustomUser, FeelingCheck, FoodCategory, FoodItem, GlucoseLog, GlycaemicResponseTracker, Meal, QuestionnaireSession  
+from .serializers import FoodCategorySerializer, FoodItemSerializer, GlucoseCheckSerializer, GlucoseLogSerializer, MealSerializer, QuestionnaireSessionSerializer, RegisterSerializer, LoginSerializer, SettingsSerializer, SymptomCheckSerializer
+from .models import CustomUser, FeelingCheck, FoodCategory, FoodItem, GlucoseCheck, GlucoseLog, GlycaemicResponseTracker, Meal, QuestionnaireSession  
 from django.contrib.auth import get_user_model
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.permissions import AllowAny
@@ -307,24 +307,85 @@ def start_questionnaire(request):
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
-def symptom_step(request, session_id):
+def symptom_step(request):
     user = request.user
-    session = get_object_or_404(QuestionnaireSession, id=session_id, user=user)
+    session = QuestionnaireSession.objects.filter(user=user, completed=False).last()
+
+    if not session:
+        print("No active session found for user:", user.id)  # Debug
+        return Response({"error": "No active questionnaire session found."}, status=404)
+
+    print("Current session step:", session.current_step)  # Debug
+    print("Received data:", request.data)  # Debug
 
     # Validate session step
     if session.current_step != 1:
         return Response({"error": "You are not on the symptom step."}, status=400)
 
+    data = request.data.copy()
+    data["session"] = session.id  # Add session ID to the data
+
     # Save symptoms
-    serializer = SymptomCheckSerializer(data=request.data, context={"request": request})
+    serializer = SymptomCheckSerializer(data=data, context={"request": request})
     if serializer.is_valid():
         serializer.save(session=session)  # Link symptoms to the session
         session.current_step += 1  # Move to the next step
         session.save()
         return Response({"message": "Symptoms logged successfully"}, status=201)
     else:
+        print("Serializer errors:", serializer.errors)  # Debug
         return Response(serializer.errors, status=400)
 
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def glucose_step(request):
+    user = request.user
+    session = QuestionnaireSession.objects.filter(user=user, completed=False).last()
+
+    if not session:
+        return Response({"error": "No active questionnaire session found."}, status=404)
+
+    # Validate session step
+    if session.current_step != 2:
+        return Response({"error": "You are not on the glucose step."}, status=400)
+
+    # Fetch target_min and target_max from the request data
+    target_min = request.data.get("target_min")
+    target_max = request.data.get("target_max")
+
+    if target_min is None or target_max is None:
+        return Response(
+            {"error": "Target range (min and max) is required."}, status=400
+        )
+
+    try:
+        target_min = float(target_min)
+        target_max = float(target_max)
+
+        if target_min >= target_max:
+            return Response(
+                {"error": "Target min should be less than target max."}, status=400
+            )
+    except ValueError:
+        return Response({"error": "Invalid target range values."}, status=400)
+
+    # Save glucose check
+    data = request.data.copy()
+    data.update(
+        {
+            "session": session.id,
+            "target_min": target_min,
+            "target_max": target_max,
+        }
+    )
+    serializer = GlucoseCheckSerializer(data=data)
+    if serializer.is_valid():
+        serializer.save(session=session)
+        session.current_step += 1  # Move to the next step
+        session.save()
+        return Response(serializer.data, status=201)
+    return Response(serializer.errors, status=400)(serializer.errors, status=400)
 
 # @api_view(["GET"])
 # @permission_classes([IsAuthenticated])
@@ -469,6 +530,4 @@ def symptom_step(request, session_id):
 
 #     # Food item-specific recommendation
 #     if food_item:
-#         recommendation = f"Food: {food_item}. " + recommendation
-
-#     return recommendation
+#         recommendation = f"Food: {food_ite

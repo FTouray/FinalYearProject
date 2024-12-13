@@ -133,6 +133,28 @@ class SymptomCheck(models.Model):
         symptom_summary = ", ".join(f"{k}: {v}" for k, v in self.symptoms.items())
         return f"SymptomCheck for {self.session.user.username} - {symptom_summary}"
 
+# Model to store glucose checks by the user
+class GlucoseCheck(models.Model):
+    session = models.ForeignKey(QuestionnaireSession, on_delete=models.CASCADE, related_name="glucose_checks")
+    glucose_level = models.FloatField()
+    target_min = models.FloatField() 
+    target_max = models.FloatField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        formatted_timestamp = self.timestamp.strftime('%d/%m/%Y %H:%M:%S')
+        return f"{self.session.user.username} - {self.glucose_level} at {formatted_timestamp}"
+
+    def evaluate_target(self):
+        """
+        Evaluates whether the glucose level is higher, lower, or within the range at the time of logging.
+        """
+        if self.glucose_level < self.target_min:
+            return "Lower"
+        elif self.glucose_level > self.target_max:
+            return "Higher"
+        else:
+            return "Within Range"
 
 # Model to store questions asked to determine why user if feeling unwell and their response
 class FollowUpQuestion(models.Model):
