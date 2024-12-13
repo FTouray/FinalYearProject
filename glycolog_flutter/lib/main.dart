@@ -1,6 +1,7 @@
 import 'package:Glycolog/glycaemicResponseTracker/gRT_history_detail_screen.dart';
 import 'package:Glycolog/glycaemicResponseTracker/gRT_meal_log_history_screen.dart';
 import 'package:Glycolog/glycaemicResponseTracker/gRT_meal_log_screen.dart';
+import 'package:Glycolog/questionnaire/symptom_step.dart';
 import 'package:Glycolog/services/auth_service.dart';
 import 'package:flutter/material.dart';
 import 'glucoseLog/gL_add_level_screen.dart';
@@ -162,6 +163,12 @@ class _MyAppState extends State<MyApp> {
           final args = ModalRoute.of(context)?.settings.arguments
               as Map<String, dynamic>?;
           return MealDetailScreen(meal: args ?? {});
+        },
+        '/symptom-step': (context) {
+          final args = ModalRoute.of(context)?.settings.arguments 
+              as Map<String, dynamic>;
+          final sessionId = args['sessionId'];
+          return SymptomStepPage(sessionId: sessionId);
         },
       },
     );

@@ -1,7 +1,12 @@
+// ignore_for_file: avoid_print
+
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'base_screen.dart'; // Import BaseScreen
 import 'package:Glycolog/services/auth_service.dart'; // Import AuthServiceScreen
+import 'package:http/http.dart' as http;
 
 class HomePage extends StatefulWidget {
   final String firstName; // Pass the first name to this page
@@ -105,8 +110,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                 label: "Bad",
                 onTap: () {
                   Navigator.pop(context);
-                  _navigateToInsights("bad");
-                },
+                  _startQuestionnaire("bad");
+                  },
               ),
               const SizedBox(height: 20),
               TextButton(
@@ -128,6 +133,48 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   void _navigateToInsights(String feeling) {
     Navigator.pushNamed(context, '/insights', arguments: {"feeling": feeling});
   }
+
+  Future<void> _startQuestionnaire(String feeling) async {
+    try {
+      String? token = await AuthService().getAccessToken();
+      print("Retrieved token: $token");
+
+      if (token == null) {
+        throw Exception("User is not authenticated.");
+      }
+
+      final response = await http.post(
+        Uri.parse('http://192.168.1.19:8000/api/questionnaire/start/'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: json.encode({'feeling': feeling}),
+      );
+
+      if (response.statusCode == 201) {
+        final responseData = json.decode(response.body);
+        final sessionId = responseData['id'];
+        print("Session started successfully, session ID: $sessionId");
+        Navigator.pushNamed(
+          context,
+          '/symptom-step',
+          arguments: {'sessionId': sessionId},
+        );
+      } else {
+        final error = json.decode(response.body);
+        print("Failed to start questionnaire: ${error['error']}");
+        throw Exception(error['error'] ?? 'Failed to start questionnaire');
+      }
+    } catch (error) {
+      print("Error in _startQuestionnaire: $error");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error starting questionnaire: $error')),
+      );
+    }
+  }
+
+
 
   void _onItemTapped(int index) {
     setState(() {
