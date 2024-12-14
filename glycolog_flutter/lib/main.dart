@@ -8,6 +8,7 @@ import 'glucoseLog/gL_add_level_screen.dart';
 import 'glucoseLog/gL_history_screen.dart';
 import 'glucoseLog/gL_detail_screen.dart';
 import 'glucoseLog/gL_main_screen.dart';
+import 'home/insights_screen.dart';
 import 'home/onboarding_screen.dart';
 import 'loginRegister/login_screen.dart';
 import 'home/homepage_screen.dart';
@@ -168,6 +169,7 @@ class _MyAppState extends State<MyApp> {
         },
         '/symptom-step': (context) => SymptomStepScreen(),
         '/glucose-step': (context) => GlucoseStepScreen(),
+        '/insights-graph-data': (context) => const InsightsGraphScreen(),
       },
     );
   }

@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import (glucose_step, glycaemic_response_main, list_categories, list_food_items_by_category, log_glucose, log_meal, meal_log_detail,  meal_log_history, register_user, 
+from .views import (glucose_step, glycaemic_response_main, insights_graph_data, list_categories, list_food_items_by_category, log_glucose, log_meal, meal_log_detail,  meal_log_history, register_user, 
     login_user, settings_view, glucose_log_details, glucose_log_history, start_questionnaire, symptom_step)
 from rest_framework_simplejwt.views import (TokenObtainPairView, TokenRefreshView)
 
@@ -29,4 +29,5 @@ urlpatterns = [
     path("questionnaire/start/", start_questionnaire, name="start-questionnaire"),  # Start the questionnaire
     path("questionnaire/symptom-step/", symptom_step, name="symptom-step"),  # Handle symptom step
     path("questionnaire/glucose-step/", glucose_step, name="glucose-step"),  # Handle glucose step
+    path("insights-graph/", insights_graph_data, name="insights-graph-data"),  # Get insights
 ]

@@ -252,6 +252,13 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                       _showFeelingPopup(context);
                     },
                   ),
+                  FeatureIcon(
+                    icon: Icons.insights,
+                    label: 'Insights',
+                    onTap: () {
+                      Navigator.pushNamed(context, '/insights-graph-data');
+                    },
+                  ),
                 ],
               ),
             ],
