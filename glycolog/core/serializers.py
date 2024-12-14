@@ -3,7 +3,7 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
-from .models import FeelingCheck, FollowUpQuestion, FoodCategory, FoodItem, GlucoseCheck, GlycaemicResponseTracker, Insight, Meal, GlucoseLog, QuestionnaireSession, SymptomCheck  # Import your models
+from .models import FeelingCheck, FollowUpQuestion, FoodCategory, FoodItem, GlucoseCheck, GlycaemicResponseTracker, Insight, Meal, GlucoseLog, MealCheck, QuestionnaireSession, SymptomCheck  # Import your models
 
 # Get the custom user model
 User = get_user_model()
@@ -156,11 +156,54 @@ class GlucoseCheckSerializer(serializers.ModelSerializer):
         Calls the evaluate_target method on the model to determine the evaluation status.
         """
         return obj.evaluate_target()
-    
+
     def validate_glucose_level(self, value):
         if value < 0:
             raise serializers.ValidationError("Glucose level must be non-negative.")
         return value
+
+
+class MealCheckSerializer(serializers.ModelSerializer):
+    high_gi_foods = FoodItemSerializer(
+        many=True, read_only=True
+    )  # Serialize related FoodItem objects
+    high_gi_food_ids = serializers.PrimaryKeyRelatedField(
+        queryset=FoodItem.objects.all(), many=True, write_only=True
+    )  # Allow passing FoodItem IDs for writing
+    skipped_meals = serializers.JSONField()  # Serialize skipped_meals field as JSON
+
+    class Meta:
+        model = MealCheck
+        fields = [
+            "id",
+            "session",
+            "meal_type",
+            "high_gi_foods",
+            "high_gi_food_ids",
+            "skipped_meals",
+            "wellness_impact",
+            "notes",
+            "created_at",
+        ]
+        read_only_fields = [
+            "id",
+            "created_at",
+        ]  
+
+    def create(self, validated_data):
+        # Handle high_gi_foods separately from high_gi_food_ids
+        high_gi_food_ids = validated_data.pop("high_gi_food_ids", [])
+        meal_check = MealCheck.objects.create(**validated_data)
+        meal_check.high_gi_foods.set(high_gi_food_ids)  # Add many-to-many relationships
+        return meal_check
+
+    def update(self, instance, validated_data):
+        # Update high_gi_foods if provided
+        high_gi_food_ids = validated_data.pop("high_gi_food_ids", None)
+        if high_gi_food_ids is not None:
+            instance.high_gi_foods.set(high_gi_food_ids)
+        return super().update(instance, validated_data)
+
 
 # Feeling Check Serializer
 class FeelingCheckSerializer(serializers.ModelSerializer):

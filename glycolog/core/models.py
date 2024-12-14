@@ -156,6 +156,27 @@ class GlucoseCheck(models.Model):
         else:
             return "Within Range"
 
+# Model to store diet checks
+class MealCheck(models.Model):
+    session = models.ForeignKey(QuestionnaireSession, on_delete=models.CASCADE, related_name="diet_checks")
+    meal_type = models.CharField(
+        max_length=10,
+        choices=[
+            ('Breakfast', 'Breakfast'),
+            ('Lunch', 'Lunch'),
+            ('Dinner', 'Dinner'),
+            ('Snack', 'Snack'),
+        ]
+    )
+    high_gi_foods = models.ManyToManyField(FoodItem, related_name="meal_checks")
+    skipped_meals = models.JSONField(blank=True, default=list)
+    wellness_impact = models.BooleanField(default=False)  # Impact on wellness due to diet
+    notes = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"DietCheck for {self.session.user.username} - {self.meal_type} ({self.created_at})"
+
 # Model to store questions asked to determine why user if feeling unwell and their response
 class FollowUpQuestion(models.Model):
     feeling_check = models.ForeignKey(
