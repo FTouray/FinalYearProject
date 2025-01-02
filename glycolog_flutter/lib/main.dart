@@ -1,6 +1,8 @@
 import 'package:Glycolog/glycaemicResponseTracker/gRT_history_detail_screen.dart';
 import 'package:Glycolog/glycaemicResponseTracker/gRT_meal_log_history_screen.dart';
 import 'package:Glycolog/glycaemicResponseTracker/gRT_meal_log_screen.dart';
+import 'package:Glycolog/questionnaire/exercise_step.dart';
+import 'package:Glycolog/questionnaire/meal_step.dart';
 import 'package:Glycolog/questionnaire/symptom_step.dart';
 import 'package:Glycolog/services/auth_service.dart';
 import 'package:flutter/material.dart';
@@ -169,6 +171,8 @@ class _MyAppState extends State<MyApp> {
         },
         '/symptom-step': (context) => SymptomStepScreen(),
         '/glucose-step': (context) => GlucoseStepScreen(),
+        '/meal-step': (context) => MealStepScreen(),
+        '/exercise-step': (context) => ExerciseStepScreen(),
         '/insights-graph-data': (context) => const InsightsGraphScreen(),
       },
     );
