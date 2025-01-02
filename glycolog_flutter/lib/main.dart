@@ -1,6 +1,7 @@
 import 'package:Glycolog/glycaemicResponseTracker/gRT_history_detail_screen.dart';
 import 'package:Glycolog/glycaemicResponseTracker/gRT_meal_log_history_screen.dart';
 import 'package:Glycolog/glycaemicResponseTracker/gRT_meal_log_screen.dart';
+import 'package:Glycolog/questionnaire/data_visualization.dart';
 import 'package:Glycolog/questionnaire/exercise_step.dart';
 import 'package:Glycolog/questionnaire/meal_step.dart';
 import 'package:Glycolog/questionnaire/symptom_step.dart';
@@ -173,6 +174,7 @@ class _MyAppState extends State<MyApp> {
         '/glucose-step': (context) => GlucoseStepScreen(),
         '/meal-step': (context) => MealStepScreen(),
         '/exercise-step': (context) => ExerciseStepScreen(),
+        '/visualization': (context) => const QuestionnaireVisualizationScreen(),
         '/insights-graph-data': (context) => const InsightsGraphScreen(),
       },
     );
