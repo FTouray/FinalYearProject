@@ -5,7 +5,7 @@ from rest_framework import status
 from rest_framework.response import Response
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
-from .serializers import FoodCategorySerializer, FoodItemSerializer, GlucoseCheckSerializer, GlucoseLogSerializer, MealCheckSerializer, MealSerializer, QuestionnaireSessionSerializer, RegisterSerializer, LoginSerializer, SettingsSerializer, SymptomCheckSerializer
+from .serializers import ExerciseCheckSerializer, FoodCategorySerializer, FoodItemSerializer, GlucoseCheckSerializer, GlucoseLogSerializer, MealCheckSerializer, MealSerializer, QuestionnaireSessionSerializer, RegisterSerializer, LoginSerializer, SettingsSerializer, SymptomCheckSerializer
 from .models import CustomUser, FeelingCheck, FoodCategory, FoodItem, GlucoseCheck, GlucoseLog, GlycaemicResponseTracker, Meal, QuestionnaireSession  
 from django.contrib.auth import get_user_model
 from rest_framework.permissions import IsAuthenticated
@@ -415,6 +415,44 @@ def meal_step(request):
             {
                 "message": "Diet information logged successfully.",
                 "diet_check": MealCheckSerializer(meal_check).data,
+            },
+            status=201,
+        )
+    else:
+        return Response(serializer.errors, status=400)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def exercise_step(request):
+    """
+    Handles the exercise step in the questionnaire.
+    """
+    user = request.user
+    session = QuestionnaireSession.objects.filter(user=user, completed=False).last()
+
+    if not session:
+        return Response({"error": "No active questionnaire session found."}, status=404)
+
+    # Validate session step
+    if session.current_step != 4:  # Assuming this is step 4
+        return Response({"error": "You are not on the exercise step."}, status=400)
+
+    data = request.data.copy()
+    data["session"] = session.id  # Add session ID to the data
+
+    serializer = ExerciseCheckSerializer(data=data)
+    if serializer.is_valid():
+        exercise_check = serializer.save()
+
+        # Move to the next step
+        session.current_step += 1
+        session.save()
+
+        return Response(
+            {
+                "message": "Exercise information logged successfully.",
+                "exercise_check": ExerciseCheckSerializer(exercise_check).data,
             },
             status=201,
         )
