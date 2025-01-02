@@ -462,6 +462,55 @@ def exercise_step(request):
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
+def questionnaire_visualization_data(request):
+    user = request.user
+
+    # Aggregate data by session
+    sessions = QuestionnaireSession.objects.filter(user=user, completed=True)
+
+    data = []
+    for session in sessions:
+        session_data = {
+            "date": session.created_at,
+            "glucose_checks": [
+                {
+                    "level": glucose.glucose_level,
+                    "target_evaluation": glucose.evaluate_target(),
+                }
+                for glucose in session.glucose_checks.all()
+            ],
+            "wellness_score": (
+                session.feeling_check.feeling if session.feeling_check else None
+            ),
+            "symptoms": (
+                session.symptom_check.symptoms if session.symptom_check else None
+            ),
+            "diet_checks": [
+                {
+                    "meal_type": meal.meal_type,
+                    "high_gi_food_count": meal.high_gi_foods.count(),
+                    "skipped_meals": meal.skipped_meals,
+                }
+                for meal in session.diet_checks.all()
+            ],
+            "exercise_check": {
+                "duration": session.exercise_checks.aggregate(Avg("exercise_duration"))[
+                    "exercise_duration__avg"
+                ],
+                "feeling": (
+                    session.exercise_checks.first().post_exercise_feeling
+                    if session.exercise_checks.exists()
+                    else None
+                ),
+            },
+        }
+        data.append(session_data)
+
+    return Response(data)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
 def insights_graph_data(request):
     """
     Provides data for the insights graph: Glucose Levels vs. Wellness Level.
