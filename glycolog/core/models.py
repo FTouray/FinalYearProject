@@ -177,6 +177,69 @@ class MealCheck(models.Model):
     def __str__(self):
         return f"DietCheck for {self.session.user.username} - {self.meal_type} ({self.created_at})"
 
+# Model to store exercise checks
+class ExerciseCheck(models.Model):
+    session = models.ForeignKey(
+        QuestionnaireSession, on_delete=models.CASCADE, related_name="exercise_checks"
+    )
+    last_exercise_time = models.CharField(
+        max_length=20,
+        choices=[
+            ("Today", "Today"),
+            ("2-3 Days Ago", "2–3 Days Ago"),
+            ("More than 5 Days Ago", "More than 5 Days Ago"),
+            ("I Don’t Remember", "I Don’t Remember"),
+        ],
+    )
+    exercise_type = models.CharField(
+        max_length=30,
+        choices=[
+            ("Walking", "Walking"),
+            ("Running", "Running"),
+            ("Yoga", "Yoga"),
+            ("Strength Training", "Strength Training"),
+            ("Other", "Other"),
+        ],
+    )
+    exercise_duration = models.PositiveIntegerField()  # Duration in minutes
+    post_exercise_feeling = models.CharField(
+        max_length=20,
+        choices=[
+            ("Energised", "Energised"),
+            ("Neutral", "Neutral"),
+            ("Tired", "Tired"),
+        ],
+    )
+    activity_level_comparison = models.CharField(
+        max_length=20,
+        choices=[
+            ("More", "More"),
+            ("Less", "Less"),
+            ("About the Same", "About the Same"),
+        ],
+    )
+    activity_prevention_reason = models.CharField(
+        max_length=50,
+        choices=[
+            ("Lack of time", "Lack of time"),
+            ("Fatigue", "Fatigue"),
+            ("Physical discomfort", "Physical discomfort"),
+            ("Other", "Other"),
+        ],
+        blank=True,
+        null=True,
+    )
+    discomfort_or_fatigue = models.BooleanField(default=False)
+    discomfort_description = models.TextField(blank=True, null=True)
+    exercise_impact = models.BooleanField(
+        blank=True, null=True
+    )  # Whether it affects exercise ability
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"ExerciseCheck for {self.session.user.username} ({self.created_at})"
+
+
 # Model to store questions asked to determine why user if feeling unwell and their response
 class FollowUpQuestion(models.Model):
     feeling_check = models.ForeignKey(
