@@ -204,6 +204,29 @@ class MealCheckSerializer(serializers.ModelSerializer):
             instance.high_gi_foods.set(high_gi_food_ids)
         return super().update(instance, validated_data)
 
+from rest_framework import serializers
+from .models import ExerciseCheck
+
+# Exercise Check Serializer
+class ExerciseCheckSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ExerciseCheck
+        fields = [
+            "id",
+            "session",
+            "last_exercise_time",
+            "exercise_type",
+            "exercise_duration",
+            "post_exercise_feeling",
+            "activity_level_comparison",
+            "activity_prevention_reason",
+            "discomfort_or_fatigue",
+            "discomfort_description",
+            "exercise_impact",
+            "created_at",
+        ]
+        read_only_fields = ["id", "created_at"]
+
 
 # Feeling Check Serializer
 class FeelingCheckSerializer(serializers.ModelSerializer):
