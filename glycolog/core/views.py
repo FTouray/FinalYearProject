@@ -141,27 +141,27 @@ def glucose_log_details(request, id):
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])  # Ensure the user is authenticated
 def settings_view(request):
-    user = request.user  # Get the currently authenticated user
+    # user = request.user  # Get the currently authenticated user
 
-    if request.method == 'GET':
-        # Return user settings
-        settings_data = {
-            'selectedUnit': user.selected_unit,  # Assuming you have a field for this
-            'notificationsEnabled': user.notifications_enabled,  # Assuming you have this too
-            'darkModeEnabled': user.dark_mode_enabled,  # And this
-        }
-        return Response(settings_data, status=status.HTTP_200_OK)
+    # if request.method == 'GET':
+    #     # Return user settings
+    #     settings_data = {
+    #         'selectedUnit': user.selected_unit,  
+    #         'notificationsEnabled': user.notifications_enabled,  
+    #         'darkModeEnabled': user.dark_mode_enabled,  
+    #     }
+    #     return Response(settings_data, status=status.HTTP_200_OK)
 
-    elif request.method == 'POST':
-        # Update user settings
-        selected_unit = request.data.get('selectedUnit')
-        notifications_enabled = request.data.get('notificationsEnabled')
-        dark_mode_enabled = request.data.get('darkModeEnabled')
+    # elif request.method == 'POST':
+    #     # Update user settings
+    #     selected_unit = request.data.get('selectedUnit')
+    #     notifications_enabled = request.data.get('notificationsEnabled')
+    #     dark_mode_enabled = request.data.get('darkModeEnabled')
 
-        user.selected_unit = selected_unit
-        user.notifications_enabled = notifications_enabled
-        user.dark_mode_enabled = dark_mode_enabled
-        user.save()
+    #     user.selected_unit = selected_unit
+    #     user.notifications_enabled = notifications_enabled
+    #     user.dark_mode_enabled = dark_mode_enabled
+    #     user.save()
 
         return Response({"message": "Settings updated successfully"}, status=status.HTTP_200_OK)
 
@@ -350,31 +350,27 @@ def glucose_step(request):
     if session.current_step != 2:
         return Response({"error": "You are not on the glucose step."}, status=400)
 
+    data = request.data.copy()
+    data["session"] = session.id
+
     # Fetch target_min and target_max from the request data
     target_min = request.data.get("target_min")
     target_max = request.data.get("target_max")
+    glucose_level = request.data.get("glucose_level")
 
     if target_min is None or target_max is None:
         return Response(
             {"error": "Target range (min and max) is required."}, status=400
         )
 
-    try:
-        target_min = float(target_min)
-        target_max = float(target_max)
-
-        if target_min >= target_max:
-            return Response(
-                {"error": "Target min should be less than target max."}, status=400
-            )
-    except ValueError:
-        return Response({"error": "Invalid target range values."}, status=400)
-
+    if not glucose_level:
+        return Response({"error": "Glucose level is required."}, status=400)
+    
+    
     # Save glucose check
-    data = request.data.copy()
     data.update(
         {
-            "session": session.id,
+            "glucose_level": glucose_level,
             "target_min": target_min,
             "target_max": target_max,
         }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../services/auth_service.dart';
 
@@ -104,8 +105,23 @@ class _GlucoseStepScreenState extends State<GlucoseStepScreen> {
         throw Exception('User is not authenticated.');
       }
 
+      // Fetch target range from SharedPreferences
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      double? targetMin = prefs.getDouble('targetMin');
+      double? targetMax = prefs.getDouble('targetMax');
+
+      print(
+          'Fetched Target Min: $targetMin, Target Max: $targetMax'); // Debug log
+
+      if (targetMin == null || targetMax == null) {
+        throw Exception(
+            'Target range values are not set in shared preferences.');
+      }
+
       final data = {
         'glucose_level': glucoseLevel,
+        'target_min': targetMin.toString(),
+        'target_max': targetMax.toString(),
       };
 
       final response = await http.post(
@@ -118,7 +134,7 @@ class _GlucoseStepScreenState extends State<GlucoseStepScreen> {
       );
 
       if (response.statusCode == 201) {
-        Navigator.pushNamed(context, '/next-step');
+        Navigator.pushNamed(context, '/meal-step');
       } else {
         final error = jsonDecode(response.body);
         setState(() {
