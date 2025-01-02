@@ -30,14 +30,14 @@ class FoodItem {
   int get hashCode => foodId.hashCode;
 }
 
-class MealCheckScreen extends StatefulWidget {
-  const MealCheckScreen({Key? key}) : super(key: key);
+class MealStepScreen extends StatefulWidget {
+  const MealStepScreen({Key? key}) : super(key: key);
 
   @override
-  _MealCheckScreenState createState() => _MealCheckScreenState();
+  _MealStepScreenState createState() => _MealStepScreenState();
 }
 
-class _MealCheckScreenState extends State<MealCheckScreen> {
+class _MealStepScreenState extends State<MealStepScreen> {
   List<FoodCategory> _categories = [];
   List<FoodItem> selectedItems = [];
   List<String> skippedMeals = [];
@@ -178,7 +178,8 @@ class _MealCheckScreenState extends State<MealCheckScreen> {
       );
 
       if (response.statusCode == 201) {
-        Navigator.pushNamed(context, '/next-step');
+        Navigator.pushNamed(
+            context, '/exercise-step'); // Navigate to Exercise Step
       } else {
         final error = jsonDecode(response.body);
         setState(() {
@@ -196,6 +197,7 @@ class _MealCheckScreenState extends State<MealCheckScreen> {
     }
   }
 
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -208,10 +210,11 @@ class _MealCheckScreenState extends State<MealCheckScreen> {
         child: ListView(
           children: [
             LinearProgressIndicator(
-              value: 0.5, // Adjust progress value as needed
+              value: 0.75,
               backgroundColor: Colors.grey[300],
               valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
             ),
+
             const SizedBox(height: 20),
             TextField(
               controller: _searchController,

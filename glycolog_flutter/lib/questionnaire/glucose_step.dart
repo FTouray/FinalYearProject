@@ -28,7 +28,7 @@ class _GlucoseStepScreenState extends State<GlucoseStepScreen> {
         child: ListView(
           children: [
             LinearProgressIndicator(
-              value: 0.66, // Adjust progress value as needed
+              value: 0.5, // Progress for step 2 of 4
               backgroundColor: Colors.grey[300],
               valueColor: AlwaysStoppedAnimation<Color>(Colors.blue[800]!),
             ),
@@ -50,7 +50,7 @@ class _GlucoseStepScreenState extends State<GlucoseStepScreen> {
               ),
             ),
             const SizedBox(height: 20),
-            if (_isLoading) Center(child: CircularProgressIndicator()),
+            if (_isLoading) const Center(child: CircularProgressIndicator()),
             const SizedBox(height: 20),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -90,28 +90,25 @@ class _GlucoseStepScreenState extends State<GlucoseStepScreen> {
 
     final String glucoseLevel = _glucoseController.text;
 
-    if (glucoseLevel.isEmpty) {
+    if (glucoseLevel.isEmpty || double.tryParse(glucoseLevel) == null) {
       setState(() {
         _isLoading = false;
-        _error = 'Please enter a glucose level.';
+        _error = 'Please enter a valid numeric glucose level.';
       });
       return;
     }
 
     try {
+      // Fetch token and target range from shared preferences
       String? token = await AuthService().getAccessToken();
 
       if (token == null) {
         throw Exception('User is not authenticated.');
       }
 
-      // Fetch target range from SharedPreferences
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       double? targetMin = prefs.getDouble('targetMin');
       double? targetMax = prefs.getDouble('targetMax');
-
-      print(
-          'Fetched Target Min: $targetMin, Target Max: $targetMax'); // Debug log
 
       if (targetMin == null || targetMax == null) {
         throw Exception(

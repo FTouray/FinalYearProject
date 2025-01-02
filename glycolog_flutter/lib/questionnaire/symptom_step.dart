@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-
 import '../services/auth_service.dart';
 
 class SymptomStepScreen extends StatefulWidget {
@@ -49,7 +48,7 @@ class _SymptomStepScreenState extends State<SymptomStepScreen> {
           children: [
             // Progress Bar
             LinearProgressIndicator(
-              value: 0.33, // Need to come back and change
+              value: 0.25, // Progress for step 1 of 4
               backgroundColor: Colors.grey[300],
               valueColor: AlwaysStoppedAnimation<Color>(Colors.blue[800]!),
             ),
@@ -58,8 +57,6 @@ class _SymptomStepScreenState extends State<SymptomStepScreen> {
             // Symptoms Section
             _buildSectionTitle("Symptoms"),
             ..._buildSymptomQuestions(),
-
-            // Rest and Stress Section
             _buildSectionTitle("Rest and Stress"),
             _buildSliderQuestion(
               question: "How many hours did you sleep last night?",
@@ -100,18 +97,14 @@ class _SymptomStepScreenState extends State<SymptomStepScreen> {
               options: ["Yes", "No"],
               responseKey: "routine_effect",
             ),
-
-            // Loading Indicator
-            if (_isLoading) Center(child: CircularProgressIndicator()),
-
-            // Navigation Buttons
+            if (_isLoading) const Center(child: CircularProgressIndicator()),
             const SizedBox(height: 20),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 TextButton(
                   onPressed: () {
-                    Navigator.pop(context); // Go back
+                    Navigator.pop(context);
                   },
                   child: const Text(
                     'Back',
@@ -159,9 +152,7 @@ class _SymptomStepScreenState extends State<SymptomStepScreen> {
             onChanged: (bool? value) {
               setState(() {
                 selectedSymptoms[symptom] = value!;
-                if (!value) {
-                  responseValues.remove(symptom);
-                }
+                if (!value) responseValues.remove(symptom);
               });
             },
           ),
@@ -292,7 +283,7 @@ class _SymptomStepScreenState extends State<SymptomStepScreen> {
           .toList(),
       "responses": responseValues,
     };
-    
+
     String? token = await AuthService().getAccessToken();
 
     if (token == null) {
@@ -308,7 +299,6 @@ class _SymptomStepScreenState extends State<SymptomStepScreen> {
     try {
       final response = await http.post(
         Uri.parse('http://192.168.1.19:8000/api/questionnaire/symptom-step/'),
-        
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
@@ -317,10 +307,7 @@ class _SymptomStepScreenState extends State<SymptomStepScreen> {
       );
 
       if (response.statusCode == 201) {
-        Navigator.pushNamed(
-          context,
-          '/glucose-step'
-        );
+        Navigator.pushNamed(context, '/glucose-step');
       } else {
         final error = jsonDecode(response.body);
         ScaffoldMessenger.of(context).showSnackBar(
