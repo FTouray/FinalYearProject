@@ -97,7 +97,7 @@ class _MyAppState extends State<MyApp> {
   Future<void> _refreshToken(BuildContext context) async {
     final response = await http.post(
       // Uri.parse('http://10.0.2.2:8000/api/token/refresh/'), // For Emulator Token refresh API endpoint
-      Uri.parse('http://192.168.1.19:8000/api/token/refresh/'), // For Physical Device
+      Uri.parse('http://192.168.1.12:8000/api/token/refresh/'), // For Physical Device
      // Uri.parse('http://172.20.10.3:8000/api/token/refresh/'), // Hotspot
       headers: {'Content-Type': 'application/json'},
       body:

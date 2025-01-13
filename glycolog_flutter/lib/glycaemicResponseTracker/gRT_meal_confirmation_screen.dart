@@ -51,7 +51,7 @@ class _MealConfirmationScreenState extends State<MealConfirmationScreen> {
       }
 
       final response = await http.post(
-        Uri.parse('http://192.168.1.19:8000/api/log-meal/'), // Physical Device
+        Uri.parse('http://192.168.1.12:8000/api/log-meal/'), // Physical Device
         // Uri.parse('http://172.20.10.3:8000/api/log-meal/'), // Hotspot
         headers: {
           'Authorization': 'Bearer $token',

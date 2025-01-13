@@ -33,7 +33,7 @@ class _MealLogHistoryScreenState extends State<MealLogHistoryScreen> {
     if (token != null) {
       try {
         final response = await http.get(
-           Uri.parse('http://192.168.1.19:8000/api/meal-log/history/'), // Physical Device
+           Uri.parse('http://192.168.1.12:8000/api/meal-log/history/'), // Physical Device
           //Uri.parse('http://172.20.10.3:8000/api/meal-log-history/'), // Hotspot
           headers: {
             'Authorization': 'Bearer $token',

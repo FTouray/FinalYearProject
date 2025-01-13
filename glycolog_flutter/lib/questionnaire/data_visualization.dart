@@ -3,6 +3,8 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
+import '../services/auth_service.dart';
+
 class QuestionnaireVisualizationScreen extends StatefulWidget {
   const QuestionnaireVisualizationScreen({Key? key}) : super(key: key);
 
@@ -26,11 +28,13 @@ class _QuestionnaireVisualizationScreenState
 
   Future<void> _fetchQuestionnaireData() async {
     try {
+       String? token = await AuthService().getAccessToken();
+       
       final response = await http.get(
         Uri.parse(
-            'http://192.168.1.19:8000/api/questionnaire-visualization-data/'),
+            'http://192.168.1.12:8000/api/questionnaire-visualization-data/'),
         headers: {
-          'Authorization': 'Bearer YOUR_ACCESS_TOKEN',
+          'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
       );

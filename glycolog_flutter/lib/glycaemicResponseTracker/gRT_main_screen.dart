@@ -41,7 +41,7 @@ class _GRTMainScreenState extends State<GRTMainScreen> {
     String? token = await AuthService().getAccessToken();
     try {
       final response = await http.get(
-        Uri.parse('http://192.168.1.19:8000/api/glycaemic-response-main'),
+        Uri.parse('http://192.168.1.12:8000/api/glycaemic-response-main'),
         headers: {
           'Authorization': 'Bearer $token',
         },

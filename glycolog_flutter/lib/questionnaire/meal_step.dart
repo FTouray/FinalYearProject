@@ -69,7 +69,7 @@ class _MealStepScreenState extends State<MealStepScreen> {
       }
 
       final response = await http.get(
-        Uri.parse('http://192.168.1.19:8000/api/categories'),
+        Uri.parse('http://192.168.1.12:8000/api/categories'),
         headers: {'Authorization': 'Bearer $token'},
       );
 
@@ -99,7 +99,7 @@ class _MealStepScreenState extends State<MealStepScreen> {
 
       final response = await http.get(
         Uri.parse(
-            'http://192.168.1.19:8000/api/categories/$categoryId/food-items/'),
+            'http://192.168.1.12:8000/api/categories/$categoryId/food-items/'),
         headers: {'Authorization': 'Bearer $token'},
       );
 
@@ -169,7 +169,7 @@ class _MealStepScreenState extends State<MealStepScreen> {
       };
 
       final response = await http.post(
-        Uri.parse('http://192.168.1.19:8000/api/questionnaire/meal-step/'),
+        Uri.parse('http://192.168.1.12:8000/api/questionnaire/meal-step/'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',

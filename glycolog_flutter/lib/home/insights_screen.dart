@@ -31,7 +31,7 @@ class _InsightsGraphScreenState extends State<InsightsGraphScreen> {
 
     try {
       final response = await http.get(
-        Uri.parse('http://192.168.1.19:8000/api/insights-graph/'),
+        Uri.parse('http://192.168.1.12:8000/api/insights-graph/'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
