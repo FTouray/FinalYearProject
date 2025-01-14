@@ -23,6 +23,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 import 'questionnaire/glucose_step.dart';
+import 'questionnaire/review.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized(); // Ensure bindings are initialized
@@ -174,7 +175,8 @@ class _MyAppState extends State<MyApp> {
         '/glucose-step': (context) => GlucoseStepScreen(),
         '/meal-step': (context) => MealStepScreen(),
         '/exercise-step': (context) => ExerciseStepScreen(),
-        '/visualization': (context) => const QuestionnaireVisualizationScreen(),
+        '/review': (context) => const ReviewScreen(),
+        '/data-visualization': (context) => const QuestionnaireVisualizationScreen(),
         '/insights-graph-data': (context) => const InsightsGraphScreen(),
       },
     );
