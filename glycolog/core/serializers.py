@@ -186,7 +186,6 @@ class MealCheckSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "session",
-            "meal_type",
             "high_gi_foods",
             "high_gi_food_ids",
             "skipped_meals",

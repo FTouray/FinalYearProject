@@ -417,7 +417,7 @@ def meal_step(request):
         return Response(
             {
                 "message": "Diet information logged successfully.",
-                "diet_check": MealCheckSerializer(meal_check).data,
+                "meal_check": MealCheckSerializer(meal_check).data,
             },
             status=201,
         )
