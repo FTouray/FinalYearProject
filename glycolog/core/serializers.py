@@ -133,7 +133,7 @@ class GlycaemicResponseTrackerSerializer(serializers.ModelSerializer):
 class QuestionnaireSessionSerializer(serializers.ModelSerializer):
     class Meta:
         model = QuestionnaireSession
-        fields = ["id", "user", "feeling_check", "current_step", "completed", "created_at"]
+        fields = ["id", "user", "feeling_check", "completed", "created_at"]
         read_only_fields = ["id", "created_at"]
 
 # Symptom Check Serializer

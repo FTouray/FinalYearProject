@@ -100,12 +100,11 @@ class GlycaemicResponseTracker(models.Model):
 class QuestionnaireSession(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="questionnaire_sessions"    )
     feeling_check = models.ForeignKey("FeelingCheck", on_delete=models.SET_NULL, null=True, blank=True, related_name="questionnaire_sessions"    )
-    current_step = models.IntegerField(default=1)  # Tracks progress in the questionnaire
     completed = models.BooleanField(default=False)  # Marks when the session is finished
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"QuestionnaireSession for {self.user.username} - Step {self.current_step}"
+        return f"QuestionnaireSession for {self.user.username} - {self.created_at.strftime('%Y-%m-%d %H:%M:%S')}"
 
 # Model to track how thw user is feeling
 class FeelingCheck(models.Model):

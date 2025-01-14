@@ -1,6 +1,7 @@
 from datetime import datetime
 from django.http import JsonResponse
 import pandas as pd
+from django.db.models import Max
 from rest_framework import status
 from rest_framework.response import Response
 from django.contrib.auth import authenticate
@@ -315,12 +316,9 @@ def symptom_step(request):
         print("No active session found for user:", user.id)  # Debug
         return Response({"error": "No active questionnaire session found."}, status=404)
 
-    print("Current session step:", session.current_step)  # Debug
+   
     print("Received data:", request.data)  # Debug
 
-    # Validate session step
-    if session.current_step != 1:
-        return Response({"error": "You are not on the symptom step."}, status=400)
 
     data = request.data.copy()
     data["session"] = session.id  # Add session ID to the data
@@ -329,7 +327,6 @@ def symptom_step(request):
     serializer = SymptomCheckSerializer(data=data, context={"request": request})
     if serializer.is_valid():
         serializer.save(session=session)  # Link symptoms to the session
-        session.current_step += 1  # Move to the next step
         session.save()
         return Response({"message": "Symptoms logged successfully"}, status=201)
     else:
@@ -345,10 +342,6 @@ def glucose_step(request):
 
     if not session:
         return Response({"error": "No active questionnaire session found."}, status=404)
-
-    # Validate session step
-    if session.current_step != 2:
-        return Response({"error": "You are not on the glucose step."}, status=400)
 
     data = request.data.copy()
     data["session"] = session.id
@@ -381,7 +374,6 @@ def glucose_step(request):
     serializer = GlucoseCheckSerializer(data=data)
     if serializer.is_valid():
         serializer.save(session=session)
-        session.current_step += 1  # Move to the next step
         session.save()
         return Response(serializer.data, status=201)
     return Response(serializer.errors, status=400)(serializer.errors, status=400)
@@ -399,10 +391,6 @@ def meal_step(request):
     if not session:
         return Response({"error": "No active questionnaire session found."}, status=404)
 
-    # Validate session step
-    if session.current_step != 3:  # Assuming this is step 3
-        return Response({"error": "You are not on the diet step."}, status=400)
-
     data = request.data.copy()
     data["session"] = session.id  # Add session ID to the data
 
@@ -410,8 +398,6 @@ def meal_step(request):
     if serializer.is_valid():
         meal_check = serializer.save()
 
-        # Move to the next step
-        session.current_step += 1
         session.save()
 
         return Response(
@@ -434,9 +420,9 @@ def exercise_step(request):
         print("No active questionnaire session found.")
         return Response({"error": "No active questionnaire session found."}, status=404)
 
-    if session.current_step != 4:
-        print(f"User is on step {session.current_step}, expected step 4.")
-        return Response({"error": "You are not on the exercise step."}, status=400)
+    # if session.current_step != 4:
+    #     print(f"User is on step {session.current_step}, expected step 4.")
+    #     return Response({"error": "You are not on the exercise step."}, status=400)
 
     data = request.data.copy()
     print("Received data:", data)  # Debug: Log the received data
@@ -462,7 +448,6 @@ def exercise_step(request):
         return Response(serializer.errors, status=400)
 
     exercise_check = serializer.save()
-    session.current_step += 1
     session.save()
 
     return Response(
@@ -492,48 +477,53 @@ def review_answers(request):
         "exercise_check": ExerciseCheckSerializer(session.exercise_check.all(), many=True).data,
     }
 
+    session.completed = True
+    session.save()
+
     return Response(data)
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
-def questionnaire_visualization_data(request):
+def questionnaire_data_visualization(request):
     user = request.user
 
     # Aggregate data by session
     sessions = QuestionnaireSession.objects.filter(user=user, completed=True)
+    latest_session_date = sessions.aggregate(Max("created_at"))["created_at__max"]
 
     data = []
     for session in sessions:
         session_data = {
-            "date": session.created_at,
+            "date": session.created_at.strftime("%Y-%m-%d"),
+            "is_latest": session.created_at
+            == latest_session_date,  # Flag for latest session
             "glucose_check": [
                 {
                     "level": glucose.glucose_level,
                     "target_evaluation": glucose.evaluate_target(),
                 }
-                for glucose in session.glucose_checks.all()
+                for glucose in session.glucose_check.all()
             ],
             "wellness_score": (
                 session.feeling_check.feeling if session.feeling_check else None
             ),
-            "symptom_check": (
-                session.symptom_check.symptoms if session.symptom_check else None
-            ),
+            "symptom_check": [
+                symptom.symptoms for symptom in session.symptom_check.all()
+            ],
             "meal_check": [
                 {
-                    "meal_type": meal.meal_type,
                     "high_gi_food_count": meal.high_gi_foods.count(),
                     "skipped_meals": meal.skipped_meals,
                 }
-                for meal in session.diet_checks.all()
+                for meal in session.meal_check.all()
             ],
             "exercise_check": {
-                "duration": session.exercise_checks.aggregate(Avg("exercise_duration"))[
+                "duration": session.exercise_check.aggregate(Avg("exercise_duration"))[
                     "exercise_duration__avg"
                 ],
                 "feeling": (
-                    session.exercise_checks.first().post_exercise_feeling
-                    if session.exercise_checks.exists()
+                    session.exercise_check.first().post_exercise_feeling
+                    if session.exercise_check.exists()
                     else None
                 ),
             },
