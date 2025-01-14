@@ -424,12 +424,60 @@ def meal_step(request):
     else:
         return Response(serializer.errors, status=400)
 
-
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def exercise_step(request):
+    user = request.user
+    session = QuestionnaireSession.objects.filter(user=user, completed=False).last()
+
+    if not session:
+        print("No active questionnaire session found.")
+        return Response({"error": "No active questionnaire session found."}, status=404)
+
+    if session.current_step != 4:
+        print(f"User is on step {session.current_step}, expected step 4.")
+        return Response({"error": "You are not on the exercise step."}, status=400)
+
+    data = request.data.copy()
+    print("Received data:", data)  # Debug: Log the received data
+
+    data["session"] = session.id
+
+    # Check if the required fields are missing
+    if "activity_level_comparison" not in data:
+        print("Error: Missing activity_level_comparison in the request.")
+    if "exercise_type" not in data:
+        print("Error: Missing exercise_type in the request.")
+    if "exercise_intensity" not in data:
+        print("Error: Missing exercise_intensity in the request.")
+
+    # Safely handle missing keys using .get()
+    if data.get("activity_level_comparison") == "Less" and not data.get("activity_prevention_reason"):
+        print("Missing activity prevention reason for 'Less' activity level.")
+        return Response({"error": "Reason for less activity is required if activity level is 'Less'."}, status=400)
+
+    serializer = ExerciseCheckSerializer(data=data)
+    if not serializer.is_valid():
+        print("Serializer errors:", serializer.errors)  # Debug: Log serializer validation errors
+        return Response(serializer.errors, status=400)
+
+    exercise_check = serializer.save()
+    session.current_step += 1
+    session.save()
+
+    return Response(
+        {
+            "message": "Exercise information logged successfully.",
+            "exercise_check": ExerciseCheckSerializer(exercise_check).data,
+        },
+        status=201,
+    )
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def review_answers(request):
     """
-    Handles the exercise step in the questionnaire.
+    Fetches all answers for the current active questionnaire session for review.
     """
     user = request.user
     session = QuestionnaireSession.objects.filter(user=user, completed=False).last()
@@ -437,31 +485,14 @@ def exercise_step(request):
     if not session:
         return Response({"error": "No active questionnaire session found."}, status=404)
 
-    # Validate session step
-    if session.current_step != 4:  # Assuming this is step 4
-        return Response({"error": "You are not on the exercise step."}, status=400)
+    data = {
+        "symptom_check": SymptomCheckSerializer(session.symptom_check.all(), many=True).data,
+        "glucose_check": GlucoseCheckSerializer(session.glucose_check.all(), many=True).data,
+        "meal_check": MealCheckSerializer(session.meal_check.all(), many=True).data,
+        "exercise_check": ExerciseCheckSerializer(session.exercise_check.all(), many=True).data,
+    }
 
-    data = request.data.copy()
-    data["session"] = session.id  # Add session ID to the data
-
-    serializer = ExerciseCheckSerializer(data=data)
-    if serializer.is_valid():
-        exercise_check = serializer.save()
-
-        # Move to the next step
-        session.current_step += 1
-        session.save()
-
-        return Response(
-            {
-                "message": "Exercise information logged successfully.",
-                "exercise_check": ExerciseCheckSerializer(exercise_check).data,
-            },
-            status=201,
-        )
-    else:
-        return Response(serializer.errors, status=400)
-
+    return Response(data)
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
@@ -475,7 +506,7 @@ def questionnaire_visualization_data(request):
     for session in sessions:
         session_data = {
             "date": session.created_at,
-            "glucose_checks": [
+            "glucose_check": [
                 {
                     "level": glucose.glucose_level,
                     "target_evaluation": glucose.evaluate_target(),
@@ -485,10 +516,10 @@ def questionnaire_visualization_data(request):
             "wellness_score": (
                 session.feeling_check.feeling if session.feeling_check else None
             ),
-            "symptoms": (
+            "symptom_check": (
                 session.symptom_check.symptoms if session.symptom_check else None
             ),
-            "diet_checks": [
+            "meal_check": [
                 {
                     "meal_type": meal.meal_type,
                     "high_gi_food_count": meal.high_gi_foods.count(),

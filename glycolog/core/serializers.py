@@ -3,7 +3,7 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
-from .models import FeelingCheck, FollowUpQuestion, FoodCategory, FoodItem, GlucoseCheck, GlycaemicResponseTracker, Insight, Meal, GlucoseLog, MealCheck, QuestionnaireSession, SymptomCheck  # Import your models
+from .models import ExerciseCheck, FeelingCheck, FollowUpQuestion, FoodCategory, FoodItem, GlucoseCheck, GlycaemicResponseTracker, Insight, Meal, GlucoseLog, MealCheck, QuestionnaireSession, SymptomCheck  # Import your models
 
 # Get the custom user model
 User = get_user_model()
@@ -212,9 +212,6 @@ class MealCheckSerializer(serializers.ModelSerializer):
             instance.high_gi_foods.set(high_gi_food_ids)
         return super().update(instance, validated_data)
 
-from rest_framework import serializers
-from .models import ExerciseCheck
-
 # Exercise Check Serializer
 class ExerciseCheckSerializer(serializers.ModelSerializer):
     class Meta:
@@ -224,6 +221,7 @@ class ExerciseCheckSerializer(serializers.ModelSerializer):
             "session",
             "last_exercise_time",
             "exercise_type",
+            "exercise_intensity",
             "exercise_duration",
             "post_exercise_feeling",
             "activity_level_comparison",
@@ -235,6 +233,22 @@ class ExerciseCheckSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id", "created_at"]
 
+    def validate(self, data):
+        print("Validating data:", data)  # Debug: Log the data being validated
+
+        if data.get("activity_level_comparison") == "Less" and not data.get("activity_prevention_reason"):
+            print("Validation error: Missing activity_prevention_reason for 'Less' activity level.")
+            raise serializers.ValidationError(
+                {"activity_prevention_reason": "This field is required if activity level is 'Less'."}
+            )
+
+        if data.get("discomfort_or_fatigue") and not data.get("discomfort_description"):
+            print("Validation error: Missing discomfort_description when discomfort or fatigue is reported.")
+            raise serializers.ValidationError(
+                {"discomfort_description": "This field is required if discomfort or fatigue is reported."}
+            )
+
+        return data
 
 # Feeling Check Serializer
 class FeelingCheckSerializer(serializers.ModelSerializer):

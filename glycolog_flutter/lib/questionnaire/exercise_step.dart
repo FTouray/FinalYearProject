@@ -3,6 +3,8 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
+import '../services/auth_service.dart';
+
 class ExerciseStepScreen extends StatefulWidget {
   const ExerciseStepScreen({Key? key}) : super(key: key);
 
@@ -12,6 +14,7 @@ class ExerciseStepScreen extends StatefulWidget {
 
 class _ExerciseStepScreenState extends State<ExerciseStepScreen> {
   String? lastExerciseTime;
+  String? exerciseType;
   String? exerciseIntensity;
   double exerciseDuration = 0;
   String? postExerciseFeeling;
@@ -24,18 +27,20 @@ class _ExerciseStepScreenState extends State<ExerciseStepScreen> {
 
   final List<String> exerciseTimes = [
     'Today',
-    '2–3 Days Ago',
+    '2-3 Days Ago',
     'More than 5 Days Ago',
     'I Don’t Remember'
   ];
 
-  final List<String> exerciseIntensities = [
+  final List<String> exerciseTypes = [
     'Walking',
     'Running',
     'Yoga',
     'Strength Training',
     'Other'
   ];
+
+  final List<String> exerciseIntensities = ['Low', 'Moderate', 'Vigorous'];
 
   final List<String> feelingsAfterExercise = ['Energised', 'Neutral', 'Tired'];
 
@@ -55,22 +60,22 @@ class _ExerciseStepScreenState extends State<ExerciseStepScreen> {
     });
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('access_token');
-      if (token == null) {
-        throw Exception('User is not authenticated.');
-      }
+      String? token = await AuthService().getAccessToken();
+      if (token == null) throw Exception('User is not authenticated.');
 
       final data = {
         'last_exercise_time': lastExerciseTime,
-        'exercise_intensity': exerciseIntensity,
+        'exercise_type': exerciseType, // Update to use correct field
+        'exercise_intensity': exerciseIntensity, // Add default if needed
         'exercise_duration': exerciseDuration,
         'post_exercise_feeling': postExerciseFeeling,
-        'activity_level': activityLevel,
+        'activity_level_comparison': activityLevel,
         'activity_barrier': activityLevel == 'Less' ? activityBarrier : null,
         'experienced_discomfort': experiencedDiscomfort,
         'discomfort_details': experiencedDiscomfort ? discomfortDetails : null,
       };
+
+      print('Submitting data: $data'); // Debug: Log data being submitted
 
       final response = await http.post(
         Uri.parse('http://192.168.1.12:8000/api/questionnaire/exercise-step/'),
@@ -82,14 +87,18 @@ class _ExerciseStepScreenState extends State<ExerciseStepScreen> {
       );
 
       if (response.statusCode == 201) {
-        Navigator.pushReplacementNamed(context, '/questionnaire-completed');
+        print('Data submitted successfully: ${response.body}');
+        Navigator.pushReplacementNamed(context, '/review');
       } else {
         final error = jsonDecode(response.body);
+        print(
+            'Server responded with error: $error'); // Debug: Log server error response
         setState(() {
           errorMessage = error['error'] ?? 'An error occurred.';
         });
       }
     } catch (e) {
+      print('Error submitting data: $e'); // Debug: Log any exceptions
       setState(() {
         errorMessage = 'An error occurred: $e';
       });
@@ -99,6 +108,7 @@ class _ExerciseStepScreenState extends State<ExerciseStepScreen> {
       });
     }
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -133,6 +143,17 @@ class _ExerciseStepScreenState extends State<ExerciseStepScreen> {
                 onChanged: (value) {
                   setState(() {
                     lastExerciseTime = value;
+                  });
+                },
+              ),
+              const SizedBox(height: 20),
+              _buildDropdownField(
+                label: 'Exercise Type',
+                value: exerciseType,
+                items: exerciseTypes,
+                onChanged: (value) {
+                  setState(() {
+                    exerciseType = value;
                   });
                 },
               ),
