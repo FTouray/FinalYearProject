@@ -82,7 +82,6 @@ class _ExerciseStepScreenState extends State<ExerciseStepScreen> {
       );
 
       if (response.statusCode == 201) {
-        // Navigate to a completion screen or summary
         Navigator.pushReplacementNamed(context, '/questionnaire-completed');
       } else {
         final error = jsonDecode(response.body);
@@ -108,159 +107,214 @@ class _ExerciseStepScreenState extends State<ExerciseStepScreen> {
         title: const Text('Exercise Details'),
         backgroundColor: Colors.blue[800],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: ListView(
-          children: [
-            // Progress indicator at 100% for the last step
-            LinearProgressIndicator(
-              value: 1.0, // Full progress for the last step
-              backgroundColor: Colors.grey[300],
-              valueColor: AlwaysStoppedAnimation<Color>(Colors.blue[800]!),
-            ),
-            const SizedBox(height: 20),
-            DropdownButtonFormField<String>(
-              decoration:
-                  const InputDecoration(labelText: 'Last Exercise Time'),
-              items: exerciseTimes
-                  .map((time) =>
-                      DropdownMenuItem(value: time, child: Text(time)))
-                  .toList(),
-              value: lastExerciseTime,
-              onChanged: (value) {
-                setState(() {
-                  lastExerciseTime = value;
-                });
-              },
-            ),
-            const SizedBox(height: 20),
-            DropdownButtonFormField<String>(
-              decoration:
-                  const InputDecoration(labelText: 'Exercise Intensity'),
-              items: exerciseIntensities
-                  .map((intensity) => DropdownMenuItem(
-                      value: intensity, child: Text(intensity)))
-                  .toList(),
-              value: exerciseIntensity,
-              onChanged: (value) {
-                setState(() {
-                  exerciseIntensity = value;
-                });
-              },
-            ),
-            const SizedBox(height: 20),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Exercise Duration (minutes)'),
-                Slider(
-                  value: exerciseDuration,
-                  min: 0,
-                  max: 60,
-                  divisions: 12,
-                  label: exerciseDuration.toStringAsFixed(0),
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              LinearProgressIndicator(
+                value: 1.0,
+                backgroundColor: Colors.grey[300],
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.blue[800]!),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Tell us about your recent exercise:',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 20),
+              _buildDropdownField(
+                label: 'Last Exercise Time',
+                value: lastExerciseTime,
+                items: exerciseTimes,
+                onChanged: (value) {
+                  setState(() {
+                    lastExerciseTime = value;
+                  });
+                },
+              ),
+              const SizedBox(height: 20),
+              _buildDropdownField(
+                label: 'Exercise Intensity',
+                value: exerciseIntensity,
+                items: exerciseIntensities,
+                onChanged: (value) {
+                  setState(() {
+                    exerciseIntensity = value;
+                  });
+                },
+              ),
+              const SizedBox(height: 20),
+              _buildSliderField(
+                label: 'Exercise Duration (minutes)',
+                value: exerciseDuration,
+                min: 0,
+                max: 60,
+                divisions: 12,
+                onChanged: (value) {
+                  setState(() {
+                    exerciseDuration = value;
+                  });
+                },
+              ),
+              const SizedBox(height: 20),
+              _buildDropdownField(
+                label: 'Post-Exercise Feeling',
+                value: postExerciseFeeling,
+                items: feelingsAfterExercise,
+                onChanged: (value) {
+                  setState(() {
+                    postExerciseFeeling = value;
+                  });
+                },
+              ),
+              const SizedBox(height: 20),
+              _buildDropdownField(
+                label: 'Activity Level Compared to Usual',
+                value: activityLevel,
+                items: activityLevels,
+                onChanged: (value) {
+                  setState(() {
+                    activityLevel = value;
+                    if (value != 'Less') activityBarrier = null;
+                  });
+                },
+              ),
+              const SizedBox(height: 20),
+              if (activityLevel == 'Less')
+                _buildDropdownField(
+                  label: 'Reason for Less Activity',
+                  value: activityBarrier,
+                  items: activityBarriers,
                   onChanged: (value) {
                     setState(() {
-                      exerciseDuration = value;
+                      activityBarrier = value;
                     });
                   },
                 ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            DropdownButtonFormField<String>(
-              decoration:
-                  const InputDecoration(labelText: 'Post-Exercise Feeling'),
-              items: feelingsAfterExercise
-                  .map((feeling) =>
-                      DropdownMenuItem(value: feeling, child: Text(feeling)))
-                  .toList(),
-              value: postExerciseFeeling,
-              onChanged: (value) {
-                setState(() {
-                  postExerciseFeeling = value;
-                });
-              },
-            ),
-            const SizedBox(height: 20),
-            DropdownButtonFormField<String>(
-              decoration: const InputDecoration(labelText: 'Activity Level'),
-              items: activityLevels
-                  .map((level) =>
-                      DropdownMenuItem(value: level, child: Text(level)))
-                  .toList(),
-              value: activityLevel,
-              onChanged: (value) {
-                setState(() {
-                  activityLevel = value;
-                  if (value != 'Less') activityBarrier = null;
-                });
-              },
-            ),
-            const SizedBox(height: 20),
-            if (activityLevel == 'Less')
-              DropdownButtonFormField<String>(
-                decoration:
-                    const InputDecoration(labelText: 'Activity Barrier'),
-                items: activityBarriers
-                    .map((barrier) =>
-                        DropdownMenuItem(value: barrier, child: Text(barrier)))
-                    .toList(),
-                value: activityBarrier,
-                onChanged: (value) {
-                  setState(() {
-                    activityBarrier = value;
-                  });
-                },
-              ),
-            const SizedBox(height: 20),
-            SwitchListTile(
-              title: const Text('Experienced Discomfort?'),
-              value: experiencedDiscomfort,
-              onChanged: (value) {
-                setState(() {
-                  experiencedDiscomfort = value;
-                  if (!value) discomfortDetails = null;
-                });
-              },
-            ),
-            if (experiencedDiscomfort)
-              TextField(
-                decoration: const InputDecoration(
-                  labelText: 'Discomfort Details',
-                  border: OutlineInputBorder(),
+              const SizedBox(height: 20),
+              SwitchListTile(
+                title: const Text(
+                  'Experienced Discomfort?',
+                  style: TextStyle(fontWeight: FontWeight.w600),
                 ),
+                value: experiencedDiscomfort,
                 onChanged: (value) {
                   setState(() {
-                    discomfortDetails = value;
+                    experiencedDiscomfort = value;
+                    if (!value) discomfortDetails = null;
                   });
                 },
               ),
-            const SizedBox(height: 20),
-            if (isLoading) const Center(child: CircularProgressIndicator()),
-            if (errorMessage != null)
-              Text(
-                errorMessage!,
-                style: const TextStyle(color: Colors.red),
-              ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.pop(context);
+              if (experiencedDiscomfort)
+                TextField(
+                  decoration: const InputDecoration(
+                    labelText: 'Discomfort Details',
+                    border: OutlineInputBorder(),
+                  ),
+                  onChanged: (value) {
+                    setState(() {
+                      discomfortDetails = value;
+                    });
                   },
-                  child: const Text('Back'),
                 ),
-                ElevatedButton(
-                  onPressed: isLoading ? null : _submitData,
-                  child: const Text('Finish'),
+              const SizedBox(height: 20),
+              if (isLoading) const Center(child: CircularProgressIndicator()),
+              if (errorMessage != null)
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Text(
+                    errorMessage!,
+                    style: const TextStyle(color: Colors.red),
+                  ),
                 ),
-              ],
-            ),
-          ],
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                    child: const Text(
+                      'Back',
+                      style: TextStyle(fontSize: 16),
+                    ),
+                  ),
+                  ElevatedButton(
+                    onPressed: isLoading ? null : _submitData,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue[800],
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 12, horizontal: 24),
+                    ),
+                    child: const Text(
+                      'Finish',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
+    );
+  }
+
+  Widget _buildDropdownField({
+    required String label,
+    required String? value,
+    required List<String> items,
+    required void Function(String?) onChanged,
+  }) {
+    return DropdownButtonFormField<String>(
+      decoration: InputDecoration(
+        labelText: label,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12.0),
+        ),
+      ),
+      value: value,
+      items: items
+          .map((item) => DropdownMenuItem(
+                value: item,
+                child: Text(item),
+              ))
+          .toList(),
+      onChanged: onChanged,
+    );
+  }
+
+  Widget _buildSliderField({
+    required String label,
+    required double value,
+    required double min,
+    required double max,
+    required int divisions,
+    required void Function(double) onChanged,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(fontWeight: FontWeight.w600),
+        ),
+        Slider(
+          value: value,
+          min: min,
+          max: max,
+          divisions: divisions,
+          label: '${value.toStringAsFixed(0)} mins',
+          onChanged: onChanged,
+        ),
+      ],
     );
   }
 }
