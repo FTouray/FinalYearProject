@@ -125,7 +125,7 @@ class FeelingCheck(models.Model):
 
 # Model to store symptoms reported by the user
 class SymptomCheck(models.Model):
-    session = models.OneToOneField("QuestionnaireSession", on_delete=models.CASCADE, related_name="symptom_check")
+    session = models.ForeignKey(QuestionnaireSession, on_delete=models.CASCADE, related_name="symptom_check")
     symptoms = models.JSONField()  
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -135,7 +135,7 @@ class SymptomCheck(models.Model):
 
 # Model to store glucose checks by the user
 class GlucoseCheck(models.Model):
-    session = models.ForeignKey(QuestionnaireSession, on_delete=models.CASCADE, related_name="glucose_checks")
+    session = models.ForeignKey(QuestionnaireSession, on_delete=models.CASCADE, related_name="glucose_check")
     glucose_level = models.FloatField()
     target_min = models.FloatField() 
     target_max = models.FloatField()
@@ -158,8 +158,8 @@ class GlucoseCheck(models.Model):
 
 # Model to store diet checks
 class MealCheck(models.Model):
-    session = models.ForeignKey(QuestionnaireSession, on_delete=models.CASCADE, related_name="diet_checks")
-    high_gi_foods = models.ManyToManyField(FoodItem, related_name="meal_checks")
+    session = models.ForeignKey(QuestionnaireSession, on_delete=models.CASCADE, related_name="meal_check")
+    high_gi_foods = models.ManyToManyField(FoodItem, related_name="meal_check")
     skipped_meals = models.JSONField(blank=True, default=list)
     wellness_impact = models.BooleanField(default=False)  # Impact on wellness due to diet
     notes = models.TextField(blank=True, null=True)
@@ -170,14 +170,12 @@ class MealCheck(models.Model):
 
 # Model to store exercise checks
 class ExerciseCheck(models.Model):
-    session = models.ForeignKey(
-        QuestionnaireSession, on_delete=models.CASCADE, related_name="exercise_checks"
-    )
+    session = models.ForeignKey(QuestionnaireSession, on_delete=models.CASCADE, related_name="exercise_check")
     last_exercise_time = models.CharField(
         max_length=20,
         choices=[
             ("Today", "Today"),
-            ("2-3 Days Ago", "2–3 Days Ago"),
+            ("2-3 Days Ago", "2-3 Days Ago"),
             ("More than 5 Days Ago", "More than 5 Days Ago"),
             ("I Don’t Remember", "I Don’t Remember"),
         ],
