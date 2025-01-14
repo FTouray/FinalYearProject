@@ -149,7 +149,7 @@ class GlucoseCheckSerializer(serializers.ModelSerializer):
     class Meta:
         model = GlucoseCheck
         fields = ['id', 'session', 'glucose_level', 'target_min', 'target_max', 'timestamp', 'evaluation']
-        read_only_fields = ["id", "target_min", "target_max", "evaluation", "timestamp"]
+        read_only_fields = ["id", "evaluation", "timestamp"]
 
     def get_evaluation(self, obj):
         """
@@ -161,7 +161,16 @@ class GlucoseCheckSerializer(serializers.ModelSerializer):
         if value < 0:
             raise serializers.ValidationError("Glucose level must be non-negative.")
         return value
-
+    
+    def evaluate_target(self):
+        if self.target_min is None or self.target_max is None:
+            return "Invalid Target Range"
+        if self.glucose_level < self.target_min:
+            return "Lower"
+        elif self.glucose_level > self.target_max:
+            return "Higher"
+        else:
+            return "Within Range"
 
 class MealCheckSerializer(serializers.ModelSerializer):
     high_gi_foods = FoodItemSerializer(

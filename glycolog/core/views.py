@@ -358,6 +358,10 @@ def glucose_step(request):
     target_max = request.data.get("target_max")
     glucose_level = request.data.get("glucose_level")
 
+    data["target_min"] = float(target_min)
+    data["target_max"] = float(target_max)
+    data["glucose_level"] = float(glucose_level)
+
     if target_min is None or target_max is None:
         return Response(
             {"error": "Target range (min and max) is required."}, status=400
@@ -365,8 +369,7 @@ def glucose_step(request):
 
     if not glucose_level:
         return Response({"error": "Glucose level is required."}, status=400)
-    
-    
+
     # Save glucose check
     data.update(
         {
