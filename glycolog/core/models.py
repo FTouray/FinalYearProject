@@ -192,6 +192,17 @@ class ExerciseCheck(models.Model):
             ("Other", "Other"),
         ],
     )
+
+    exercise_intensity = models.CharField(
+        max_length=20,
+        choices=[
+            ("Low", "Low"),
+            ("Moderate", "Moderate"),
+            ("Vigorous", "Vigorous"),
+        ],
+        default="Moderate",
+    )
+
     exercise_duration = models.PositiveIntegerField()  # Duration in minutes
     post_exercise_feeling = models.CharField(
         max_length=20,
