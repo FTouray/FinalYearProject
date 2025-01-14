@@ -19,6 +19,7 @@ class _QuestionnaireVisualizationScreenState
   bool _hasError = false;
   List<Map<String, dynamic>> _questionnaireData = [];
   String _preferredGlucoseUnit = 'mg/dL';
+  String _selectedRange = "Last 10 Sessions";
 
   @override
   void initState() {
@@ -27,12 +28,20 @@ class _QuestionnaireVisualizationScreenState
   }
 
   Future<void> _fetchQuestionnaireData() async {
+    setState(() {
+      _isLoading = true;
+      _hasError = false;
+    });
+
     try {
-       String? token = await AuthService().getAccessToken();
-       
+      String? token = await AuthService().getAccessToken();
+      if (token == null) {
+        throw Exception('User is not authenticated.');
+      }
+
       final response = await http.get(
         Uri.parse(
-            'http://192.168.1.12:8000/api/questionnaire-visualization-data/'),
+            'http://192.168.1.12:8000/api/questionnaire/data-visualization/'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
@@ -42,33 +51,59 @@ class _QuestionnaireVisualizationScreenState
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         setState(() {
-          _preferredGlucoseUnit = 'mmol/L'; // Replace with dynamic retrieval
-          _questionnaireData = data.map((item) {
-            final normalizedData = {
-              'date': DateTime.parse(item['date']).toLocal(),
-              'glucose_checks': _normalizeGlucoseList(
-                  item['glucose_checks'], _preferredGlucoseUnit),
-              'wellness_score': _mapWellnessToScore(item['wellness_score']),
-              'exercise_duration':
-                  _normalizeDuration(item['exercise_check']['duration'] ?? 0),
-              'sleep_hours': _normalizeSleepHours(item['sleep_hours'] ?? 0.0),
-              'stress_level': _mapStressLevel(item['stress_level'] ?? 'None'),
-            };
-            return normalizedData;
-          }).toList();
-          _isLoading = false;
+          _questionnaireData = _filterDataByRange(data);
         });
       } else {
         setState(() {
           _hasError = true;
-          _isLoading = false;
         });
       }
     } catch (e) {
       setState(() {
         _hasError = true;
+      });
+    } finally {
+      setState(() {
         _isLoading = false;
       });
+    }
+  }
+
+  List<Map<String, dynamic>> _filterDataByRange(List<dynamic> data) {
+    List<Map<String, dynamic>> normalizedData = data.map((item) {
+      DateTime sessionDate = DateTime.parse(item['date']).toLocal();
+      return {
+        'date': sessionDate,
+        'is_latest': item['is_latest'] ?? false,
+        'glucose_check':
+            _normalizeGlucoseList(item['glucose_check'], _preferredGlucoseUnit),
+        'wellness_score': _mapWellnessToScore(item['wellness_score']),
+        'exercise_duration':
+            _normalizeDuration(item['exercise_check']['duration'] ?? 0),
+        'sleep_hours': item['sleep_hours'] ?? 0.0,
+        'meal_data': {
+          'high_gi': item['meal_check'][0]['high_gi_food_count'] ?? 0,
+          'low_gi': 0,
+          'skipped': item['meal_check'][0]['skipped_meals'].length ?? 0,
+        },
+      };
+    }).toList();
+
+    switch (_selectedRange) {
+      case "Last 7 Sessions":
+        return normalizedData.reversed.take(7).toList();
+      case "Last 10 Sessions":
+        return normalizedData.reversed.take(10).toList();
+      case "Last 30 Days":
+        DateTime now = DateTime.now();
+        return normalizedData
+            .where((entry) =>
+                entry['date'].isAfter(now.subtract(Duration(days: 30))))
+            .toList();
+      case "All Sessions":
+        return normalizedData;
+      default:
+        return normalizedData;
     }
   }
 
@@ -81,15 +116,11 @@ class _QuestionnaireVisualizationScreenState
 
   double _normalizeGlucose(double level, String unit) {
     double glucoseInMgDl = unit == 'mmol/L' ? level * 18 : level;
-    return (glucoseInMgDl - 50) / 250; // Assuming range of 50–300 mg/dL
+    return glucoseInMgDl;
   }
 
   double _normalizeDuration(double duration) {
     return duration / 60; // Normalize to hours
-  }
-
-  double _normalizeSleepHours(double hours) {
-    return hours / 10; // Normalize to scale 0–1
   }
 
   int _mapWellnessToScore(String? feeling) {
@@ -99,19 +130,8 @@ class _QuestionnaireVisualizationScreenState
     return 0;
   }
 
-  int _mapStressLevel(String level) {
-    switch (level.toLowerCase()) {
-      case 'none':
-        return 0;
-      case 'low':
-        return 1;
-      case 'medium':
-        return 2;
-      case 'high':
-        return 3;
-      default:
-        return 0;
-    }
+  String _formatDateTime(DateTime date) {
+    return '${date.month}/${date.day} ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
   }
 
   @override
@@ -120,75 +140,196 @@ class _QuestionnaireVisualizationScreenState
       appBar: AppBar(
         title: const Text('Questionnaire Data Visualization'),
         backgroundColor: Colors.blue[800],
+        leading: IconButton(
+          icon: const Icon(Icons.home),
+          onPressed: () {
+            Navigator.of(context).pushNamed('/home'); // Navigate to home screen
+          },
+        ),
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(
+              child: CircularProgressIndicator(),
+            )
           : _hasError
-              ? const Center(child: Text('Failed to load data.'))
-              : Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: ListView(
-                    children: [
-                      const Text(
-                        'Glucose Levels vs. Wellness Scores',
-                        style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold),
+              ? const Center(
+                  child: Text('Failed to load data. Please try again.',
+                      style: TextStyle(color: Colors.red, fontSize: 16)),
+                )
+              : _questionnaireData.isEmpty
+                  ? const Center(
+                      child: Text('No data available.',
+                          style: TextStyle(fontSize: 16)),
+                    )
+                  : Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: ListView(
+                        children: [
+                          _buildDropdownFilter(),
+                          const SizedBox(height: 20),
+                          const Text(
+                            'Insights Summary',
+                            style: TextStyle(
+                                fontSize: 18, fontWeight: FontWeight.bold),
+                          ),
+                          _buildLatestSummary(),
+                          const SizedBox(height: 30),
+                          _buildLineChartSection(),
+                          const SizedBox(height: 30),
+                          _buildBarChartSection(),
+                          const SizedBox(height: 30),
+                          _buildStackedBarChartSection(),
+                          const SizedBox(height: 30),
+                          _buildScatterPlotSection(),
+                          const SizedBox(height: 30),
+                          _buildRadarChartSection(),
+                          const SizedBox(height: 30),
+                          Center(
+                            child: ElevatedButton.icon(
+                              icon: const Icon(Icons.home),
+                              label: const Text('Back to Home'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.blueAccent,
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 20, vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8)),
+                              ),
+                              onPressed: () {
+                                Navigator.of(context).pushNamed('/home');
+                              },
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 10),
-                      SizedBox(
-                        height: 300,
-                        child: LineChart(_buildLineChartData()),
-                      ),
-                      const SizedBox(height: 30),
-                      const Text(
-                        'Exercise Duration vs. Wellness',
-                        style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 10),
-                      SizedBox(
-                        height: 300,
-                        child: BarChart(_buildBarChartData()),
-                      ),
-                      const SizedBox(height: 30),
-                      const Text(
-                        'Consolidated View: All Metrics vs. Wellness',
-                        style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 10),
-                      SizedBox(
-                        height: 400,
-                        child: _buildConsolidatedGraph(),
-                      ),
-                      const SizedBox(height: 30),
-                      _buildLegend(),
-                    ],
-                  ),
-                ),
+                    ),
     );
   }
 
-  Widget _buildLegend() {
+  Widget _buildDropdownFilter() {
+    return DropdownButton<String>(
+      value: _selectedRange,
+      items: const [
+        DropdownMenuItem(
+            value: "Last 7 Sessions", child: Text("Last 7 Sessions")),
+        DropdownMenuItem(
+            value: "Last 10 Sessions", child: Text("Last 10 Sessions")),
+        DropdownMenuItem(value: "Last 30 Days", child: Text("Last 30 Days")),
+        DropdownMenuItem(value: "All Sessions", child: Text("All Sessions")),
+      ],
+      onChanged: (value) {
+        setState(() {
+          _selectedRange = value!;
+          _fetchQuestionnaireData();
+        });
+      },
+    );
+  }
+
+  Widget _buildLatestSummary() {
+    final latestData = _questionnaireData.lastWhere((data) => data['is_latest'],
+        orElse: () => {});
+    if (latestData.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return Card(
+      elevation: 4,
+      margin: const EdgeInsets.symmetric(vertical: 10),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Most Recent Entry Summary',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Text('Date: ${_formatDateTime(latestData['date'])}'),
+            Text('Glucose Levels: ${latestData['glucose_check'].join(", ")}'),
+            Text('Wellness Score: ${latestData['wellness_score']}'),
+            Text('Exercise Duration: ${latestData['exercise_duration']} hrs'),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLineChartSection() {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        const Text(
+          'Glucose Levels vs. Wellness Scores',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 10),
+        SizedBox(height: 300, child: LineChart(_buildLineChartData())),
+        const SizedBox(height: 10),
+        const Text(
+          'Legend:',
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+        ),
         Row(
-          mainAxisAlignment: MainAxisAlignment.start,
           children: [
             _buildLegendItem(Colors.blue, 'Glucose Levels'),
-            const SizedBox(width: 20),
             _buildLegendItem(Colors.green, 'Wellness Scores'),
           ],
         ),
-        const SizedBox(height: 10),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.start,
-          children: [
-            _buildLegendItem(Colors.orange, 'Exercise Duration'),
-            const SizedBox(width: 20),
-            _buildLegendItem(Colors.purple, 'Sleep Hours'),
-          ],
+      ],
+    );
+  }
+
+  Widget _buildBarChartSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Exercise Duration vs. Wellness',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
+        const SizedBox(height: 10),
+        SizedBox(height: 300, child: BarChart(_buildBarChartData())),
+      ],
+    );
+  }
+
+  Widget _buildStackedBarChartSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Meal Composition vs. Wellness',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 10),
+        SizedBox(height: 300, child: _buildMealStackedBarChart()),
+      ],
+    );
+  }
+
+  Widget _buildScatterPlotSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Sleep Duration vs. Wellness',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 10),
+        SizedBox(height: 300, child: _buildScatterPlotData()),
+      ],
+    );
+  }
+
+  Widget _buildRadarChartSection() {
+    Map<String, double> averages = _calculateAverages();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Overall Average Comparison',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 10),
+        _buildRadarChart(averages),
       ],
     );
   }
@@ -196,11 +337,7 @@ class _QuestionnaireVisualizationScreenState
   Widget _buildLegendItem(Color color, String label) {
     return Row(
       children: [
-        Container(
-          width: 16,
-          height: 16,
-          color: color,
-        ),
+        Container(width: 16, height: 16, color: color),
         const SizedBox(width: 5),
         Text(label),
       ],
@@ -212,9 +349,11 @@ class _QuestionnaireVisualizationScreenState
       gridData: FlGridData(show: true),
       titlesData: FlTitlesData(
         leftTitles: AxisTitles(
-          sideTitles: SideTitles(showTitles: true, reservedSize: 30),
-        ),
+            axisNameWidget:
+                const Text('Levels', style: TextStyle(fontSize: 12)),
+            sideTitles: SideTitles(showTitles: true, reservedSize: 40)),
         bottomTitles: AxisTitles(
+          axisNameWidget: const Text('Dates', style: TextStyle(fontSize: 12)),
           sideTitles: SideTitles(
             showTitles: true,
             reservedSize: 22,
@@ -223,21 +362,18 @@ class _QuestionnaireVisualizationScreenState
               if (index < 0 || index >= _questionnaireData.length) {
                 return const SizedBox.shrink();
               }
-              return Text(_formatDate(_questionnaireData[index]['date']));
+              return Text(_formatDateTime(_questionnaireData[index]['date']),
+                  style: const TextStyle(fontSize: 8));
             },
           ),
         ),
-      ),
-      borderData: FlBorderData(
-        show: true,
-        border: Border.all(color: Colors.grey, width: 1),
       ),
       lineBarsData: [
         LineChartBarData(
           spots: _questionnaireData.asMap().entries.map((entry) {
             final index = entry.key.toDouble();
             final data = entry.value;
-            return FlSpot(index, data['glucose_checks'][0]);
+            return FlSpot(index, data['glucose_check'][0]);
           }).toList(),
           isCurved: true,
           color: Colors.blue,
@@ -260,25 +396,22 @@ class _QuestionnaireVisualizationScreenState
       gridData: FlGridData(show: true),
       titlesData: FlTitlesData(
         leftTitles: AxisTitles(
-          sideTitles: SideTitles(showTitles: true, reservedSize: 30),
-        ),
+            axisNameWidget: const Text('Hours', style: TextStyle(fontSize: 12)),
+            sideTitles: SideTitles(showTitles: true, reservedSize: 40)),
         bottomTitles: AxisTitles(
+          axisNameWidget: const Text('Dates', style: TextStyle(fontSize: 12)),
           sideTitles: SideTitles(
             showTitles: true,
-            reservedSize: 22,
             getTitlesWidget: (value, meta) {
               final index = value.toInt();
               if (index < 0 || index >= _questionnaireData.length) {
                 return const SizedBox.shrink();
               }
-              return Text(_formatDate(_questionnaireData[index]['date']));
+              return Text(_formatDateTime(_questionnaireData[index]['date']),
+                  style: const TextStyle(fontSize: 8));
             },
           ),
         ),
-      ),
-      borderData: FlBorderData(
-        show: true,
-        border: Border.all(color: Colors.grey, width: 1),
       ),
       barGroups: _questionnaireData.asMap().entries.map((entry) {
         final index = entry.key;
@@ -287,84 +420,97 @@ class _QuestionnaireVisualizationScreenState
           x: index,
           barRods: [
             BarChartRodData(
-              toY: data['exercise_duration'],
-              color: Colors.orange,
-            ),
+                toY: data['exercise_duration'], color: Colors.orange)
           ],
         );
       }).toList(),
     );
   }
 
-  LineChart _buildConsolidatedGraph() {
+  Widget _buildMealStackedBarChart() {
+    return BarChart(
+      BarChartData(
+        barGroups: _questionnaireData.asMap().entries.map((entry) {
+          final index = entry.key;
+          final data = entry.value;
+          return BarChartGroupData(
+            x: index,
+            barRods: [
+              BarChartRodData(
+                  toY: data['meal_data']['high_gi'].toDouble(),
+                  color: Colors.red),
+              BarChartRodData(
+                  toY: data['meal_data']['low_gi'].toDouble(),
+                  color: Colors.green),
+              BarChartRodData(
+                  toY: data['meal_data']['skipped'].toDouble(),
+                  color: Colors.grey),
+            ],
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildScatterPlotData() {
     return LineChart(
       LineChartData(
         gridData: FlGridData(show: true),
         titlesData: FlTitlesData(
           leftTitles: AxisTitles(
-            sideTitles: SideTitles(showTitles: true, reservedSize: 30),
+            sideTitles: SideTitles(showTitles: true, reservedSize: 40),
           ),
           bottomTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              reservedSize: 22,
-              getTitlesWidget: (value, meta) {
-                final index = value.toInt();
-                if (index < 0 || index >= _questionnaireData.length) {
-                  return const SizedBox.shrink();
-                }
-                return Text(_formatDate(_questionnaireData[index]['date']));
-              },
-            ),
+            sideTitles: SideTitles(showTitles: true, reservedSize: 40),
           ),
-        ),
-        borderData: FlBorderData(
-          show: true,
-          border: Border.all(color: Colors.grey, width: 1),
         ),
         lineBarsData: [
           LineChartBarData(
-            spots: _questionnaireData.asMap().entries.map((entry) {
-              final index = entry.key.toDouble();
-              final data = entry.value;
-              return FlSpot(index, data['wellness_score'].toDouble());
+            spots: _questionnaireData.map((data) {
+              double sleepDuration = data['sleep_hours'];
+              double wellnessScore = data['wellness_score'].toDouble();
+              return FlSpot(sleepDuration, wellnessScore);
             }).toList(),
-            isCurved: true,
-            color: Colors.green,
-          ),
-          LineChartBarData(
-            spots: _questionnaireData.asMap().entries.map((entry) {
-              final index = entry.key.toDouble();
-              final data = entry.value;
-              return FlSpot(index, data['glucose_checks'][0]);
-            }).toList(),
-            isCurved: true,
+            isCurved: false,
             color: Colors.blue,
-          ),
-          LineChartBarData(
-            spots: _questionnaireData.asMap().entries.map((entry) {
-              final index = entry.key.toDouble();
-              final data = entry.value;
-              return FlSpot(index, data['sleep_hours']);
-            }).toList(),
-            isCurved: true,
-            color: Colors.purple,
-          ),
-          LineChartBarData(
-            spots: _questionnaireData.asMap().entries.map((entry) {
-              final index = entry.key.toDouble();
-              final data = entry.value;
-              return FlSpot(index, data['exercise_duration']);
-            }).toList(),
-            isCurved: true,
-            color: Colors.orange,
+            dotData: FlDotData(show: true),
+            barWidth: 2,
           ),
         ],
       ),
     );
   }
 
-  String _formatDate(DateTime date) {
-    return '${date.month}/${date.day}';
+// Need to do
+  Widget _buildRadarChart(Map<String, double> data) {
+    return Center(
+      child: Text(" "),
+    );
+  }
+
+  Map<String, double> _calculateAverages() {
+    double avgGlucose = _questionnaireData
+            .map((data) => data['glucose_check'][0])
+            .reduce((a, b) => a + b) /
+        _questionnaireData.length;
+    double avgExercise = _questionnaireData
+            .map((data) => data['exercise_duration'])
+            .reduce((a, b) => a + b) /
+        _questionnaireData.length;
+    double avgSleep = _questionnaireData
+            .map((data) => data['sleep_hours'])
+            .reduce((a, b) => a + b) /
+        _questionnaireData.length;
+    double avgWellness = _questionnaireData
+            .map((data) => data['wellness_score'])
+            .reduce((a, b) => a + b) /
+        _questionnaireData.length;
+
+    return {
+      "Glucose": avgGlucose,
+      "Exercise": avgExercise,
+      "Sleep": avgSleep,
+      "Wellness": avgWellness,
+    };
   }
 }
