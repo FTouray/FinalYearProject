@@ -287,6 +287,10 @@ class _QuestionnaireVisualizationScreenState
         ),
         const SizedBox(height: 10),
         SizedBox(height: 300, child: BarChart(_buildBarChartData())),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [_buildLegendItem(Colors.orange, 'Exercise Duration')],
+        ),
       ],
     );
   }
@@ -301,6 +305,14 @@ class _QuestionnaireVisualizationScreenState
         ),
         const SizedBox(height: 10),
         SizedBox(height: 300, child: _buildMealStackedBarChart()),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _buildLegendItem(Colors.red, 'High GI'),
+            _buildLegendItem(Colors.green, 'Low GI'),
+            _buildLegendItem(Colors.grey, 'Skipped Meals'),
+          ],
+        ),
       ],
     );
   }
@@ -339,7 +351,12 @@ class _QuestionnaireVisualizationScreenState
       children: [
         Container(width: 16, height: 16, color: color),
         const SizedBox(width: 5),
-        Text(label),
+        Flexible(
+          child: Text(
+            label,
+            style: const TextStyle(overflow: TextOverflow.ellipsis),
+          ),
+        ),
       ],
     );
   }
@@ -349,21 +366,25 @@ class _QuestionnaireVisualizationScreenState
       gridData: FlGridData(show: true),
       titlesData: FlTitlesData(
         leftTitles: AxisTitles(
-            axisNameWidget:
-                const Text('Levels', style: TextStyle(fontSize: 12)),
             sideTitles: SideTitles(showTitles: true, reservedSize: 40)),
         bottomTitles: AxisTitles(
-          axisNameWidget: const Text('Dates', style: TextStyle(fontSize: 12)),
           sideTitles: SideTitles(
             showTitles: true,
-            reservedSize: 22,
+            reservedSize: 40,
             getTitlesWidget: (value, meta) {
               final index = value.toInt();
               if (index < 0 || index >= _questionnaireData.length) {
                 return const SizedBox.shrink();
               }
-              return Text(_formatDateTime(_questionnaireData[index]['date']),
-                  style: const TextStyle(fontSize: 8));
+              return Wrap(
+                children: [
+                  Text(
+                    _formatDateTime(_questionnaireData[index]['date']),
+                    style: const TextStyle(fontSize: 10),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              );
             },
           ),
         ),
@@ -396,10 +417,8 @@ class _QuestionnaireVisualizationScreenState
       gridData: FlGridData(show: true),
       titlesData: FlTitlesData(
         leftTitles: AxisTitles(
-            axisNameWidget: const Text('Hours', style: TextStyle(fontSize: 12)),
             sideTitles: SideTitles(showTitles: true, reservedSize: 40)),
         bottomTitles: AxisTitles(
-          axisNameWidget: const Text('Dates', style: TextStyle(fontSize: 12)),
           sideTitles: SideTitles(
             showTitles: true,
             getTitlesWidget: (value, meta) {
@@ -407,8 +426,14 @@ class _QuestionnaireVisualizationScreenState
               if (index < 0 || index >= _questionnaireData.length) {
                 return const SizedBox.shrink();
               }
-              return Text(_formatDateTime(_questionnaireData[index]['date']),
-                  style: const TextStyle(fontSize: 8));
+              return Wrap(
+                children: [
+                  Text(
+                    _formatDateTime(_questionnaireData[index]['date']),
+                    style: const TextStyle(fontSize: 10),
+                  ),
+                ],
+              );
             },
           ),
         ),
@@ -481,10 +506,9 @@ class _QuestionnaireVisualizationScreenState
     );
   }
 
-// Need to do
   Widget _buildRadarChart(Map<String, double> data) {
     return Center(
-      child: Text(" "),
+      child: Text("Radar Chart Placeholder"),
     );
   }
 
