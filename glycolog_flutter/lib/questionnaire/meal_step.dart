@@ -16,11 +16,12 @@ class FoodItem {
   final double gi;
   final double carbs;
 
-  FoodItem(
-      {required this.foodId,
-      required this.name,
-      required this.gi,
-      required this.carbs});
+  FoodItem({
+    required this.foodId,
+    required this.name,
+    required this.gi,
+    required this.carbs,
+  });
 
   @override
   bool operator ==(Object other) =>
@@ -40,14 +41,14 @@ class MealStepScreen extends StatefulWidget {
 class _MealStepScreenState extends State<MealStepScreen> {
   List<FoodCategory> _categories = [];
   List<FoodItem> selectedItems = [];
-  List<String> skippedMeals = [];
-  bool wellnessImpact = false;
+  List<String> skippedMeals = ['Breakfast', 'Lunch', 'Dinner'];
+  List<String> selectedSkippedMeals = [];
+  bool wellnessImpact = false; // Track wellness impact
   bool _isLoading = false;
   String? _error;
-
   TextEditingController _notesController = TextEditingController();
   int? _expandedCategoryId;
-  Map<int, List<FoodItem>> _cachedFoodItems = {}; // Cache for food items
+  Map<int, List<FoodItem>> _cachedFoodItems = {};
   List<FoodItem> _allFoodItems = [];
   List<FoodItem> _filteredFoodItems = [];
   TextEditingController _searchController = TextEditingController();
@@ -63,10 +64,7 @@ class _MealStepScreenState extends State<MealStepScreen> {
   Future<void> _fetchCategories() async {
     try {
       String? token = await AuthService().getAccessToken();
-
-      if (token == null) {
-        throw Exception('No access token found.');
-      }
+      if (token == null) throw Exception('No access token found.');
 
       final response = await http.get(
         Uri.parse('http://192.168.1.12:8000/api/categories'),
@@ -92,10 +90,7 @@ class _MealStepScreenState extends State<MealStepScreen> {
 
     try {
       String? token = await AuthService().getAccessToken();
-
-      if (token == null) {
-        throw Exception('No access token found.');
-      }
+      if (token == null) throw Exception('No access token found.');
 
       final response = await http.get(
         Uri.parse(
@@ -148,6 +143,16 @@ class _MealStepScreenState extends State<MealStepScreen> {
     });
   }
 
+  void _toggleSkippedMeal(String meal) {
+    setState(() {
+      if (selectedSkippedMeals.contains(meal)) {
+        selectedSkippedMeals.remove(meal);
+      } else {
+        selectedSkippedMeals.add(meal);
+      }
+    });
+  }
+
   Future<void> _submitMealCheck() async {
     setState(() {
       _isLoading = true;
@@ -156,15 +161,12 @@ class _MealStepScreenState extends State<MealStepScreen> {
 
     try {
       String? token = await AuthService().getAccessToken();
-
-      if (token == null) {
-        throw Exception('User is not authenticated.');
-      }
+      if (token == null) throw Exception('User is not authenticated.');
 
       final data = {
         'high_gi_food_ids': selectedItems.map((item) => item.foodId).toList(),
-        'skipped_meals': skippedMeals,
-        'wellness_impact': wellnessImpact,
+        'skipped_meals': selectedSkippedMeals,
+        'wellness_impact': wellnessImpact, // Send wellness impact value
         'notes': _notesController.text,
       };
 
@@ -178,8 +180,7 @@ class _MealStepScreenState extends State<MealStepScreen> {
       );
 
       if (response.statusCode == 201) {
-        Navigator.pushNamed(
-            context, '/exercise-step'); // Navigate to Exercise Step
+        Navigator.pushNamed(context, '/exercise-step');
       } else {
         final error = jsonDecode(response.body);
         setState(() {
@@ -197,7 +198,6 @@ class _MealStepScreenState extends State<MealStepScreen> {
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -205,66 +205,115 @@ class _MealStepScreenState extends State<MealStepScreen> {
         title: const Text('Meal Check'),
         backgroundColor: Colors.blue,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: ListView(
-          children: [
-            LinearProgressIndicator(
-              value: 0.75,
-              backgroundColor: Colors.grey[300],
-              valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
-            ),
-
-            const SizedBox(height: 20),
-            TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: 'Search Food Items...',
-                prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(15.0),
-                ),
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              LinearProgressIndicator(
+                value: 0.75,
+                backgroundColor: Colors.grey[300],
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
               ),
-            ),
-            const SizedBox(height: 10),
-            _isSearching ? _buildSearchResults() : _buildCategoryList(),
-            const SizedBox(height: 20),
-            TextField(
-              controller: _notesController,
-              maxLines: 3,
-              decoration: InputDecoration(
-                hintText: 'Additional notes...',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(15.0),
-                ),
+              const SizedBox(height: 20),
+              const Text(
+                'Did you skip any meals today?',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
-            ),
-            const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.pop(context);
+              ...skippedMeals.map((meal) {
+                return CheckboxListTile(
+                  title: Text(meal),
+                  value: selectedSkippedMeals.contains(meal),
+                  onChanged: (value) {
+                    _toggleSkippedMeal(meal);
                   },
-                  child: const Text(
-                    'Back',
-                    style: TextStyle(fontSize: 16),
+                );
+              }).toList(),
+              const SizedBox(height: 20),
+              const Text(
+                'Select foods you’ve eaten recently:',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  hintText: 'Search Food Items...',
+                  prefixIcon: const Icon(Icons.search),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(15.0),
                   ),
                 ),
-                ElevatedButton(
-                  onPressed: _isLoading ? null : _submitMealCheck,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
-                  ),
-                  child: const Text(
-                    'Next',
-                    style: TextStyle(fontSize: 16),
+              ),
+              const SizedBox(height: 10),
+              _isSearching ? _buildSearchResults() : _buildCategoryList(),
+              const SizedBox(height: 20),
+              const Text(
+                'Did your diet affect your wellness today?',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              SwitchListTile(
+                title: const Text('Wellness Impact'),
+                subtitle: const Text(
+                    'Toggle if your diet had an impact on how you felt'),
+                value: wellnessImpact,
+                onChanged: (bool value) {
+                  setState(() {
+                    wellnessImpact = value;
+                  });
+                },
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Additional Notes (e.g., portion size, any sauces, etc.):',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _notesController,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  hintText: 'Enter any notes here...',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(15.0),
                   ),
                 ),
-              ],
-            ),
-          ],
+              ),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                    child: const Text(
+                      'Back',
+                      style: TextStyle(fontSize: 16),
+                    ),
+                  ),
+                  ElevatedButton(
+                    onPressed: _isLoading ? null : _submitMealCheck,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue,
+                    ),
+                    child: const Text(
+                      'Next',
+                      style: TextStyle(fontSize: 16),
+                    ),
+                  ),
+                ],
+              ),
+              if (_error != null)
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Text(
+                    _error!,
+                    style: const TextStyle(color: Colors.red),
+                  ),
+                ),
+              if (_isLoading) const CircularProgressIndicator(),
+            ],
+          ),
         ),
       ),
     );
@@ -273,6 +322,7 @@ class _MealStepScreenState extends State<MealStepScreen> {
   Widget _buildSearchResults() {
     return ListView.builder(
       shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
       itemCount: _filteredFoodItems.length,
       itemBuilder: (context, index) {
         final foodItem = _filteredFoodItems[index];
@@ -293,6 +343,7 @@ class _MealStepScreenState extends State<MealStepScreen> {
   Widget _buildCategoryList() {
     return ListView.builder(
       shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
       itemCount: _categories.length,
       itemBuilder: (context, index) {
         final category = _categories[index];
