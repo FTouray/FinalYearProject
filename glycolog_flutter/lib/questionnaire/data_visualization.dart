@@ -143,7 +143,7 @@ class _QuestionnaireVisualizationScreenState
         leading: IconButton(
           icon: const Icon(Icons.home),
           onPressed: () {
-            Navigator.of(context).pushNamed('/home'); // Navigate to home screen
+            Navigator.of(context).pushNamed('/home'); 
           },
         ),
       ),
@@ -263,16 +263,10 @@ class _QuestionnaireVisualizationScreenState
         const SizedBox(height: 10),
         SizedBox(height: 300, child: LineChart(_buildLineChartData())),
         const SizedBox(height: 10),
-        const Text(
-          'Legend:',
-          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-        ),
-        Row(
-          children: [
-            _buildLegendItem(Colors.blue, 'Glucose Levels'),
-            _buildLegendItem(Colors.green, 'Wellness Scores'),
-          ],
-        ),
+        _buildLegendRow([
+          {'color': Colors.blue, 'label': 'Glucose Levels'},
+          {'color': Colors.green, 'label': 'Wellness Scores'},
+        ]),
       ],
     );
   }
@@ -287,10 +281,9 @@ class _QuestionnaireVisualizationScreenState
         ),
         const SizedBox(height: 10),
         SizedBox(height: 300, child: BarChart(_buildBarChartData())),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [_buildLegendItem(Colors.orange, 'Exercise Duration')],
-        ),
+        _buildLegendRow([
+          {'color': Colors.orange, 'label': 'Exercise Duration'},
+        ]),
       ],
     );
   }
@@ -305,14 +298,11 @@ class _QuestionnaireVisualizationScreenState
         ),
         const SizedBox(height: 10),
         SizedBox(height: 300, child: _buildMealStackedBarChart()),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            _buildLegendItem(Colors.red, 'High GI'),
-            _buildLegendItem(Colors.green, 'Low GI'),
-            _buildLegendItem(Colors.grey, 'Skipped Meals'),
-          ],
-        ),
+        _buildLegendRow([
+          {'color': Colors.red, 'label': 'High GI'},
+          {'color': Colors.green, 'label': 'Low GI'},
+          {'color': Colors.grey, 'label': 'Skipped Meals'},
+        ]),
       ],
     );
   }
@@ -346,18 +336,29 @@ class _QuestionnaireVisualizationScreenState
     );
   }
 
-  Widget _buildLegendItem(Color color, String label) {
-    return Row(
-      children: [
-        Container(width: 16, height: 16, color: color),
-        const SizedBox(width: 5),
-        Flexible(
-          child: Text(
-            label,
-            style: const TextStyle(overflow: TextOverflow.ellipsis),
+  Widget _buildLegendRow(List<Map<String, dynamic>> legends) {
+    return Wrap(
+      spacing: 10.0,
+      runSpacing: 5.0,
+      children: legends.map((legend) {
+        return ConstrainedBox(
+          constraints:
+              BoxConstraints(maxWidth: MediaQuery.of(context).size.width / 2),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(width: 16, height: 16, color: legend['color']),
+              const SizedBox(width: 5),
+              Flexible(
+                child: Text(
+                  legend['label'],
+                  style: const TextStyle(overflow: TextOverflow.ellipsis),
+                ),
+              ),
+            ],
           ),
-        ),
-      ],
+        );
+      }).toList(),
     );
   }
 
