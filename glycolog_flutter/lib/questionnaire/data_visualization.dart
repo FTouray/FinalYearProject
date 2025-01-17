@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
 import '../services/auth_service.dart';
@@ -20,11 +21,20 @@ class _QuestionnaireVisualizationScreenState
   List<Map<String, dynamic>> _questionnaireData = [];
   String _preferredGlucoseUnit = 'mg/dL';
   String _selectedRange = "Last 10 Sessions";
+  double thresholdWellness = 3.0;
 
   @override
   void initState() {
     super.initState();
+    _loadPreferredUnit();
     _fetchQuestionnaireData();
+  }
+
+  Future<void> _loadPreferredUnit() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _preferredGlucoseUnit = prefs.getString('selectedUnit') ?? 'mg/dL';
+    });
   }
 
   Future<void> _fetchQuestionnaireData() async {
@@ -51,7 +61,7 @@ class _QuestionnaireVisualizationScreenState
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         setState(() {
-          _questionnaireData = _filterDataByRange(data);
+          _questionnaireData = _normalizeAndFilterData(data);
         });
       } else {
         setState(() {
@@ -69,22 +79,21 @@ class _QuestionnaireVisualizationScreenState
     }
   }
 
-  List<Map<String, dynamic>> _filterDataByRange(List<dynamic> data) {
+  List<Map<String, dynamic>> _normalizeAndFilterData(List<dynamic> data) {
     List<Map<String, dynamic>> normalizedData = data.map((item) {
       DateTime sessionDate = DateTime.parse(item['date']).toLocal();
       return {
         'date': sessionDate,
         'is_latest': item['is_latest'] ?? false,
-        'glucose_check':
-            _normalizeGlucoseList(item['glucose_check'], _preferredGlucoseUnit),
+        'glucose_check': _normalizeGlucoseList(
+            item['glucose_check'] ?? [], _preferredGlucoseUnit),
         'wellness_score': _mapWellnessToScore(item['wellness_score']),
         'exercise_duration':
-            _normalizeDuration(item['exercise_check']['duration'] ?? 0),
+            _normalizeDuration(item['exercise_check']?['duration'] ?? 0),
         'sleep_hours': item['sleep_hours'] ?? 0.0,
         'meal_data': {
-          'high_gi': item['meal_check'][0]['high_gi_food_count'] ?? 0,
-          'low_gi': 0,
-          'skipped': item['meal_check'][0]['skipped_meals'].length ?? 0,
+          'skipped': item['meal_check']?[0]?['skipped_meals']?.length ?? 0,
+          'weighted_gi': item['meal_check']?[0]?['weighted_gi'] ?? 0.0,
         },
       };
     }).toList();
@@ -109,14 +118,13 @@ class _QuestionnaireVisualizationScreenState
 
   List<double> _normalizeGlucoseList(List<dynamic> glucoseChecks, String unit) {
     return glucoseChecks.map((check) {
-      double level = check['level'];
+      double level = check['level'] ?? 0.0;
       return _normalizeGlucose(level, unit);
     }).toList();
   }
 
   double _normalizeGlucose(double level, String unit) {
-    double glucoseInMgDl = unit == 'mmol/L' ? level * 18 : level;
-    return glucoseInMgDl;
+    return unit == 'mmol/L' ? level * 18 : level;
   }
 
   double _normalizeDuration(double duration) {
@@ -143,14 +151,12 @@ class _QuestionnaireVisualizationScreenState
         leading: IconButton(
           icon: const Icon(Icons.home),
           onPressed: () {
-            Navigator.of(context).pushNamed('/home'); 
+            Navigator.of(context).pushNamed('/home');
           },
         ),
       ),
       body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(),
-            )
+          ? const Center(child: CircularProgressIndicator())
           : _hasError
               ? const Center(
                   child: Text('Failed to load data. Please try again.',
@@ -184,6 +190,8 @@ class _QuestionnaireVisualizationScreenState
                           const SizedBox(height: 30),
                           _buildRadarChartSection(),
                           const SizedBox(height: 30),
+                          _buildThresholdAdjuster(),
+                          const SizedBox(height: 30),
                           Center(
                             child: ElevatedButton.icon(
                               icon: const Icon(Icons.home),
@@ -203,6 +211,29 @@ class _QuestionnaireVisualizationScreenState
                         ],
                       ),
                     ),
+    );
+  }
+
+  Widget _buildThresholdAdjuster() {
+    return Column(
+      children: [
+        const Text(
+          'Adjust Wellness Threshold',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        Slider(
+          value: thresholdWellness,
+          min: 1.0,
+          max: 5.0,
+          divisions: 4,
+          label: thresholdWellness.toString(),
+          onChanged: (newValue) {
+            setState(() {
+              thresholdWellness = newValue;
+            });
+          },
+        ),
+      ],
     );
   }
 
@@ -246,6 +277,7 @@ class _QuestionnaireVisualizationScreenState
             Text('Glucose Levels: ${latestData['glucose_check'].join(", ")}'),
             Text('Wellness Score: ${latestData['wellness_score']}'),
             Text('Exercise Duration: ${latestData['exercise_duration']} hrs'),
+            Text('Weighted GI: ${latestData['meal_data']['weighted_gi']}'),
           ],
         ),
       ),
@@ -297,15 +329,42 @@ class _QuestionnaireVisualizationScreenState
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 10),
-        SizedBox(height: 300, child: _buildMealStackedBarChart()),
+        SizedBox(
+          height: 300,
+          child: BarChart(
+            BarChartData(
+              barGroups: _questionnaireData.asMap().entries.map((entry) {
+                final index = entry.key;
+                final data = entry.value;
+                return BarChartGroupData(
+                  x: index,
+                  barRods: [
+                    // Weighted GI
+                    BarChartRodData(
+                      toY: data['meal_data']['weighted_gi'],
+                      color: Colors.red, 
+                    ),
+                    // Skipped Meals
+                    BarChartRodData(
+                      toY: data['meal_data']['skipped'].toDouble(),
+                      color: Colors.grey,
+                    ),
+                  ],
+                );
+              }).toList(),
+            ),
+          ),
+        ),
         _buildLegendRow([
-          {'color': Colors.red, 'label': 'High GI'},
-          {'color': Colors.green, 'label': 'Low GI'},
+          {
+            'color': Colors.red, 'label': 'Weighted GI'
+          }, 
           {'color': Colors.grey, 'label': 'Skipped Meals'},
         ]),
       ],
     );
   }
+
 
   Widget _buildScatterPlotSection() {
     return Column(
@@ -331,10 +390,11 @@ class _QuestionnaireVisualizationScreenState
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 10),
-        _buildRadarChart(averages),
+        SizedBox(height: 300, child: _buildRadarChart(averages)),
       ],
     );
   }
+
 
   Widget _buildLegendRow(List<Map<String, dynamic>> legends) {
     return Wrap(
@@ -463,11 +523,8 @@ class _QuestionnaireVisualizationScreenState
             x: index,
             barRods: [
               BarChartRodData(
-                  toY: data['meal_data']['high_gi'].toDouble(),
+                  toY: data['meal_data']['weighted_gi'].toDouble(),
                   color: Colors.red),
-              BarChartRodData(
-                  toY: data['meal_data']['low_gi'].toDouble(),
-                  color: Colors.green),
               BarChartRodData(
                   toY: data['meal_data']['skipped'].toDouble(),
                   color: Colors.grey),
@@ -507,9 +564,46 @@ class _QuestionnaireVisualizationScreenState
     );
   }
 
-  Widget _buildRadarChart(Map<String, double> data) {
-    return Center(
-      child: Text("Radar Chart Placeholder"),
+Widget _buildRadarChart(Map<String, double> data) {
+    const labels = ["Glucose", "Exercise", "Sleep", "Wellness"];
+    const chartScale = 5.0;
+
+    // Normalize data to fit the chart scale (1-5)
+    List<RadarEntry> chartData = [
+      RadarEntry(value: (data["Glucose"]! / 20).clamp(0, chartScale)),
+      RadarEntry(value: (data["Exercise"]! / 2).clamp(0, chartScale)),
+      RadarEntry(value: (data["Sleep"]! / 8).clamp(0, chartScale)),
+      RadarEntry(value: (data["Wellness"]! / 5).clamp(0, chartScale)),
+    ];
+
+    return SizedBox(
+      height: 300,
+      child: RadarChart(
+        RadarChartData(
+          radarBorderData: const BorderSide(color: Colors.grey),
+          dataSets: [
+            RadarDataSet(
+              dataEntries: chartData,
+              fillColor: Colors.blue.withOpacity(0.4),
+              borderColor: Colors.blue,
+              borderWidth: 2,
+              entryRadius: 2.5,
+            ),
+          ],
+          radarShape: RadarShape.circle,
+          titlePositionPercentageOffset: 0.2,
+          getTitle: (index, angle) {
+            return RadarChartTitle(
+              text: labels[index],
+              angle: angle,
+              positionPercentageOffset: 0.2,
+            );
+          },
+          tickCount: 5,
+          ticksTextStyle: const TextStyle(fontSize: 10, color: Colors.grey),
+          gridBorderData: BorderSide(color: Colors.grey.withOpacity(0.5)),
+        ),
+      ),
     );
   }
 
