@@ -514,6 +514,7 @@ def questionnaire_data_visualization(request):
                 {
                     "high_gi_food_count": meal.high_gi_foods.count(),
                     "skipped_meals": meal.skipped_meals,
+                    "weighted_gi": meal.weighted_gi,
                 }
                 for meal in session.meal_check.all()
             ],

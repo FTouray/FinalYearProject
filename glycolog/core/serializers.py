@@ -180,6 +180,7 @@ class MealCheckSerializer(serializers.ModelSerializer):
         queryset=FoodItem.objects.all(), many=True, write_only=True
     )  # Allow passing FoodItem IDs for writing
     skipped_meals = serializers.JSONField()  # Serialize skipped_meals field as JSON
+    weighted_gi = serializers.SerializerMethodField()
 
     class Meta:
         model = MealCheck
@@ -192,11 +193,9 @@ class MealCheckSerializer(serializers.ModelSerializer):
             "wellness_impact",
             "notes",
             "created_at",
+            "weighted_gi",
         ]
-        read_only_fields = [
-            "id",
-            "created_at",
-        ]  
+        read_only_fields = ["id", "created_at", "weighted_gi"]
 
     def create(self, validated_data):
         # Handle high_gi_foods separately from high_gi_food_ids
@@ -211,6 +210,13 @@ class MealCheckSerializer(serializers.ModelSerializer):
         if high_gi_food_ids is not None:
             instance.high_gi_foods.set(high_gi_food_ids)
         return super().update(instance, validated_data)
+
+    def get_weighted_gi(self, obj):
+        """
+        Use the `weighted_gi` property from the model.
+        """
+        return obj.weighted_gi
+
 
 # Exercise Check Serializer
 class ExerciseCheckSerializer(serializers.ModelSerializer):

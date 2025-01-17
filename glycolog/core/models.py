@@ -167,6 +167,22 @@ class MealCheck(models.Model):
     def __str__(self):
         return f"DietCheck for {self.session.user.username} - {self.created_at.strftime('%Y-%m-%d %H:%M:%S')}"
 
+    @property
+    def weighted_gi(self):
+        """
+        Calculate the weighted glycemic index for the meal.
+        Formula: Weighted GI = sum(GI * carbs) / total carbs
+        """
+        total_carb = sum(food.carbs for food in self.high_gi_foods.all() if food.carbs)
+        if total_carb == 0:
+            return 0  # Avoid division by zero
+        weighted_gi = sum(
+            food.glycaemic_index * food.carbs
+            for food in self.high_gi_foods.all()
+            if food.carbs
+        ) / total_carb
+        return round(weighted_gi, 2)
+    
 # Model to store exercise checks
 class ExerciseCheck(models.Model):
     session = models.ForeignKey(QuestionnaireSession, on_delete=models.CASCADE, related_name="exercise_check")
