@@ -120,7 +120,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
                       ...(_reviewData['symptom_check'] as List).map((symptom) {
                         return ListTile(
                           title: Text(
-                              'Symptoms: ${symptom['symptoms'].join(", ")} | Severity: ${symptom['severity']}'),
+                              'Symptoms: ${symptom['symptoms']} | Severity: ${symptom['severity']}'),
                           subtitle: Text('Notes: ${symptom['notes']}'),
                         );
                       }).toList(),

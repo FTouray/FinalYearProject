@@ -36,6 +36,16 @@ class _SymptomStepScreenState extends State<SymptomStepScreen> {
   bool _isLoading = false;
 
   @override
+  void initState() {
+    super.initState();
+    // Initialize dropdown-related keys with null
+    responseValues["stress"] = null;
+    responseValues["routine_change"] = null;
+    responseValues["routine_change_details"] = null;
+    responseValues["routine_effect"] = null;
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -79,7 +89,7 @@ class _SymptomStepScreenState extends State<SymptomStepScreen> {
               options: ["Yes", "No"],
               responseKey: "routine_change",
             ),
-            if (responseValues["routine_change"] == "Yes")
+            if (responseValues["routine_change"] == "Yes") ...[
               _buildDropdownQuestion(
                 question: "What has changed?",
                 options: [
@@ -91,12 +101,13 @@ class _SymptomStepScreenState extends State<SymptomStepScreen> {
                 ],
                 responseKey: "routine_change_details",
               ),
-            _buildDropdownQuestion(
-              question:
-                  "Do you feel these changes have affected your mood or energy?",
-              options: ["Yes", "No"],
-              responseKey: "routine_effect",
-            ),
+              _buildDropdownQuestion(
+                question:
+                    "Do you feel these changes have affected your mood or energy?",
+                options: ["Yes", "No"],
+                responseKey: "routine_effect",
+              ),
+            ],
             if (_isLoading) const Center(child: CircularProgressIndicator()),
             const SizedBox(height: 20),
             Row(
@@ -230,7 +241,7 @@ class _SymptomStepScreenState extends State<SymptomStepScreen> {
           style: const TextStyle(fontSize: 16),
         ),
         DropdownButton<String>(
-          value: responseValues[responseKey] as String? ?? "",
+          value: responseValues[responseKey] as String?,
           isExpanded: true,
           hint: const Text("Select an option"),
           items: options.map((option) {

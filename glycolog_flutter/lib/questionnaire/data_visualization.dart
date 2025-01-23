@@ -88,8 +88,7 @@ class _QuestionnaireVisualizationScreenState
         'glucose_check': _normalizeGlucoseList(
             item['glucose_check'] ?? [], _preferredGlucoseUnit),
         'wellness_score': _mapWellnessToScore(item['wellness_score']),
-        'exercise_duration':
-            _normalizeDuration(item['exercise_check']?['duration'] ?? 0),
+        'exercise_duration': item['exercise_check']?['duration'] ?? 0,
         'sleep_hours': item['sleep_hours'] ?? 0.0,
         'meal_data': {
           'skipped': item['meal_check']?[0]?['skipped_meals']?.length ?? 0,
@@ -125,10 +124,6 @@ class _QuestionnaireVisualizationScreenState
 
   double _normalizeGlucose(double level, String unit) {
     return unit == 'mmol/L' ? level * 18 : level;
-  }
-
-  double _normalizeDuration(double duration) {
-    return duration / 60; // Normalize to hours
   }
 
   int _mapWellnessToScore(String? feeling) {
@@ -276,7 +271,7 @@ class _QuestionnaireVisualizationScreenState
             Text('Date: ${_formatDateTime(latestData['date'])}'),
             Text('Glucose Levels: ${latestData['glucose_check'].join(", ")}'),
             Text('Wellness Score: ${latestData['wellness_score']}'),
-            Text('Exercise Duration: ${latestData['exercise_duration']} hrs'),
+            Text('Exercise Duration: ${latestData['exercise_duration']} mins'),
             Text('Weighted GI: ${latestData['meal_data']['weighted_gi']}'),
           ],
         ),
@@ -422,7 +417,7 @@ class _QuestionnaireVisualizationScreenState
     );
   }
 
-  LineChartData _buildLineChartData() {
+ LineChartData _buildLineChartData() {
     return LineChartData(
       gridData: FlGridData(show: true),
       titlesData: FlTitlesData(
@@ -451,6 +446,7 @@ class _QuestionnaireVisualizationScreenState
         ),
       ),
       lineBarsData: [
+        // Glucose Levels Line
         LineChartBarData(
           spots: _questionnaireData.asMap().entries.map((entry) {
             final index = entry.key.toDouble();
@@ -459,7 +455,21 @@ class _QuestionnaireVisualizationScreenState
           }).toList(),
           isCurved: true,
           color: Colors.blue,
+          barWidth: 3,
+          belowBarData: BarAreaData(
+            show: true,
+            gradient: LinearGradient(
+              colors: [
+                Colors.blue.withOpacity(0.4),
+                Colors.blue.withOpacity(0.1),
+              ],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
+          ),
         ),
+
+        // Wellness Scores Line
         LineChartBarData(
           spots: _questionnaireData.asMap().entries.map((entry) {
             final index = entry.key.toDouble();
@@ -468,6 +478,18 @@ class _QuestionnaireVisualizationScreenState
           }).toList(),
           isCurved: true,
           color: Colors.green,
+          barWidth: 3,
+          belowBarData: BarAreaData(
+            show: true,
+            gradient: LinearGradient(
+              colors: [
+                Colors.green.withOpacity(0.4),
+                Colors.green.withOpacity(0.1),
+              ],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
+          ),
         ),
       ],
     );
@@ -506,7 +528,7 @@ class _QuestionnaireVisualizationScreenState
           x: index,
           barRods: [
             BarChartRodData(
-                toY: data['exercise_duration'], color: Colors.orange)
+                toY: data['exercise_duration'].toDouble(), color: Colors.orange)
           ],
         );
       }).toList(),
@@ -664,7 +686,7 @@ Widget _buildRadarChart(Map<String, double> data) {
     // Normalize data to fit the chart scale (1-5)
     List<RadarEntry> chartData = [
       RadarEntry(value: (data["Glucose"]! / 20).clamp(0, chartScale)),
-      RadarEntry(value: (data["Exercise"]! / 2).clamp(0, chartScale)),
+      RadarEntry(value: (data["Exercise"]! / 120).clamp(0, chartScale)),
       RadarEntry(value: (data["Sleep"]! / 8).clamp(0, chartScale)),
       RadarEntry(value: (data["Wellness"]! / 5).clamp(0, chartScale)),
     ];
