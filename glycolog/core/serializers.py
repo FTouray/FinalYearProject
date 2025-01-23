@@ -140,8 +140,22 @@ class QuestionnaireSessionSerializer(serializers.ModelSerializer):
 class SymptomCheckSerializer(serializers.ModelSerializer):
     class Meta:
         model = SymptomCheck
-        fields = ["id", "session", "symptoms", "created_at"]
+        fields = ["id", "session", "symptoms", "sleep_hours", "stress", "routine_change", "responses", "created_at"]
         read_only_fields = ["id", "created_at"]
+        
+        def validate(self, data):
+            """
+            Add custom validation logic if needed. For example:
+            - Ensure `sleep_hours` is within a realistic range (0-24).
+            - Validate that required keys exist in `responses`.
+            """
+            if "sleep_hours" in data and (data["sleep_hours"] < 0 or data["sleep_hours"] > 24):
+                raise serializers.ValidationError({"sleep_hours": "Sleep hours must be between 0 and 24."})
+
+            if "responses" in data and not isinstance(data["responses"], dict):
+                raise serializers.ValidationError({"responses": "Responses must be a JSON object."})
+
+            return data
 
 class GlucoseCheckSerializer(serializers.ModelSerializer):
     evaluation = serializers.SerializerMethodField()

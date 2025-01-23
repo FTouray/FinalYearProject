@@ -230,7 +230,7 @@ class _SymptomStepScreenState extends State<SymptomStepScreen> {
           style: const TextStyle(fontSize: 16),
         ),
         DropdownButton<String>(
-          value: responseValues[responseKey] as String?,
+          value: responseValues[responseKey] as String? ?? "",
           isExpanded: true,
           hint: const Text("Select an option"),
           items: options.map((option) {
@@ -269,6 +269,13 @@ class _SymptomStepScreenState extends State<SymptomStepScreen> {
   }
 
   Future<void> _submitData() async {
+    if (!_validateInputs()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please complete all required fields.")),
+      );
+      return;
+    }
+
     setState(() {
       _isLoading = true;
     });
@@ -281,7 +288,13 @@ class _SymptomStepScreenState extends State<SymptomStepScreen> {
                 "severity": responseValues[entry.key] ?? 3.0,
               })
           .toList(),
-      "responses": responseValues,
+      "sleep_hours": responseValues["sleep_hours"],
+      "stress": responseValues["stress"] == "Yes",
+      "routine_change": responseValues["routine_change"],
+      "responses": {
+        "routine_effect": responseValues["routine_effect"],
+        "routine_change_details": responseValues["routine_change_details"],
+      },
     };
 
     String? token = await AuthService().getAccessToken();
@@ -323,5 +336,20 @@ class _SymptomStepScreenState extends State<SymptomStepScreen> {
         _isLoading = false;
       });
     }
+  }
+
+  bool _validateInputs() {
+    if (responseValues["sleep_hours"] == null ||
+        responseValues["stress"] == null ||
+        responseValues["routine_change"] == null) {
+      return false;
+    }
+
+    if (responseValues["routine_change"] == "Yes" &&
+        responseValues["routine_change_details"] == null) {
+      return false;
+    }
+
+    return true;
   }
 }

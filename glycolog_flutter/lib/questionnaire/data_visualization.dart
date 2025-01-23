@@ -541,28 +541,121 @@ class _QuestionnaireVisualizationScreenState
         gridData: FlGridData(show: true),
         titlesData: FlTitlesData(
           leftTitles: AxisTitles(
-            sideTitles: SideTitles(showTitles: true, reservedSize: 40),
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 40,
+              getTitlesWidget: (value, meta) => Text(
+                value.toInt().toString(),
+                style: const TextStyle(fontSize: 10),
+              ),
+            ),
           ),
           bottomTitles: AxisTitles(
-            sideTitles: SideTitles(showTitles: true, reservedSize: 40),
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 40,
+              getTitlesWidget: (value, meta) => Text(
+                '${value.toInt()} hrs',
+                style: const TextStyle(fontSize: 10),
+              ),
+            ),
           ),
         ),
         lineBarsData: [
           LineChartBarData(
             spots: _questionnaireData.map((data) {
-              double sleepDuration = data['sleep_hours'];
-              double wellnessScore = data['wellness_score'].toDouble();
-              return FlSpot(sleepDuration, wellnessScore);
+              return FlSpot(
+                data['sleep_hours'], // Sleep duration
+                data['wellness_score'].toDouble(), // Wellness score
+              );
             }).toList(),
-            isCurved: false,
+            isCurved: true,
             color: Colors.blue,
+            barWidth: 2,
+            belowBarData: BarAreaData(
+              show: true,
+              color: Colors.blue.withOpacity(0.2),
+            ),
             dotData: FlDotData(show: true),
+          ),
+        ],
+        extraLinesData: ExtraLinesData(horizontalLines: [
+          HorizontalLine(
+            y: 7, // Recommended minimum sleep
+            color: Colors.green,
+            strokeWidth: 1,
+            dashArray: [4, 4],
+            label: HorizontalLineLabel(
+              show: true,
+              labelResolver: (_) => '7 hrs (Recommended)',
+              style: const TextStyle(fontSize: 10, color: Colors.green),
+            ),
+          ),
+        ]),
+      ),
+    );
+  }
+
+Widget _buildTimeSeriesSleepChart() {
+    return LineChart(
+      LineChartData(
+        gridData: FlGridData(show: true),
+        titlesData: FlTitlesData(
+          leftTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 40,
+              getTitlesWidget: (value, meta) => Text(
+                value.toString(),
+                style: const TextStyle(fontSize: 10),
+              ),
+            ),
+          ),
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 40,
+              getTitlesWidget: (value, meta) {
+                final index = value.toInt();
+                if (index < 0 || index >= _questionnaireData.length) {
+                  return const SizedBox.shrink();
+                }
+                return Text(
+                  _formatDateTime(_questionnaireData[index]['date']),
+                  style: const TextStyle(fontSize: 10),
+                );
+              },
+            ),
+          ),
+        ),
+        lineBarsData: [
+          // Sleep Duration
+          LineChartBarData(
+            spots: _questionnaireData.asMap().entries.map((entry) {
+              final index = entry.key.toDouble();
+              final data = entry.value;
+              return FlSpot(index, data['sleep_hours']);
+            }).toList(),
+            isCurved: true,
+            color: Colors.blue,
+            barWidth: 2,
+          ),
+          // Wellness Score
+          LineChartBarData(
+            spots: _questionnaireData.asMap().entries.map((entry) {
+              final index = entry.key.toDouble();
+              final data = entry.value;
+              return FlSpot(index, data['wellness_score'].toDouble());
+            }).toList(),
+            isCurved: true,
+            color: Colors.green,
             barWidth: 2,
           ),
         ],
       ),
     );
   }
+
 
 Widget _buildRadarChart(Map<String, double> data) {
     const labels = ["Glucose", "Exercise", "Sleep", "Wellness"];

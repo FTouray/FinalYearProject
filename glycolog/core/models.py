@@ -126,6 +126,10 @@ class FeelingCheck(models.Model):
 class SymptomCheck(models.Model):
     session = models.ForeignKey(QuestionnaireSession, on_delete=models.CASCADE, related_name="symptom_check")
     symptoms = models.JSONField()  
+    sleep_hours = models.FloatField(null=True, blank=True)  
+    stress = models.BooleanField(null=True, blank=True)
+    routine_change = models.CharField(max_length=255, null=True, blank=True)  
+    responses = models.JSONField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
