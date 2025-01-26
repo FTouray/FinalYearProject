@@ -1,4 +1,5 @@
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
+from django.utils import timezone
 from django.http import JsonResponse
 import pandas as pd
 from django.db.models import Max
@@ -51,15 +52,16 @@ def login_user(request):
     if serializer.is_valid():
         username = serializer.validated_data['username']
         password = serializer.validated_data['password']
-        
+
         # Authenticate user
         user = authenticate(request, username=username, password=password)
 
         if user is not None:
-           # Generate access token
+            # Generate access token
             refresh = RefreshToken.for_user(user)
             access = AccessToken.for_user(user)
 
+            print(f"Login successful for user: {username}")
             return Response({
                 "access": str(access),  # Include the access token in the response
                 "refresh": str(refresh),  # Refresh token
@@ -67,8 +69,10 @@ def login_user(request):
                 "username": user.username
             }, status=status.HTTP_200_OK)
         else:
+            print(f"Login failed for user: {username}")
             return Response({"error": "Username or password is incorrect."}, status=status.HTTP_401_UNAUTHORIZED)
     else:
+        print("Serializer validation failed:", serializer.errors)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['GET','POST'])
@@ -486,53 +490,50 @@ def review_answers(request):
 @permission_classes([IsAuthenticated])
 def questionnaire_data_visualization(request):
     user = request.user
+    range_param = request.query_params.get("range", "last_10")  # Default to "last_10"
 
-    # Aggregate data by session
-    sessions = QuestionnaireSession.objects.filter(user=user, completed=True)
+    # Filter sessions based on the range
+    if range_param == "last_7":
+        sessions = QuestionnaireSession.objects.filter(
+            user=user, completed=True
+        ).order_by("-created_at")[:7]
+    elif range_param == "last_10":
+        sessions = QuestionnaireSession.objects.filter(
+            user=user, completed=True
+        ).order_by("-created_at")[:10]
+    elif range_param == "last_30_days":
+        date_threshold = timezone.now() - timedelta(days=30)  
+        sessions = QuestionnaireSession.objects.filter(
+            user=user, completed=True, created_at__gte=date_threshold
+        ).order_by("-created_at")
+    elif range_param == "all":
+        sessions = QuestionnaireSession.objects.filter(
+            user=user, completed=True
+        ).order_by("-created_at")
+    else:
+        return Response(
+            {"error": "Invalid range parameter provided."}, status=400
+        )
+
+    # Get the latest session date for "is_latest" flag
     latest_session_date = sessions.aggregate(Max("created_at"))["created_at__max"]
 
-    data = []
-    for session in sessions:
-        session_data = {
-            "date": session.created_at.strftime("%Y-%m-%d"),
-            "is_latest": session.created_at
-            == latest_session_date,  # Flag for latest session
-            "glucose_check": [
-                {
-                    "level": glucose.glucose_level,
-                    "target_evaluation": glucose.evaluate_target(),
-                }
-                for glucose in session.glucose_check.all()
-            ],
-            "wellness_score": (
-                session.feeling_check.feeling if session.feeling_check else None
-            ),
-            "symptom_check": [
-                symptom.symptoms for symptom in session.symptom_check.all()
-            ],
-            "meal_check": [
-                {
-                    "high_gi_food_count": meal.high_gi_foods.count(),
-                    "skipped_meals": meal.skipped_meals,
-                    "weighted_gi": meal.weighted_gi,
-                }
-                for meal in session.meal_check.all()
-            ],
-            "exercise_check": {
-                "duration": session.exercise_check.aggregate(Avg("exercise_duration"))[
-                    "exercise_duration__avg"
-                ],
-                "feeling": (
-                    session.exercise_check.first().post_exercise_feeling
-                    if session.exercise_check.exists()
-                    else None
-                ),
-            },
+    # Prepare session data
+    data = [
+        {
+            "session_id": session.id,
+            "date": session.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+            "is_latest": session.created_at == latest_session_date,
+            "feeling_check": session.feeling_check.feeling if session.feeling_check else None,
+            "glucose_check": GlucoseCheckSerializer(session.glucose_check.all(), many=True).data,
+            "meal_check": MealCheckSerializer(session.meal_check.all(), many=True).data,
+            "exercise_check": ExerciseCheckSerializer(session.exercise_check.all(), many=True).data,
+            "symptom_check": SymptomCheckSerializer(session.symptom_check.all(), many=True).data,
         }
-        data.append(session_data)
+        for session in sessions
+    ]
 
-    return Response(data)
-
+    return Response(data, status=200)
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])

@@ -280,7 +280,7 @@ class _SymptomStepScreenState extends State<SymptomStepScreen> {
   }
 
   Future<void> _submitData() async {
-    if (!_validateInputs()) {
+    if (_validateInputs()) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Please complete all required fields.")),
       );
@@ -322,7 +322,7 @@ class _SymptomStepScreenState extends State<SymptomStepScreen> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://192.168.1.12:8000/api/questionnaire/symptom-step/'),
+        Uri.parse('http://192.168.1.11:8000/api/questionnaire/symptom-step/'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',

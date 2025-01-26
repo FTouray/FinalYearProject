@@ -24,7 +24,7 @@ class AuthService {
     try {
       final response = await http.post(
         //   Uri.parse('http://10.0.2.2:8000/api/token/refresh/'), // For Android Emulator
-        Uri.parse('http://192.168.1.12:8000/api/token/refresh/'), // For Physical Device
+        Uri.parse('http://192.168.1.11:8000/api/token/refresh/'), // For Physical Device
        // Uri.parse('http://172.20.10.3:8000/api/token/refresh/'), // Hotspot
         //  Uri.parse('http://192.168.40.184:8000/api/token/refresh/'), //Ethernet IP
         headers: {

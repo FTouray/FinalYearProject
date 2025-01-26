@@ -1,6 +1,8 @@
+import 'package:Glycolog/utils.dart';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
@@ -49,9 +51,11 @@ class _QuestionnaireVisualizationScreenState
         throw Exception('User is not authenticated.');
       }
 
+      // Include range as query parameter
+      String rangeQuery = _mapRangeToQueryParam(_selectedRange);
       final response = await http.get(
         Uri.parse(
-            'http://192.168.1.12:8000/api/questionnaire/data-visualization/'),
+            'http://192.168.1.11:8000/api/questionnaire/data-visualization/?range=$rangeQuery'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
@@ -79,48 +83,62 @@ class _QuestionnaireVisualizationScreenState
     }
   }
 
-  List<Map<String, dynamic>> _normalizeAndFilterData(List<dynamic> data) {
-    List<Map<String, dynamic>> normalizedData = data.map((item) {
-      DateTime sessionDate = DateTime.parse(item['date']).toLocal();
-      return {
-        'date': sessionDate,
-        'is_latest': item['is_latest'] ?? false,
-        'glucose_check': _normalizeGlucoseList(
-            item['glucose_check'] ?? [], _preferredGlucoseUnit),
-        'wellness_score': _mapWellnessToScore(item['wellness_score']),
-        'exercise_duration': item['exercise_check']?['duration'] ?? 0,
-        'sleep_hours': item['sleep_hours'] ?? 0.0,
-        'meal_data': {
-          'skipped': item['meal_check']?[0]?['skipped_meals']?.length ?? 0,
-          'weighted_gi': item['meal_check']?[0]?['weighted_gi'] ?? 0.0,
-        },
-      };
-    }).toList();
-
-    switch (_selectedRange) {
+// Helper function to map dropdown selection to query parameters
+  String _mapRangeToQueryParam(String range) {
+    switch (range) {
       case "Last 7 Sessions":
-        return normalizedData.reversed.take(7).toList();
+        return "last_7";
       case "Last 10 Sessions":
-        return normalizedData.reversed.take(10).toList();
+        return "last_10";
       case "Last 30 Days":
-        DateTime now = DateTime.now();
-        return normalizedData
-            .where((entry) =>
-                entry['date'].isAfter(now.subtract(Duration(days: 30))))
-            .toList();
+        return "last_30_days";
       case "All Sessions":
-        return normalizedData;
       default:
-        return normalizedData;
+        return "all";
     }
   }
 
-  List<double> _normalizeGlucoseList(List<dynamic> glucoseChecks, String unit) {
+
+  List<Map<String, dynamic>> _normalizeAndFilterData(List<dynamic> data) {
+    return data.map((item) {
+      DateTime sessionDate = DateTime.parse(item['date']).toLocal();
+      return {
+        'session_id': item['session_id'],
+        'date': sessionDate,
+        'is_latest': item['is_latest'] ?? false,
+        'glucose_check': _normalizeGlucoseList(item['glucose_check'] ?? [], _preferredGlucoseUnit),
+        'wellness_score': _mapWellnessToScore(item['feeling_check']) ?? 0,
+        'exercise_type': item['exercise_check']?.map((e) => e['exercise_type'])?.toList() ?? [],
+        'exercise_intensity': item['exercise_check']?.map((e) => e['exercise_intensity'])?.toList() ?? [],
+        'exercise_duration': item['exercise_check']
+                ?.map((e) => e['exercise_duration'] ?? 0)
+                .reduce((a, b) => a + b) ??
+            0,
+        'meal_data': {
+          'skipped': item['meal_check']?.fold(0,
+                  (sum, meal) => sum + (meal['skipped_meals']?.length ?? 0)) ?? 0,
+          'weighted_gi': item['meal_check']?.fold(
+                  0.0, (sum, meal) => sum + (meal['weighted_gi'] ?? 0.0)) ?? 0.0,
+        },
+        'symptoms': item['symptom_check']
+                ?.map((symptom) => symptom['symptoms'])
+                ?.toList() ??
+            [],
+      'sleep_hours': item['symptom_check']
+                ?.map((symptom) => symptom['sleep_hours'] ?? 0.0)
+                .reduce((a, b) => a + b) ?? 0.0,
+      };
+    }).toList();
+  }
+
+
+ List<double> _normalizeGlucoseList(List<dynamic> glucoseChecks, String unit) {
     return glucoseChecks.map((check) {
-      double level = check['level'] ?? 0.0;
+      double level = check['glucose_level'] ?? 0.0;
       return _normalizeGlucose(level, unit);
     }).toList();
   }
+ 
 
   double _normalizeGlucose(double level, String unit) {
     return unit == 'mmol/L' ? level * 18 : level;
@@ -134,7 +152,8 @@ class _QuestionnaireVisualizationScreenState
   }
 
   String _formatDateTime(DateTime date) {
-    return '${date.month}/${date.day} ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
+    final DateFormat formatter = DateFormat('dd/MM/yyyy HH:mm:ss');
+    return formatter.format(date);
   }
 
   @override
@@ -252,7 +271,7 @@ class _QuestionnaireVisualizationScreenState
     );
   }
 
-  Widget _buildLatestSummary() {
+ Widget _buildLatestSummary() {
     final latestData = _questionnaireData.lastWhere((data) => data['is_latest'],
         orElse: () => {});
     if (latestData.isEmpty) {
@@ -279,12 +298,13 @@ class _QuestionnaireVisualizationScreenState
     );
   }
 
+
   Widget _buildLineChartSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Glucose Levels vs. Wellness Scores',
+          'Glucose Levels',
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 10),
@@ -303,7 +323,7 @@ class _QuestionnaireVisualizationScreenState
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Exercise Duration vs. Wellness',
+          'Exercise ',
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 10),
@@ -320,7 +340,7 @@ class _QuestionnaireVisualizationScreenState
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Meal Composition vs. Wellness',
+          'Meal Composition',
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 10),
@@ -366,7 +386,7 @@ class _QuestionnaireVisualizationScreenState
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Sleep Duration vs. Wellness',
+          'Sleep Duration',
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 10),
@@ -417,38 +437,71 @@ class _QuestionnaireVisualizationScreenState
     );
   }
 
- LineChartData _buildLineChartData() {
+LineChartData _buildLineChartData() {
     return LineChartData(
       gridData: FlGridData(show: true),
       titlesData: FlTitlesData(
         leftTitles: AxisTitles(
-            sideTitles: SideTitles(showTitles: true, reservedSize: 40)),
+          sideTitles: SideTitles(
+            showTitles: true,
+            reservedSize: 40,
+            getTitlesWidget: (value, meta) {
+              // Keep the y-axis labels as numbers
+              return Text(
+                value.toInt().toString(),
+                style: const TextStyle(fontSize: 10),
+              );
+            },
+          ),
+          axisNameWidget: const RotatedBox(
+            quarterTurns: 1, // Rotate the title vertically
+            child: Text(
+              'Glucose Level',
+              style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold),
+            ),
+          ),
+          axisNameSize: 20, // Space for the y-axis title
+        ),
         bottomTitles: AxisTitles(
           sideTitles: SideTitles(
             showTitles: true,
             reservedSize: 40,
+            interval: 1, // Show every session
             getTitlesWidget: (value, meta) {
               final index = value.toInt();
               if (index < 0 || index >= _questionnaireData.length) {
                 return const SizedBox.shrink();
               }
-              return Wrap(
-                children: [
-                  Text(
-                    _formatDateTime(_questionnaireData[index]['date']),
+
+              final sessionId = _questionnaireData[index]['session_id'];
+
+              return Transform.translate(
+                offset: const Offset(0, 8),
+                child: Transform.rotate(
+                  angle: 0, // No rotation
+                  child: Text(
+                    'S$sessionId', 
                     style: const TextStyle(fontSize: 10),
-                    overflow: TextOverflow.ellipsis,
                   ),
-                ],
+                ),
               );
             },
           ),
+          axisNameWidget: const Padding(
+            padding:
+                EdgeInsets.only(top: 16), // Add space between labels and title
+            child: Text(
+              'Questionnaire Sessions',
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
+            ),
+          ),
+          axisNameSize: 30, // Space for the x-axis title
         ),
       ),
       lineBarsData: [
-        // Glucose Levels Line
         LineChartBarData(
-          spots: _questionnaireData.asMap().entries.map((entry) {
+          spots: _questionnaireData.reversed.toList().asMap().entries.map((entry) {
             final index = entry.key.toDouble();
             final data = entry.value;
             return FlSpot(index, data['glucose_check'][0]);
@@ -468,8 +521,6 @@ class _QuestionnaireVisualizationScreenState
             ),
           ),
         ),
-
-        // Wellness Scores Line
         LineChartBarData(
           spots: _questionnaireData.asMap().entries.map((entry) {
             final index = entry.key.toDouble();
@@ -492,6 +543,34 @@ class _QuestionnaireVisualizationScreenState
           ),
         ),
       ],
+      lineTouchData: LineTouchData(
+        touchTooltipData: LineTouchTooltipData(
+          tooltipPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          tooltipRoundedRadius: 8,
+          tooltipBorder:
+              BorderSide(color: Colors.white.withOpacity(0.8), width: 1),
+          tooltipMargin: 16,
+          getTooltipColor: (touchedSpot) => Colors.grey.withOpacity(0.8),
+          getTooltipItems: (touchedSpots) {
+            return touchedSpots.map((spot) {
+              final index = spot.spotIndex;
+              final data = _questionnaireData[index];
+              final timestamp = data['date'].toString();
+              final formattedDate = formatTimestamp(timestamp);
+              final glucoseLevel = data['glucose_check'][0];
+              final sessionId = data['session_id']; 
+
+              return LineTooltipItem(
+                'Session $sessionId\n'
+                'Glucose: $glucoseLevel ${_preferredGlucoseUnit}\n'
+                'Date & Time: $formattedDate',
+                const TextStyle(color: Colors.white),
+              );
+            }).toList();
+          },
+        ),
+      ),
     );
   }
 
@@ -500,25 +579,53 @@ class _QuestionnaireVisualizationScreenState
       gridData: FlGridData(show: true),
       titlesData: FlTitlesData(
         leftTitles: AxisTitles(
-            sideTitles: SideTitles(showTitles: true, reservedSize: 40)),
+          sideTitles: SideTitles(
+            showTitles: true,
+            reservedSize: 40,
+            getTitlesWidget: (value, meta) {
+              return Text(
+                '${value.toInt()} mins',
+                style: const TextStyle(fontSize: 10),
+              );
+            },
+          ),
+          axisNameWidget: const Padding(
+            padding: EdgeInsets.only(top: 8.0),
+            child: RotatedBox(
+              quarterTurns: 1,
+              child: Text(
+                'Exercise Duration (mins)',
+                style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ),
+          axisNameSize: 20,
+        ),
         bottomTitles: AxisTitles(
           sideTitles: SideTitles(
             showTitles: true,
+            reservedSize: 40,
+            interval: 1,
             getTitlesWidget: (value, meta) {
               final index = value.toInt();
               if (index < 0 || index >= _questionnaireData.length) {
                 return const SizedBox.shrink();
               }
-              return Wrap(
-                children: [
-                  Text(
-                    _formatDateTime(_questionnaireData[index]['date']),
-                    style: const TextStyle(fontSize: 10),
-                  ),
-                ],
+              final sessionId = _questionnaireData[index]['session_id'];
+              return Text(
+                'S$sessionId',
+                style: const TextStyle(fontSize: 10),
               );
             },
           ),
+          axisNameWidget: const Padding(
+            padding: EdgeInsets.only(top: 16),
+            child: Text(
+              'Questionnaire Sessions',
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+            ),
+          ),
+          axisNameSize: 30,
         ),
       ),
       barGroups: _questionnaireData.asMap().entries.map((entry) {
@@ -528,12 +635,54 @@ class _QuestionnaireVisualizationScreenState
           x: index,
           barRods: [
             BarChartRodData(
-                toY: data['exercise_duration'].toDouble(), color: Colors.orange)
+              toY: data['exercise_duration'].toDouble(),
+              color: Colors.orange,
+            ),
           ],
+          showingTooltipIndicators: [], // Disable tooltips by default
         );
       }).toList(),
+      barTouchData: BarTouchData(
+        touchTooltipData: BarTouchTooltipData(
+          getTooltipColor: (touchedSpot) => Colors.blueGrey.withOpacity(0.8),
+          tooltipPadding: const EdgeInsets.all(8),
+          tooltipMargin: 8,
+          fitInsideHorizontally: true,
+          fitInsideVertically: true,
+          getTooltipItem: (group, groupIndex, rod, rodIndex) {
+            final data = _questionnaireData[groupIndex];
+            final exerciseType = data['exercise_type'][0] ?? 'Unknown';
+            final intensity = data['exercise_intensity'][0] ?? 'Unknown';
+            final duration = data['exercise_duration'] ?? 0.0;
+
+            return BarTooltipItem(
+              'Session ${data['session_id']}\n'
+              'Type: $exerciseType\n'
+              'Intensity: $intensity\n'
+              'Duration: ${duration.toStringAsFixed(1)}',
+              const TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
+            );
+          },
+        ),
+        touchCallback: (event, response) {
+          // Debugging or additional actions on touch can be added here
+          if (event.isInterestedForInteractions &&
+              response != null &&
+              response.spot != null) {
+            debugPrint(
+                'Touched bar index: ${response.spot!.touchedBarGroupIndex}');
+          }
+        },
+        allowTouchBarBackDraw:
+            false, // Ensure background redraw isn't persistent
+      ),
     );
   }
+
 
   Widget _buildMealStackedBarChart() {
     return BarChart(
@@ -557,7 +706,7 @@ class _QuestionnaireVisualizationScreenState
     );
   }
 
-  Widget _buildScatterPlotData() {
+ Widget _buildScatterPlotData() {
     return LineChart(
       LineChartData(
         gridData: FlGridData(show: true),
@@ -585,12 +734,21 @@ class _QuestionnaireVisualizationScreenState
         ),
         lineBarsData: [
           LineChartBarData(
-            spots: _questionnaireData.map((data) {
-              return FlSpot(
-                data['sleep_hours'], // Sleep duration
-                data['wellness_score'].toDouble(), // Wellness score
-              );
-            }).toList(),
+            spots: _questionnaireData
+                .map((data) {
+                  final double sleepHours = data['sleep_hours'] ?? 0.0;
+                  final double wellnessScore =
+                      data['wellness_score']?.toDouble() ?? 0.0;
+
+                  // Ensure valid data points
+                  if (sleepHours == 0.0 || wellnessScore == 0.0) {
+                    return null; // Skip invalid points
+                  }
+                  return FlSpot(sleepHours, wellnessScore);
+                })
+                .where((spot) => spot != null) // Remove null spots
+                .toList()
+                .cast<FlSpot>(), // Cast to FlSpot list
             isCurved: true,
             color: Colors.blue,
             barWidth: 2,
@@ -601,22 +759,10 @@ class _QuestionnaireVisualizationScreenState
             dotData: FlDotData(show: true),
           ),
         ],
-        extraLinesData: ExtraLinesData(horizontalLines: [
-          HorizontalLine(
-            y: 7, // Recommended minimum sleep
-            color: Colors.green,
-            strokeWidth: 1,
-            dashArray: [4, 4],
-            label: HorizontalLineLabel(
-              show: true,
-              labelResolver: (_) => '7 hrs (Recommended)',
-              style: const TextStyle(fontSize: 10, color: Colors.green),
-            ),
-          ),
-        ]),
       ),
     );
   }
+
 
 Widget _buildTimeSeriesSleepChart() {
     return LineChart(

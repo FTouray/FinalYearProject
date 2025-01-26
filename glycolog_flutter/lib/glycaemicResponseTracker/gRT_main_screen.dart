@@ -41,7 +41,7 @@ class _GRTMainScreenState extends State<GRTMainScreen> {
     String? token = await AuthService().getAccessToken();
     try {
       final response = await http.get(
-        Uri.parse('http://192.168.1.12:8000/api/glycaemic-response-main'),
+        Uri.parse('http://192.168.1.11:8000/api/glycaemic-response-main'),
         headers: {
           'Authorization': 'Bearer $token',
         },
@@ -99,7 +99,7 @@ class _GRTMainScreenState extends State<GRTMainScreen> {
     String? token = await AuthService().getAccessToken();
     try {
       final response = await http.get(
-        Uri.parse('http://192.168.1.19:8000/api/glycaemic-response-analysis'), // Physical Device
+        Uri.parse('http://192.168.1.11:8000/api/glycaemic-response-analysis'), // Physical Device
         // Uri.parse('http://172.20.10.3:8000/api/glycaemic-response-analysis/'), // Hotspot
         headers: {
           'Authorization': 'Bearer $token',

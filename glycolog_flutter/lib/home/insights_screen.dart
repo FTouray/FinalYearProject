@@ -31,7 +31,7 @@ class _InsightsGraphScreenState extends State<InsightsGraphScreen> {
 
     try {
       final response = await http.get(
-        Uri.parse('http://192.168.1.12:8000/api/insights-graph/'),
+        Uri.parse('http://192.168.1.11:8000/api/insights-graph/'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
@@ -202,7 +202,7 @@ class _InsightsGraphScreenState extends State<InsightsGraphScreen> {
                     horizontalLines: [
                       if (targetMin != null)
                         HorizontalLine(
-                          y: targetMin!,
+                          y: targetMin,
                           color: Colors.green,
                           strokeWidth: 1.5,
                           label: HorizontalLineLabel(
@@ -213,7 +213,7 @@ class _InsightsGraphScreenState extends State<InsightsGraphScreen> {
                         ),
                       if (targetMax != null)
                         HorizontalLine(
-                          y: targetMax!,
+                          y: targetMax,
                           color: Colors.red,
                           strokeWidth: 1.5,
                           label: HorizontalLineLabel(
