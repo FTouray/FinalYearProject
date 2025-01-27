@@ -43,6 +43,7 @@ class _SymptomStepScreenState extends State<SymptomStepScreen> {
     responseValues["routine_change"] = null;
     responseValues["routine_change_details"] = null;
     responseValues["routine_effect"] = null;
+    responseValues["sleep_hours"] = 7.0;
   }
 
   @override
@@ -71,8 +72,8 @@ class _SymptomStepScreenState extends State<SymptomStepScreen> {
             _buildSliderQuestion(
               question: "How many hours did you sleep last night?",
               min: 0,
-              max: 10,
-              divisions: 10,
+              max: 14,
+              divisions: 14,
               responseKey: "sleep_hours",
             ),
             _buildDropdownQuestion(
@@ -211,11 +212,12 @@ class _SymptomStepScreenState extends State<SymptomStepScreen> {
           style: const TextStyle(fontSize: 16),
         ),
         Slider(
-          value: (responseValues[responseKey] as double?) ?? (min + max) / 2,
+          value:
+              (responseValues[responseKey] as double?) ?? 7.0, // Default to 7
           min: min,
           max: max,
           divisions: divisions,
-          label: "${responseValues[responseKey] ?? ((min + max) / 2)}",
+          label: "${responseValues[responseKey]?.toStringAsFixed(1) ?? '7'}",
           onChanged: (double value) {
             setState(() {
               responseValues[responseKey] = value;
@@ -280,7 +282,7 @@ class _SymptomStepScreenState extends State<SymptomStepScreen> {
   }
 
   Future<void> _submitData() async {
-    if (_validateInputs()) {
+    if (!_validateInputs()) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Please complete all required fields.")),
       );
