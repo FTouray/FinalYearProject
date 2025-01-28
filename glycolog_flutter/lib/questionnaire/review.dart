@@ -108,7 +108,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
                           title: Text(
                               'Intensity: ${exercise['exercise_intensity']} | Duration: ${exercise['exercise_duration']} mins'),
                           subtitle: Text(
-                              'Feeling: ${exercise['post_exercise_feeling']} | Activity Level: ${exercise['activity_level']}'),
+                              'Feeling: ${exercise['post_exercise_feeling']}'),
                         );
                       }).toList(),
                       const Divider(),
@@ -120,7 +120,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
                       ...(_reviewData['symptom_check'] as List).map((symptom) {
                         return ListTile(
                           title: Text(
-                              'Symptoms: ${symptom['symptoms']} | Severity: ${symptom['severity']}'),
+                              'Symptoms: ${symptom['symptoms']}'),
                           subtitle: Text('Notes: ${symptom['notes']}'),
                         );
                       }).toList(),
