@@ -275,109 +275,134 @@ class _QuestionnaireVisualizationScreenState
     );
   }
 
-
-  Widget _buildLineChartSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Glucose Levels',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 10),
-        SizedBox(height: 300, child: LineChart(_buildLineChartData())),
-        const SizedBox(height: 10),
-        _buildLegendRow([
-          {'color': Colors.blue, 'label': 'Glucose Levels'},
-          {'color': Colors.green, 'label': 'Wellness Scores'},
-        ]),
-      ],
-    );
-  }
-
-  Widget _buildBarChartSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Exercise ',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 10),
-        SizedBox(height: 300, child: BarChart(_buildBarChartData())),
-        _buildLegendRow([
-          {'color': Colors.orange, 'label': 'Exercise Duration'},
-        ]),
-      ],
-    );
-  }
-
-  Widget _buildStackedBarChartSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Meal Composition',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 10),
-        SizedBox(
+Widget _buildLineChartSection() {
+  final double dynamicWidth = _questionnaireData.length * 60.0; // Adjust width based on session count
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const Text(
+        'Glucose Levels',
+        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+      ),
+      const SizedBox(height: 10),
+      SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: SizedBox(
+          width: dynamicWidth.clamp(300.0, 1200.0), // Minimum and maximum width
           height: 300,
-          child:
-              BarChart(_buildMealBarChartData()), // Use the refactored method
+          child: LineChart(_buildLineChartData()),
         ),
-        _buildLegendRow([
-          {'color': Colors.red, 'label': 'Weighted GI'},
-          {'color': Colors.grey, 'label': 'Skipped Meals'},
-        ]),
-      ],
-    );
-  }
+      ),
+      const SizedBox(height: 10),
+      _buildLegendRow([
+        {'color': Colors.blue, 'label': 'Glucose Levels'},
+        {'color': Colors.green, 'label': 'Wellness Scores'},
+      ]),
+    ],
+  );
+}
+
+Widget _buildBarChartSection() {
+  final double dynamicWidth = _questionnaireData.length * 60.0; // Adjust width dynamically
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const Text(
+        'Exercise',
+        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+      ),
+      const SizedBox(height: 10),
+      SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: SizedBox(
+          width: dynamicWidth.clamp(300.0, 1200.0), // Minimum and maximum width
+          height: 300,
+          child: BarChart(_buildBarChartData()),
+        ),
+      ),
+      _buildLegendRow([
+        {'color': Colors.orange, 'label': 'Exercise Duration'},
+      ]),
+    ],
+  );
+}
+
+Widget _buildStackedBarChartSection() {
+  final double dynamicWidth = _questionnaireData.length * 60.0; // Adjust width dynamically
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const Text(
+        'Meal Composition',
+        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+      ),
+      const SizedBox(height: 10),
+      SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: SizedBox(
+          width: dynamicWidth.clamp(300.0, 1200.0), // Minimum and maximum width
+          height: 300,
+          child: BarChart(_buildMealBarChartData()), // Refactored stacked bar chart
+        ),
+      ),
+      _buildLegendRow([
+        {'color': Colors.red, 'label': 'Weighted GI'},
+        {'color': Colors.grey, 'label': 'Skipped Meals'},
+      ]),
+    ],
+  );
+}
 
 Widget _buildLineChartSleepSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Sleep vs Wellness',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 10),
-        SizedBox(
+  final double dynamicWidth = _questionnaireData.length * 60.0; // Adjust width dynamically
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const Text(
+        'Sleep vs Wellness',
+        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+      ),
+      const SizedBox(height: 10),
+      SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: SizedBox(
+          width: dynamicWidth.clamp(300.0, 1200.0), // Minimum and maximum width
           height: 300,
           child: LineChart(_buildLineChartSleepVsWellnessData()),
         ),
-      ],
-    );
-  }
+      ),
+    ],
+  );
+}
 
-
-  Widget _buildComprehensiveChartSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Comprehensive Chart',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 10),
-        SizedBox(
+Widget _buildComprehensiveChartSection() {
+  final double dynamicWidth = _questionnaireData.length * 60.0; // Adjust width dynamically
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const Text(
+        'Comprehensive Chart',
+        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+      ),
+      const SizedBox(height: 10),
+      SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: SizedBox(
+          width: dynamicWidth.clamp(300.0, 1200.0), // Minimum and maximum width
           height: 300,
           child: LineChart(_buildComprehensiveChartData()),
         ),
-        const SizedBox(height: 10),
-        // Add the legend using _buildLegendRow
-        _buildLegendRow([
-          {'color': Colors.red, 'label': 'Glucose Levels'},
-          {'color': Colors.blue, 'label': 'Sleep Hours'},
-          {'color': Colors.green, 'label': 'Exercise Duration'},
-          {'color': Colors.orange, 'label': 'Meal Weighted GI'},
-        ]),
-      ],
-    );
-  }
-
-
+      ),
+      const SizedBox(height: 10),
+      _buildLegendRow([
+        {'color': Colors.red, 'label': 'Glucose Levels'},
+        {'color': Colors.blue, 'label': 'Sleep Hours'},
+        {'color': Colors.green, 'label': 'Exercise Duration'},
+        {'color': Colors.orange, 'label': 'Meal Weighted GI'},
+      ]),
+    ],
+  );
+}
 
   Widget _buildLegendRow(List<Map<String, dynamic>> legends) {
     return Wrap(
@@ -909,199 +934,197 @@ LineChartData _buildLineChartSleepVsWellnessData() {
     );
   }
 
-
 LineChartData _buildComprehensiveChartData() {
-    // Calculate max Y value dynamically with 20% padding
-    final maxGlucoseLevel = _questionnaireData
-        .map((data) =>
-            (data['glucose_check'] != null && data['glucose_check'].isNotEmpty)
-                ? data['glucose_check'][0].toDouble()
-                : 0.0)
-        .reduce((a, b) => a > b ? a : b);
+  final maxGlucoseLevel = _questionnaireData
+      .map((data) =>
+          (data['glucose_check'] != null && data['glucose_check'].isNotEmpty)
+              ? data['glucose_check'][0].toDouble()
+              : 0.0)
+      .reduce((a, b) => a > b ? a : b);
 
-    final maxSleepHours = _questionnaireData
-        .map((data) => data['sleep_hours']?.toDouble() ?? 0.0)
-        .reduce((a, b) => a > b ? a : b);
+  final maxSleepHours = _questionnaireData
+      .map((data) => data['sleep_hours']?.toDouble() ?? 0.0)
+      .reduce((a, b) => a > b ? a : b);
 
-    final maxExerciseDuration = _questionnaireData
-        .map((data) => data['exercise_duration']?.toDouble() ?? 0.0)
-        .reduce((a, b) => a > b ? a : b);
+  final maxExerciseDuration = _questionnaireData
+      .map((data) => data['exercise_duration']?.toDouble() ?? 0.0)
+      .reduce((a, b) => a > b ? a : b);
 
-    final maxMealData = _questionnaireData
-        .map((data) => data['meal_data']?['weighted_gi']?.toDouble() ?? 0.0)
-        .reduce((a, b) => a > b ? a : b);
+  final maxMealData = _questionnaireData
+      .map((data) => data['meal_data']?['weighted_gi']?.toDouble() ?? 0.0)
+      .reduce((a, b) => a > b ? a : b);
 
-    final maxY = ([
-              maxGlucoseLevel,
-              maxSleepHours,
-              maxExerciseDuration,
-              maxMealData
-            ].reduce((a, b) => a > b ? a : b) *
-            1.2) // Add 20% padding
-        .ceil()
-        .toDouble();
+  final maxY = ([maxGlucoseLevel, maxSleepHours, maxExerciseDuration, maxMealData]
+          .reduce((a, b) => a > b ? a : b) *
+      1.2)
+      .ceil()
+      .toDouble();
 
-    final interval = (maxY / 5).ceil().toDouble();
+  final interval = (maxY / 5).ceil().toDouble();
 
-    return LineChartData(
-      gridData: FlGridData(show: true),
-      titlesData: FlTitlesData(
-        leftTitles: AxisTitles(
-          sideTitles: SideTitles(
-            showTitles: true,
-            reservedSize: 40,
-            interval: interval, // Set consistent intervals
-            getTitlesWidget: (value, meta) {
-              return Text(
-                '${value.toInt()}',
-                style: const TextStyle(fontSize: 10),
-              );
-            },
-          ),
-          axisNameWidget: const RotatedBox(
-            quarterTurns: 1,
-            child: Text(
-              'Values',
-              style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold),
-            ),
-          ),
-          axisNameSize: 20,
-        ),
-        bottomTitles: AxisTitles(
-          sideTitles: SideTitles(
-            showTitles: true,
-            reservedSize: 40,
-            interval: 1,
-            getTitlesWidget: (value, meta) {
-              final index = value.toInt();
-              if (index < 0 || index >= _questionnaireData.length) {
-                return const SizedBox.shrink();
-              }
-              return Text(
-                'S${_questionnaireData[index]['session_id']}',
-                style: const TextStyle(fontSize: 10),
-              );
-            },
-          ),
-          axisNameWidget: const Padding(
-            padding: EdgeInsets.only(top: 16),
-            child: Text(
-              'Questionnaire Sessions',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-            ),
-          ),
-          axisNameSize: 30,
-        ),
-      ),
-      minY: 0.0,
-      maxY: maxY,
-      lineBarsData: [
-        // Glucose Line
-        LineChartBarData(
-          spots: _questionnaireData.asMap().entries.map((entry) {
-            final index = entry.key.toDouble();
-            final glucoseValue = (entry.value['glucose_check'] != null &&
-                    entry.value['glucose_check'].isNotEmpty)
-                ? entry.value['glucose_check'][0].toDouble()
-                : 0.0;
-            return FlSpot(index, glucoseValue);
-          }).toList(),
-          isCurved: true,
-          color: Colors.red,
-          barWidth: 3,
-          dotData: FlDotData(show: true),
-        ),
-        // Sleep Line
-        LineChartBarData(
-          spots: _questionnaireData.asMap().entries.map((entry) {
-            final index = entry.key.toDouble();
-            final sleepValue = entry.value['sleep_hours']?.toDouble() ?? 0.0;
-            return FlSpot(index, sleepValue);
-          }).toList(),
-          isCurved: true,
-          color: Colors.blue,
-          barWidth: 3,
-          dotData: FlDotData(show: true),
-        ),
-        // Exercise Line
-        LineChartBarData(
-          spots: _questionnaireData.asMap().entries.map((entry) {
-            final index = entry.key.toDouble();
-            final exerciseValue =
-                entry.value['exercise_duration']?.toDouble() ?? 0.0;
-            return FlSpot(index, exerciseValue);
-          }).toList(),
-          isCurved: true,
-          color: Colors.green,
-          barWidth: 3,
-          dotData: FlDotData(show: true),
-        ),
-        // Meal Line
-        LineChartBarData(
-          spots: _questionnaireData.asMap().entries.map((entry) {
-            final index = entry.key.toDouble();
-            final mealValue =
-                entry.value['meal_data']?['weighted_gi']?.toDouble() ?? 0.0;
-            return FlSpot(index, mealValue);
-          }).toList(),
-          isCurved: true,
-          color: Colors.orange,
-          barWidth: 3,
-          dotData: FlDotData(show: true),
-        ),
-      ],
-      lineTouchData: LineTouchData(
-        touchTooltipData: LineTouchTooltipData(
-          tooltipPadding: const EdgeInsets.all(8),
-          tooltipMargin: 8,
-          getTooltipItems: (spots) {
-            return spots.map((spot) {
-              final dataIndex = spot.spotIndex;
-              final data = _questionnaireData[dataIndex];
-              return LineTooltipItem(
-                'Session ${data['session_id']}\n'
-                'Glucose: ${data['glucose_check']?[0] ?? 'N/A'}\n'
-                'Sleep: ${data['sleep_hours']?.toStringAsFixed(1) ?? 'N/A'} hrs\n'
-                'Exercise: ${data['exercise_duration']?.toStringAsFixed(1) ?? 'N/A'} mins\n'
-                'Meal GI: ${data['meal_data']?['weighted_gi']?.toStringAsFixed(1) ?? 'N/A'}',
-                const TextStyle(color: Colors.white),
-              );
-            }).toList();
+  return LineChartData(
+    gridData: FlGridData(show: true),
+    titlesData: FlTitlesData(
+      leftTitles: AxisTitles(
+        sideTitles: SideTitles(
+          showTitles: true,
+          interval: interval,
+          getTitlesWidget: (value, meta) {
+            return Text(
+              '${value.toInt()}',
+              style: const TextStyle(fontSize: 10),
+            );
           },
         ),
+        axisNameWidget: const RotatedBox(
+          quarterTurns: 1,
+          child: Text(
+            'Values',
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+          ),
+        ),
+        axisNameSize: 20,
       ),
-    );
-  }
+      bottomTitles: AxisTitles(
+        sideTitles: SideTitles(
+          showTitles: true,
+          interval: 1,
+          getTitlesWidget: (value, meta) {
+            final index = value.toInt();
+            if (index < 0 || index >= _questionnaireData.length) {
+              return const SizedBox.shrink();
+            }
+            return Text(
+              'S${_questionnaireData[index]['session_id']}',
+              style: const TextStyle(fontSize: 10),
+            );
+          },
+        ),
+        axisNameWidget: const Padding(
+          padding: EdgeInsets.only(top: 16),
+          child: Text(
+            'Questionnaire Sessions',
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+          ),
+        ),
+        axisNameSize: 30,
+      ),
+    ),
+    minY: 0.0,
+    maxY: maxY,
+    lineBarsData: [
+      LineChartBarData(
+        spots: _questionnaireData.asMap().entries.map((entry) {
+          final index = entry.key.toDouble();
+          final glucoseValue = (entry.value['glucose_check'] != null &&
+                  entry.value['glucose_check'].isNotEmpty)
+              ? entry.value['glucose_check'][0].toDouble()
+              : 0.0;
+          return FlSpot(index, glucoseValue);
+        }).toList(),
+        isCurved: true,
+        color: Colors.red,
+        barWidth: 3,
+        dotData: FlDotData(show: true),
+      ),
+      LineChartBarData(
+        spots: _questionnaireData.asMap().entries.map((entry) {
+          final index = entry.key.toDouble();
+          final sleepValue = entry.value['sleep_hours']?.toDouble() ?? 0.0;
+          return FlSpot(index, sleepValue);
+        }).toList(),
+        isCurved: true,
+        color: Colors.blue,
+        barWidth: 3,
+        dotData: FlDotData(show: true),
+      ),
+      LineChartBarData(
+        spots: _questionnaireData.asMap().entries.map((entry) {
+          final index = entry.key.toDouble();
+          final exerciseValue =
+              entry.value['exercise_duration']?.toDouble() ?? 0.0;
+          return FlSpot(index, exerciseValue);
+        }).toList(),
+        isCurved: true,
+        color: Colors.green,
+        barWidth: 3,
+        dotData: FlDotData(show: true),
+      ),
+      LineChartBarData(
+        spots: _questionnaireData.asMap().entries.map((entry) {
+          final index = entry.key.toDouble();
+          final mealValue =
+              entry.value['meal_data']?['weighted_gi']?.toDouble() ?? 0.0;
+          return FlSpot(index, mealValue);
+        }).toList(),
+        isCurved: true,
+        color: Colors.orange,
+        barWidth: 3,
+        dotData: FlDotData(show: true),
+      ),
+    ],
+    lineTouchData: LineTouchData(
+      touchTooltipData: LineTouchTooltipData(
+        tooltipPadding: const EdgeInsets.all(8),
+        tooltipMargin: 8,
+        getTooltipItems: (spots) {
+          return spots.map((spot) {
+            final dataIndex = spot.spotIndex;
+            final data = _questionnaireData[dataIndex];
+            return LineTooltipItem(
+              'Session ${data['session_id']}\n'
+              'Glucose: ${data['glucose_check']?[0] ?? 'N/A'}\n'
+              'Sleep: ${data['sleep_hours']?.toStringAsFixed(1) ?? 'N/A'} hrs\n'
+              'Exercise: ${data['exercise_duration']?.toStringAsFixed(1) ?? 'N/A'} mins\n'
+              'Meal GI: ${data['meal_data']?['weighted_gi']?.toStringAsFixed(1) ?? 'N/A'}',
+              const TextStyle(color: Colors.white),
+            );
+          }).toList();
+        },
+      ),
+    ),
+  );
+}
+
 
 Widget _buildSymptomGroupedBarChart() {
+    // Extract unique symptoms across all sessions
     final List<String> symptomNames = _questionnaireData
         .expand((session) => session['symptoms'])
         .map<String>((symptom) => symptom['symptom'] as String)
         .toSet()
         .toList();
 
+    final double barWidth = 8.0; // Width of individual bars
+    final double sessionSpacing = 20.0; // Space between sessions
+
+    // Generate bar groups dynamically
     final List<BarChartGroupData> barGroups =
         _questionnaireData.asMap().entries.map((entry) {
       final sessionIndex = entry.key;
       final sessionData = entry.value;
 
+      // Create bars only for symptoms in this session
+      final List<BarChartRodData> bars = symptomNames.map((symptomName) {
+        final symptomData = sessionData['symptoms'].firstWhere(
+            (symptom) => symptom['symptom'] == symptomName,
+            orElse: () => null);
+
+        final severity = symptomData != null
+            ? (symptomData['severity'] as num).toDouble()
+            : 0.0;
+
+        return BarChartRodData(
+          toY: severity,
+          width: barWidth,
+          color: _getSymptomColor(symptomName),
+        );
+      }).toList();
+
       return BarChartGroupData(
         x: sessionIndex,
-        barRods: symptomNames.map((symptomName) {
-          final symptomData = sessionData['symptoms'].firstWhere(
-              (symptom) => symptom['symptom'] == symptomName,
-              orElse: () => null);
-
-          final severity = symptomData != null
-              ? (symptomData['severity'] as num).toDouble()
-              : 0.0;
-
-          return BarChartRodData(
-            toY: severity,
-            width: 10,
-            color: _getSymptomColor(symptomName),
-          );
-        }).toList(),
+        barsSpace: 0, // No spacing between bars within the same session
+        barRods: bars.where((bar) => bar.toY > 0).toList(), // Remove empty bars
       );
     }).toList();
 
@@ -1116,8 +1139,8 @@ Widget _buildSymptomGroupedBarChart() {
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: SizedBox(
-            width: (_questionnaireData.length * 100)
-                .toDouble(), // Dynamically set width
+            width: _questionnaireData.length *
+                (symptomNames.length * barWidth + sessionSpacing),
             height: 350,
             child: BarChart(
               BarChartData(
@@ -1138,7 +1161,7 @@ Widget _buildSymptomGroupedBarChart() {
                     axisNameWidget: const Padding(
                       padding: EdgeInsets.only(top: 16.0),
                       child: Text(
-                        'Severity Levels',
+                        'Severity',
                         style: TextStyle(
                             fontSize: 12, fontWeight: FontWeight.bold),
                       ),
@@ -1148,12 +1171,12 @@ Widget _buildSymptomGroupedBarChart() {
                   bottomTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
+                      interval: 1,
                       getTitlesWidget: (value, meta) {
                         final sessionIndex = value.toInt();
                         return sessionIndex < _questionnaireData.length
-                            ? Transform.rotate(
-                                angle:
-                                    -0.5, // Slight rotation for better spacing
+                            ? Padding(
+                                padding: const EdgeInsets.only(top: 4.0),
                                 child: Text(
                                   'S${_questionnaireData[sessionIndex]['session_id']}',
                                   style: const TextStyle(fontSize: 10),
@@ -1173,7 +1196,11 @@ Widget _buildSymptomGroupedBarChart() {
                     axisNameSize: 20,
                   ),
                 ),
-                gridData: FlGridData(show: true),
+                gridData: FlGridData(
+                  show: true,
+                  drawVerticalLine: true,
+                  verticalInterval: 1,
+                ),
                 barTouchData: BarTouchData(
                   touchTooltipData: BarTouchTooltipData(
                     getTooltipColor: (touchedSpot) =>
@@ -1187,7 +1214,9 @@ Widget _buildSymptomGroupedBarChart() {
                     },
                   ),
                 ),
-                maxY: 5, // Max severity level
+                maxY: 5, // Maximum severity level
+                alignment: BarChartAlignment.spaceAround,
+                groupsSpace: sessionSpacing, // Space between sessions
               ),
             ),
           ),
@@ -1222,7 +1251,6 @@ Widget _buildSymptomGroupedBarChart() {
     );
   }
 
-// Assign colors to each symptom for consistency
   Color _getSymptomColor(String symptom) {
     const Map<String, Color> symptomColors = {
       'Fatigue': Colors.blue,
@@ -1245,6 +1273,5 @@ Widget _buildSymptomGroupedBarChart() {
     return symptomColors[symptom] ??
         Colors.grey; // Default to grey if not listed
   }
-
 
 }
