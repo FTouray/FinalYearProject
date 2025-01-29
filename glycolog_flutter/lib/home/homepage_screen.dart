@@ -256,7 +256,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                     icon: Icons.insights,
                     label: 'Insights',
                     onTap: () {
-                      Navigator.pushNamed(context, '/insights-graph-data');
+                      Navigator.pushNamed(context, '/insights');
                     },
                   ),
                 ],

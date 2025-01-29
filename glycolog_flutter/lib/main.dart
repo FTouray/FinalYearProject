@@ -170,7 +170,7 @@ class _MyAppState extends State<MyApp> {
         '/exercise-step': (context) => ExerciseStepScreen(),
         '/review': (context) => const ReviewScreen(),
         '/data-visualization': (context) => const QuestionnaireVisualizationScreen(),
-        '/insights-graph-data': (context) => const InsightsGraphScreen(),
+        '/insights': (context) => const InsightsScreen(),
       },
     );
   }

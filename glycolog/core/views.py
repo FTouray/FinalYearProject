@@ -7,6 +7,10 @@ from rest_framework import status
 from rest_framework.response import Response
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
+
+from ai_model import feature_engineering
+from ai_model.data_processing import load_data_from_db
+from ai_model.recommendation_engine import generate_recommendations, load_models, predict_glucose, predict_wellness
 from .serializers import ExerciseCheckSerializer, FoodCategorySerializer, FoodItemSerializer, GlucoseCheckSerializer, GlucoseLogSerializer, MealCheckSerializer, MealSerializer, QuestionnaireSessionSerializer, RegisterSerializer, LoginSerializer, SettingsSerializer, SymptomCheckSerializer
 from .models import CustomUser, FeelingCheck, FoodCategory, FoodItem, GlucoseCheck, GlucoseLog, GlycaemicResponseTracker, Meal, QuestionnaireSession  
 from django.contrib.auth import get_user_model
@@ -537,51 +541,67 @@ def questionnaire_data_visualization(request):
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
-def insights_graph_data(request):
-    """
-    Provides data for the insights graph: Glucose Levels vs. Wellness Level.
-    """
+def get_insights(request):
     user = request.user
 
-    target_min = request.GET.get("target_min")
-    target_max = request.GET.get("target_max")
+    # Fetch the user's completed questionnaire sessions
+    user_sessions = QuestionnaireSession.objects.filter(user=user, completed=True).order_by("-created_at")
 
-    # Fetch glucose logs and wellness logs
-    glucose_logs = GlucoseLog.objects.filter(user=user).order_by("timestamp")
-    wellness_logs = FeelingCheck.objects.filter(user=user).order_by("created_at")
+    if not user_sessions.exists():
+        return Response({"error": "No completed sessions found for this user."}, status=404)
 
-    # Transform glucose data
-    glucose_points = [
-        {"date": log.timestamp.strftime("%Y-%m-%d"), "value": log.glucose_level}
-        for log in glucose_logs
-    ]
+    # Analyze user-specific data
+    personal_insights = {
+        "high_glucose": user_sessions.filter(glucose_check__glucose_level__gt=F("glucose_check__target_max")).count(),
+        "low_sleep": user_sessions.filter(symptom_check__sleep_hours__lt=6).count(),
+        "exercise_impact": user_sessions.filter(exercise_check__post_exercise_feeling="Energised").count(),
+        "skipped_meals": user_sessions.filter(meal_check__skipped_meals__len__gt=0).count(),
+    }
 
-    # Identify high/low glucose events
-    high_glucose_events = [
-        {"date": log.timestamp.strftime("%Y-%m-%d"), "value": log.glucose_level}
-        for log in glucose_logs
-        if log.glucose_level > target_max
-    ]
-    low_glucose_events = [
-        {"date": log.timestamp.strftime("%Y-%m-%d"), "value": log.glucose_level}
-        for log in glucose_logs
-        if log.glucose_level < target_min
-    ]
+    # General trends (aggregated data for all users)
+    all_sessions = QuestionnaireSession.objects.filter(completed=True)
+    general_trends = {
+        "avg_glucose": all_sessions.aggregate(avg_glucose=Avg("glucose_check__glucose_level")),
+        "avg_sleep": all_sessions.aggregate(avg_sleep=Avg("symptom_check__sleep_hours")),
+        "exercise_effect": all_sessions.filter(exercise_check__post_exercise_feeling="Energised").count(),
+        "skipped_meals_effect": all_sessions.filter(meal_check__wellness_impact=True).count(),
+    }
 
-    # Transform wellness data
-    wellness_points = [
-        {"date": log.created_at.strftime("%Y-%m-%d"), "value": log.feeling_rating}
-        for log in wellness_logs
-    ]
+    return Response({
+        "personal_insights": personal_insights,
+        "general_trends": general_trends,
+    }, status=200)
 
-    return Response(
-        {
-            "glucose_points": glucose_points,
-            "wellness_points": wellness_points,
-            "high_glucose_events": high_glucose_events,
-            "low_glucose_events": low_glucose_events,
-            "target_min": target_min,
-            "target_max": target_max,
-        },
-        status=status.HTTP_200_OK,
-    )
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def get_ai_insights(request):
+    """
+    Fetch AI-generated insights and recommendations with symptoms and exercise data.
+    """
+    user = request.user
+    sessions = QuestionnaireSession.objects.filter(user=user, completed=True)
+
+    if not sessions.exists():
+        return Response({"error": "No completed sessions found."}, status=404)
+
+    # Load data from sessions
+    data = load_data_from_db(sessions)
+    data = feature_engineering(data)  # Apply feature engineering
+
+    # Load pretrained models
+    wellness_model, glucose_model = load_models()
+
+    # Predict wellness and glucose levels
+    wellness_predictions = predict_wellness(wellness_model, data)
+    glucose_predictions = predict_glucose(glucose_model, data)
+
+    # Generate recommendations
+    recommendations = generate_recommendations(data)
+
+    response_data = {
+        "wellness_predictions": wellness_predictions.tolist(),
+        "glucose_predictions": glucose_predictions.tolist(),
+        "recommendations": recommendations,
+    }
+    return Response(response_data, status=200)
