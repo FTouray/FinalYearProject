@@ -1,18 +1,16 @@
 import joblib
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.ensemble import GradientBoostingRegressor
-
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingRegressor
 from ai_model.data_processing import preprocess_data
 
 
 def train_wellness_model(data):
     """
-    Train a classification model to predict user wellness based on glycaemic response, glucose, symptoms, and exercise.
+    Train a classification model to predict user wellness based on glycaemic response, glucose levels, symptoms, stress, and exercise.
     """
-    # Include Glycaemic Response Score in training
+    # Include new features such as symptoms severity, stress, and exercise impact
     X, y = preprocess_data(data, target_column="wellness_score")
 
-    model = RandomForestClassifier(n_estimators=150, max_depth=10, random_state=42)
+    model = RandomForestClassifier(n_estimators=200, max_depth=12, random_state=42)
     model.fit(X, y)
 
     joblib.dump(model, "ai_model/model_weights/wellness_model.pkl")
@@ -21,12 +19,12 @@ def train_wellness_model(data):
 
 def train_glucose_model(data):
     """
-    Train a regression model to predict glucose levels based on meals, glycaemic response, and symptoms.
+    Train a regression model to predict glucose levels based on meals, glycaemic response, exercise, and symptoms.
     """
     X, y = preprocess_data(data, target_column="glucose_level")
 
     model = GradientBoostingRegressor(
-        n_estimators=300, learning_rate=0.03, max_depth=6, random_state=42
+        n_estimators=400, learning_rate=0.02, max_depth=6, random_state=42
     )
     model.fit(X, y)
 
