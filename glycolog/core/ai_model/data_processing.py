@@ -139,7 +139,6 @@ def load_data_from_db(
             print(f"Error: 'id' column missing after merging {name}!")
             raise ValueError(f"Missing 'id' column after merging {name}.")
 
-
     # Merge meal data with glycaemic response if both exist
     if not meal_df.empty and not glycaemic_response_df.empty:
         common_cols = ["user_id", "created_at"]
@@ -171,10 +170,23 @@ def load_data_from_db(
 def preprocess_data(data, target_column=None):
     """Preprocess the dataset by handling missing values, encoding categories, and scaling numerical features."""
 
-    # Ensure `data` is not empty
     if data.empty:
-        print("⚠️ Warning: Empty dataset received for preprocessing!")
+        print("Warning: Empty dataset received for preprocessing!")
         return data, None
+
+    # Ensure all date columns are in datetime format
+    for col in data.columns:
+        if data[col].dtype == 'object':
+            try:
+                data[col] = pd.to_datetime(data[col])
+            except (ValueError, TypeError):
+                pass  # Ignore columns that cannot be converted
+
+    # Identify and exclude Datetime Columns before scaling
+    datetime_cols = data.select_dtypes(include=["datetime64"]).columns
+    if len(datetime_cols) > 0:
+        print(f"Excluding datetime columns from scaling: {list(datetime_cols)}")
+        data = data.drop(columns=datetime_cols)
 
     # Handle missing values (fill numerics with median, categorical with mode)
     data = data.fillna(data.median(numeric_only=True))
@@ -185,7 +197,14 @@ def preprocess_data(data, target_column=None):
     else:
         X, y = data, None
 
-    # **Ordinal Encoding for Ordered Categorical Variables**
+    # Convert lists & dictionaries to string format for consistency
+    for col in X.columns:
+        if X[col].apply(lambda x: isinstance(x, dict)).any():
+            X[col] = X[col].apply(lambda x: json.dumps(x) if isinstance(x, dict) else str(x))
+        if X[col].apply(lambda x: isinstance(x, list)).any():
+            X[col] = X[col].apply(lambda x: ",".join(map(str, x)) if isinstance(x, list) else str(x))
+
+    # Ordinal Encoding for Ordered Categorical Variables
     ordinal_mappings = {"exercise_intensity": ["Low", "Moderate", "Vigorous"]}
     for col, categories in ordinal_mappings.items():
         if col in X.columns:
@@ -193,14 +212,17 @@ def preprocess_data(data, target_column=None):
             encoder = OrdinalEncoder(categories=[categories], handle_unknown="use_encoded_value", unknown_value=-1)
             X[col] = encoder.fit_transform(X[[col]])
 
-    # **One-Hot Encoding for Unordered Categorical Variables**
+    # One-Hot Encoding for Unordered Categorical Variables
     X = pd.get_dummies(X)
 
-    # **Scale numeric features (Ensure at least 1 feature exists)**
-    if not X.empty:
-        scaler = StandardScaler()
-        X_scaled = pd.DataFrame(scaler.fit_transform(X), columns=X.columns)
-    else:
-        X_scaled = X  # Return unchanged if empty
+    # Ensure all remaining columns are numeric before scaling
+    for col in X.columns:
+        X[col] = pd.to_numeric(X[col], errors='coerce')
 
-    return X_scaled, y
+    # Scale numeric features only
+    num_cols = X.select_dtypes(include=["number"]).columns
+    if not num_cols.empty:
+        scaler = StandardScaler()
+        X[num_cols] = scaler.fit_transform(X[num_cols])
+
+    return X, y
