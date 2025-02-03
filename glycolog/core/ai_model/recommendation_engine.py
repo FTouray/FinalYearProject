@@ -1,8 +1,8 @@
 import joblib
 import pandas as pd
 from collections import Counter
-from ai_model.data_processing import preprocess_data
-from ai_model.test_analysis import (
+from .data_processing import preprocess_data
+from .test_analysis import (
     analyze_sentiment,
     detect_extra_information,
     extract_common_words,
@@ -22,7 +22,7 @@ def convert_glucose_units(glucose_value, preferred_unit="mg/dL"):
     if preferred_unit == "mmol/L":
         return round(glucose_value / 18, 2)  # Convert mg/dL to mmol/L
     return glucose_value  # Keep mg/dL as is
-
+ 
 
 def predict_wellness(wellness_model, data):
     # Predict the wellness score for a user based on symptoms, stress, and exercise
@@ -50,7 +50,7 @@ def generate_recommendations(data, preferred_unit="mg/dL"):
     )
 
     # Glycaemic Response & Meal Impact
-    if data.get("glycaemic_response_score", pd.Series()).mean() > 5:
+    if data.get("glycaemic_response_score", pd.Series()).fillna(0).mean() > 5:
         recommendations.append(
             "Your body reacts strongly to high GI foods. Consider switching to low-GI alternatives."
         )

@@ -1,13 +1,26 @@
 import pandas as pd
 
+def map_wellness_score(feeling):
+    if feeling == "good":
+        return 5
+    if feeling == "okay":
+        return 3
+    if feeling == "bad":
+        return 1
+    return 0
+
+
 def feature_engineering(data):
     """
     Add derived features for glycaemic response, meal impact, symptom severity, glucose fluctuations, and exercise influence.
     """
+    
+    if "skipped_meals" in data.columns:
+        data["skipped_meals"] = data["skipped_meals"].apply(lambda x: len(x) if isinstance(x, list) else 0)
 
     # Handle Missing Values for Core Features
     data["weighted_gi"] = data["weighted_gi"].fillna(0)  # Default missing GI values
-    data["skipped_meals"] = data["skipped_meals"].apply(len)  # Convert list to count
+    data["skipped_meals"] = data["skipped_meals"].apply(lambda x: len(x) if isinstance(x, list) else 0)  # Convert list to count
     data["exercise_duration"] = data["exercise_duration"].fillna(0)  # Default missing exercise
 
     # Meal & Glycaemic Response Features
@@ -17,18 +30,29 @@ def feature_engineering(data):
 
     # Track Post-Meal Glucose Spikes
     if "meal_context" in data.columns:
+        avg_glucose = data["glucose_level"].mean()  # Compute once
         data["post_meal_glucose_spike"] = data.apply(
-            lambda row: row["glucose_level"] - row["glucose_level"].mean()
-            if row["meal_context"] == "post_meal"
-            else 0, axis=1
-        )
-
+            lambda row: (
+                row["glucose_level"] - avg_glucose
+                if row["meal_context"] == "post_meal"
+                else 0
+            ),
+            axis=1,
+    )
+        
+    if "stress" in data.columns:
+        data["stress"] = data["stress"].fillna(False).astype(int)
+        
     # Symptoms Severity Feature Engineering
     if "symptoms" in data.columns:
-        data["average_symptom_severity"] = data["symptoms"].apply(
-            lambda x: sum(item["severity"] for item in x) / len(x) if x else 0
-        )
-        data["symptom_count"] = data["symptoms"].apply(len)  # Count total reported symptoms
+        data["symptoms"] = data["symptoms"].apply(lambda x: x if isinstance(x, list) else [])
+
+        # Calculate symptom severity safely
+        data["average_symptom_severity"] = data["symptoms"].apply(lambda x: sum(item["severity"] for item in x if isinstance(item, dict) and "severity" in item) / len(x) if x else 0)
+
+        # Count total reported symptoms safely
+        data["symptom_count"] = data["symptoms"].apply(lambda x: len(x) if isinstance(x, list) else 0)
+
 
     # Sleep & Stress Features
     data["sleep_quality"] = data["sleep_hours"].apply(lambda x: "Good" if x >= 6 else "Poor")
@@ -64,5 +88,8 @@ def feature_engineering(data):
     # Symptoms & Exercise Correlation
     data["symptom_glucose_correlation"] = data["average_symptom_severity"] * data["glucose_level"]
     data["exercise_symptom_impact"] = data["exercise_duration"] * data["average_symptom_severity"]
+
+    if "feeling_check" in data.columns:
+        data["wellness_score"] = data["feeling_check"].apply(map_wellness_score)
 
     return data

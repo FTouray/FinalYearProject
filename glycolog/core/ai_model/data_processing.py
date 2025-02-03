@@ -1,101 +1,206 @@
+import json
 import pandas as pd
-from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, OrdinalEncoder
 
-def load_data_from_db(glucose_queryset, glucose_log_queryset, questionnaire_queryset, meal_queryset, glycaemic_response_queryset, 
-                      symptom_queryset, exercise_queryset):
-    """
-    Converts multiple Django QuerySets into a fully integrated Pandas DataFrame.
-    - GlucoseLog (real-time logs)
-    - Questionnaire Data (includes meals, glucose, symptoms, and exercise)
-    - Glycaemic Response (tracked meals)
-    """
 
-    # Convert QuerySets to DataFrames
-    glucose_data = pd.DataFrame(list(glucose_queryset.values()))
-    glucose_log_data = pd.DataFrame(list(glucose_log_queryset.values()))  # Separate glucose logs
-    questionnaire_data = pd.DataFrame(list(questionnaire_queryset.values()))
-    meal_data = pd.DataFrame(list(meal_queryset.values()))
-    glycaemic_response_data = pd.DataFrame(list(glycaemic_response_queryset.values()))
-    symptom_data = pd.DataFrame(list(symptom_queryset.values()))
-    exercise_data = pd.DataFrame(list(exercise_queryset.values()))
+# Map textual feelings into numerical wellness scores
+def map_feeling_to_score(feeling):
+    mapping = {"good": 5, "okay": 3, "bad": 1}
+    return mapping.get(feeling, 0)  # Default to 0 if feeling is missing
 
-    # Ensure `session_id` is present in the DataFrames to merge properly
-    if "session_id" in symptom_data.columns and "session_id" in exercise_data.columns:
-        questionnaire_data = questionnaire_data.merge(symptom_data, on="session_id", how="left")
-        questionnaire_data = questionnaire_data.merge(exercise_data, on="session_id", how="left")
 
-    if "meal_context" in glucose_log_data.columns:
-        # Assign glucose levels based on context when available
-        glucose_log_data["glucose_context_fasting"] = glucose_log_data["glucose_level"].where(glucose_log_data["meal_context"] == "fasting")
-        glucose_log_data["glucose_context_pre_meal"] = glucose_log_data["glucose_level"].where(glucose_log_data["meal_context"] == "pre_meal")
-        glucose_log_data["glucose_context_post_meal"] = glucose_log_data["glucose_level"].where(glucose_log_data["meal_context"] == "post_meal")
+def load_data_from_db(
+    questionnaire_queryset,
+    symptom_queryset,
+    glucose_check_queryset,
+    meal_check_queryset,
+    exercise_queryset,
+    glucose_log_queryset,
+    glycaemic_response_queryset,
+    meal_queryset,
+    feeling_queryset,
+):
+    """Loads and integrates data from multiple Django models."""
 
-        # Track cases where `meal_context` is missing
-        glucose_log_data["glucose_context_undefined"] = glucose_log_data["glucose_level"].where(glucose_log_data["meal_context"].isna())
+    # Convert querysets to pandas DataFrames
+    questionnaire_df = pd.DataFrame(list(questionnaire_queryset.values("id", "user_id", "created_at", "feeling_check_id")))
+    symptom_df = pd.DataFrame(list(symptom_queryset.values()))
+    glucose_check_df = pd.DataFrame(list(glucose_check_queryset.values()))
+    # Convert MealCheck queryset to DataFrame and include `weighted_gi`
+    meal_check_data = []
+    for meal in meal_check_queryset:
+        meal_check_data.append({
+            "id": meal.id,
+            "session_id": meal.session_id,
+            "skipped_meals": json.loads(meal.skipped_meals) if isinstance(meal.skipped_meals, str) else (meal.skipped_meals or []),
+            "wellness_impact": meal.wellness_impact,
+            "notes": meal.notes,
+            "created_at": meal.created_at,
+            "weighted_gi": meal.weighted_gi  
+        })
+    meal_check_df = pd.DataFrame(meal_check_data)
+    exercise_df = pd.DataFrame(list(exercise_queryset.values()))
+    glucose_log_df = pd.DataFrame(list(glucose_log_queryset.values()))
+    glycaemic_response_df = pd.DataFrame(list(glycaemic_response_queryset.values()))
+    meal_df = pd.DataFrame(list(meal_queryset.values()))
+    feeling_df = pd.DataFrame(list(feeling_queryset.values()))
 
-    else:
-        # If `meal_context` column is missing, treat all data as undefined
-        glucose_log_data["glucose_context_undefined"] = glucose_log_data["glucose_level"]
+    # Debugging: Print column names before merging
+    print(f"Questionnaire Columns: {questionnaire_df.columns.tolist()}")
+    print(f"Symptoms Columns: {symptom_df.columns.tolist()}")
+    print(f"Glucose Check Columns: {glucose_check_df.columns.tolist()}")
+    print(f"Meal Check Columns: {meal_check_df.columns.tolist()}")
+    print(f"Exercise Check Columns: {exercise_df.columns.tolist()}")
 
-    # Merge meals with Glycaemic Response Tracker (GRT) on `user_id` and `timestamp`
-    meal_data = meal_data.merge(glycaemic_response_data, on=["user_id", "created_at"], how="left")
+    # Ensure FeelingCheck has user_id and feeling
+    if not feeling_df.empty and "feeling" in feeling_df.columns:
+        feeling_df["wellness_score"] = feeling_df["feeling"].apply(map_feeling_to_score)
 
-    # Merge Glucose Logs with Questionnaire Glucose Check
-    if "user_id" in glucose_data.columns and "user_id" in questionnaire_data.columns:
-        glucose_combined = pd.concat([glucose_data, questionnaire_data], axis=0, ignore_index=True)
-    else:
-        glucose_combined = questionnaire_data  # If no glucose logs exist yet, fallback to questionnaire data
+    # Ensure 'id' is still present
+    if "id" not in questionnaire_df.columns:
+        print("Critical Error: 'id' is missing in questionnaire_df before merging!")
+        raise ValueError("Missing 'id' column in questionnaire DataFrame.")
 
-    # Merge all datasets into a single DataFrame
-    combined_data = pd.concat([glucose_combined, meal_data], axis=0, ignore_index=True)
+    # Merge `FeelingCheck` with `QuestionnaireSession` on `feeling_check_id`
+    print(f"Before merging with FeelingCheck: {questionnaire_df.columns.tolist()}")
+    if (
+        not questionnaire_df.empty
+        and "feeling_check_id" in questionnaire_df.columns
+        and not feeling_df.empty
+    ):
+        questionnaire_df = questionnaire_df.merge(
+            feeling_df.rename(columns={"id": "feeling_id"})[
+                ["feeling_id", "wellness_score"]
+            ],
+            left_on="feeling_check_id",
+            right_on="feeling_id",
+            how="left",
+        ).drop(columns=["feeling_id"], errors="ignore")
+    print(f"After merging with FeelingCheck: {questionnaire_df.columns.tolist()}")
 
-    return combined_data
+    # Ensure 'id' is still present after merging with FeelingCheck
+    if "id" not in questionnaire_df.columns:
+        print(
+            "Error: 'id' column missing in questionnaire_df after merging with FeelingCheck!"
+        )
+        raise ValueError("Missing 'id' column after merging with FeelingCheck.")
+
+    # Debugging: Check before filtering
+    print(
+        f"Before filtering valid_ids, Questionnaire DF Columns: {questionnaire_df.columns.tolist()}"
+    )
+
+    # Ensure questionnaire_df is not empty before filtering
+    if not questionnaire_df.empty and "id" in questionnaire_df.columns:
+        valid_ids = (
+            set(symptom_df.get("session_id", []))
+            & set(glucose_check_df.get("session_id", []))
+            & set(meal_check_df.get("session_id", []))
+            & set(exercise_df.get("session_id", []))
+        )
+
+        if valid_ids:
+            questionnaire_df = questionnaire_df[questionnaire_df["id"].isin(valid_ids)]
+            print(
+                f"Filtered Questionnaire DF, Remaining Rows: {len(questionnaire_df)}"
+            )
+        else:
+            print(
+                "Warning: No valid questionnaire IDs found! Some sessions may be missing related data."
+            )
+
+    # Ensure 'id' is still present after filtering
+    if "id" not in questionnaire_df.columns:
+        print(
+            "Error: 'id' column missing after filtering valid questionnaire responses!"
+        )
+        raise ValueError("Missing 'id' column after filtering.")
+
+    # Merge additional data (ensure session_id is present)
+    for df, name in [
+        (symptom_df, "SymptomCheck"),
+        (glucose_check_df, "GlucoseCheck"),
+        (meal_check_df, "MealCheck"),
+        (exercise_df, "ExerciseCheck"),
+    ]:
+        print(f"Before merging {name}: {questionnaire_df.columns.tolist()}")
+
+        if not df.empty and "session_id" in df.columns:
+            df = df.rename(columns={"id": f"{name.lower()}_id", "created_at": f"{name.lower()}_created_at"})  # Rename created_at
+
+            questionnaire_df = questionnaire_df.merge(
+                df, left_on="id", right_on="session_id", how="left"
+            ).drop(columns=["session_id"], errors="ignore")  # Remove session_id to avoid duplication
+
+        print(f"After merging {name}: {questionnaire_df.columns.tolist()}")
+
+        # Ensure 'id' still exists
+        if "id" not in questionnaire_df.columns:
+            print(f"Error: 'id' column missing after merging {name}!")
+            raise ValueError(f"Missing 'id' column after merging {name}.")
+
+
+    # Merge meal data with glycaemic response if both exist
+    if not meal_df.empty and not glycaemic_response_df.empty:
+        common_cols = ["user_id", "created_at"]
+        if all(
+            col in meal_df.columns and col in glycaemic_response_df.columns
+            for col in common_cols
+        ):
+            meal_df = meal_df.merge(
+                glycaemic_response_df,
+                left_on=common_cols,
+                right_on=common_cols,
+                how="left",
+                suffixes=("", "_glycaemic"),
+            ).drop_duplicates()
+
+    # Combine questionnaire, glucose logs, and meal data
+    combined_df = pd.concat(
+        [questionnaire_df, glucose_log_df, meal_df], axis=0, ignore_index=True
+    )
+
+    # Final check before returning
+    if "id" not in combined_df.columns:
+        print("Error: 'id' column missing from final dataset!")
+        raise ValueError("Final dataset is missing 'id' column.")
+
+    return combined_df
+
 
 def preprocess_data(data, target_column=None):
-    """
-    Preprocesses the data:
-    - Handles missing values
-    - Encodes categorical variables (Ordinal + One-Hot Encoding)
-    - Scales numeric features
-    - Flattens JSON fields (e.g., symptoms)
-    """
+    """Preprocess the dataset by handling missing values, encoding categories, and scaling numerical features."""
 
-    # Flatten JSON fields (e.g., symptoms)
-    if "symptoms" in data.columns:
-        data["average_symptom_severity"] = data["symptoms"].apply(
-            lambda x: sum(item["severity"] for item in x) / len(x) if x else 0
-        )
-        data["symptom_count"] = data["symptoms"].apply(len)
+    # Ensure `data` is not empty
+    if data.empty:
+        print("⚠️ Warning: Empty dataset received for preprocessing!")
+        return data, None
 
-    # Handle missing values
+    # Handle missing values (fill numerics with median, categorical with mode)
     data = data.fillna(data.median(numeric_only=True))
 
-    # Separate features and target
-    X = data.drop(columns=[target_column]) if target_column else data
-    y = data[target_column] if target_column else None
+    if target_column and target_column in data.columns:
+        X = data.drop(columns=[target_column])
+        y = data[target_column]
+    else:
+        X, y = data, None
 
     # **Ordinal Encoding for Ordered Categorical Variables**
-    ordinal_cols = ["exercise_intensity", "post_exercise_feeling"]
-    ordinal_mappings = {
-        "exercise_intensity": ["Low", "Moderate", "Vigorous"],
-        "post_exercise_feeling": ["Tired", "Neutral", "Energised"]
-    }
-
+    ordinal_mappings = {"exercise_intensity": ["Low", "Moderate", "Vigorous"]}
     for col, categories in ordinal_mappings.items():
         if col in X.columns:
-            encoder = OrdinalEncoder(categories=[categories])
+            X[col] = X[col].fillna(categories[0])
+            encoder = OrdinalEncoder(categories=[categories], handle_unknown="use_encoded_value", unknown_value=-1)
             X[col] = encoder.fit_transform(X[[col]])
 
     # **One-Hot Encoding for Unordered Categorical Variables**
-    X_categorical = pd.get_dummies(X.select_dtypes(include=["object", "category"]))
+    X = pd.get_dummies(X)
 
-    # **Scale numeric features**
-    scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(X.select_dtypes(include=["float64", "int64"]))
-    X_scaled = pd.DataFrame(X_scaled, columns=X.select_dtypes(include=["float64", "int64"]).columns)
+    # **Scale numeric features (Ensure at least 1 feature exists)**
+    if not X.empty:
+        scaler = StandardScaler()
+        X_scaled = pd.DataFrame(scaler.fit_transform(X), columns=X.columns)
+    else:
+        X_scaled = X  # Return unchanged if empty
 
-    # Merge scaled and categorical data
-    X_final = pd.concat([X_scaled, X_categorical], axis=1)
-
-    return X_final, y
+    return X_scaled, y
