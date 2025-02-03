@@ -144,7 +144,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       }
 
       final response = await http.post(
-        Uri.parse('http://192.168.1.11:8000/api/questionnaire/start/'),
+        Uri.parse('http://192.168.1.14:8000/api/questionnaire/start/'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',

@@ -77,7 +77,7 @@ class _ExerciseStepScreenState extends State<ExerciseStepScreen> {
       print('Submitting data: $data'); // Debug: Log data being submitted
 
       final response = await http.post(
-        Uri.parse('http://192.168.1.11:8000/api/questionnaire/exercise-step/'),
+        Uri.parse('http://192.168.1.14:8000/api/questionnaire/exercise-step/'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',

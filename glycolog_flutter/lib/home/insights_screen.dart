@@ -4,34 +4,29 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
-class InsightsGraphScreen extends StatefulWidget {
-  const InsightsGraphScreen({Key? key}) : super(key: key);
+class InsightsScreen extends StatefulWidget {
+  const InsightsScreen({Key? key}) : super(key: key);
 
   @override
-  _InsightsGraphScreenState createState() => _InsightsGraphScreenState();
+  _InsightsScreenState createState() => _InsightsScreenState();
 }
 
-class _InsightsGraphScreenState extends State<InsightsGraphScreen> {
-  List<FlSpot> glucoseSpots = [];
-  List<FlSpot> wellnessSpots = [];
-  List<Map<String, dynamic>> highGlucoseMarkers = [];
-  List<Map<String, dynamic>> lowGlucoseMarkers = [];
-  double? targetMin;
-  double? targetMax;
-  bool _isLoading = true;
+class _InsightsScreenState extends State<InsightsScreen> {
+  Map<String, dynamic>? insightsData;
+  bool isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    fetchGraphData();
+    fetchInsights();
   }
 
-  Future<void> fetchGraphData() async {
+  Future<void> fetchInsights() async {
     String? token = await AuthService().getAccessToken();
 
     try {
       final response = await http.get(
-        Uri.parse('http://192.168.1.11:8000/api/insights-graph/'),
+        Uri.parse('http://192.168.1.14:8000/api/insights/'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
@@ -40,39 +35,27 @@ class _InsightsGraphScreenState extends State<InsightsGraphScreen> {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-
         setState(() {
-          glucoseSpots = data['glucose_points']
-              .map<FlSpot>((point) => FlSpot(
-                  DateTime.parse(point['date'])
-                      .millisecondsSinceEpoch
-                      .toDouble(),
-                  point['value']))
-              .toList();
-          wellnessSpots = data['wellness_points']
-              .map<FlSpot>((point) => FlSpot(
-                  DateTime.parse(point['date'])
-                      .millisecondsSinceEpoch
-                      .toDouble(),
-                  point['value']))
-              .toList();
-          highGlucoseMarkers = data['high_glucose_events'];
-          lowGlucoseMarkers = data['low_glucose_events'];
-          targetMin = data['target_min'];
-          targetMax = data['target_max'];
-          _isLoading = false;
+          insightsData = data; // Use the already decoded JSON
+          isLoading = false;
         });
       } else {
-        print("Error: ${response.statusCode}");
         setState(() {
-          _isLoading = false;
+          isLoading = false;
         });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content:
+                  Text('Failed to fetch insights: ${response.statusCode}')),
+        );
       }
-    } catch (e) {
-      print("Error fetching data: $e");
+    } catch (error) {
       setState(() {
-        _isLoading = false;
+        isLoading = false;
       });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('An error occurred: $error')),
+      );
     }
   }
 
@@ -80,179 +63,128 @@ class _InsightsGraphScreenState extends State<InsightsGraphScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Insights Graphs'),
+        title: const Text('Insights'),
         backgroundColor: Colors.blue[800],
       ),
-      body: _isLoading
+      body: isLoading
           ? const Center(child: CircularProgressIndicator())
-          : (glucoseSpots.isEmpty && wellnessSpots.isEmpty)
-              ? _buildNoDataMessage()
+          : insightsData == null
+              ? const Center(child: Text('No insights available.'))
               : SingleChildScrollView(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      children: [
-                        _buildGraphCard(
-                          title: "Glucose Levels vs. Wellness Level",
-                          xLabel: "Dates",
-                          yLabel: "Values",
-                          spots1: glucoseSpots,
-                          spots2: wellnessSpots,
-                          color1: Colors.red,
-                          color2: Colors.blue,
-                          targetMin: targetMin,
-                          targetMax: targetMax,
-                        ),
-                        const SizedBox(height: 20),
-                        _buildMarkerSection(
-                          title: "High Glucose Events",
-                          markers: highGlucoseMarkers,
-                        ),
-                        const SizedBox(height: 20),
-                        _buildMarkerSection(
-                          title: "Low Glucose Events",
-                          markers: lowGlucoseMarkers,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-    );
-  }
-
-  Widget _buildNoDataMessage() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Text(
-          "There is no information recorded to provide insights at this time.",
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          textAlign: TextAlign.center,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildGraphCard({
-    required String title,
-    required String xLabel,
-    required String yLabel,
-    required List<FlSpot> spots1,
-    required List<FlSpot> spots2,
-    required Color color1,
-    required Color color2,
-    double? targetMin,
-    double? targetMax,
-  }) {
-    return Card(
-      elevation: 4.0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            Text(
-              title,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 10),
-            SizedBox(
-              height: 300,
-              child: LineChart(
-                LineChartData(
-                  gridData: FlGridData(show: true),
-                  titlesData: FlTitlesData(
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        getTitlesWidget: (value, _) {
-                          final date = DateTime.fromMillisecondsSinceEpoch(
-                              value.toInt());
-                          return Text("${date.month}/${date.day}");
-                        },
-                        reservedSize: 22,
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Personalized Insights',
+                        style: TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold),
                       ),
-                      axisNameWidget: Text(xLabel),
-                      axisNameSize: 16,
-                    ),
-                    leftTitles: AxisTitles(
-                      sideTitles: SideTitles(showTitles: true),
-                      axisNameWidget: Text(yLabel),
-                      axisNameSize: 16,
-                    ),
-                  ),
-                  lineBarsData: [
-                    LineChartBarData(
-                      spots: spots1,
-                      isCurved: true,
-                      barWidth: 2,
-                      color: color1,
-                      belowBarData: BarAreaData(show: false),
-                    ),
-                    LineChartBarData(
-                      spots: spots2,
-                      isCurved: true,
-                      barWidth: 2,
-                      color: color2,
-                      belowBarData: BarAreaData(show: false),
-                    ),
-                  ],
-                  extraLinesData: ExtraLinesData(
-                    horizontalLines: [
-                      if (targetMin != null)
-                        HorizontalLine(
-                          y: targetMin,
-                          color: Colors.green,
-                          strokeWidth: 1.5,
-                          label: HorizontalLineLabel(
-                            show: true,
-                            alignment: Alignment.centerLeft,
-                            labelResolver: (_) => 'Target Min',
-                          ),
-                        ),
-                      if (targetMax != null)
-                        HorizontalLine(
-                          y: targetMax,
-                          color: Colors.red,
-                          strokeWidth: 1.5,
-                          label: HorizontalLineLabel(
-                            show: true,
-                            alignment: Alignment.centerLeft,
-                            labelResolver: (_) => 'Target Max',
-                          ),
-                        ),
+                      const SizedBox(height: 10),
+                      _buildPersonalizedInsights(),
+                      const Divider(),
+                      const Text(
+                        'General Trends',
+                        style: TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 10),
+                      _buildGeneralTrends(),
                     ],
                   ),
                 ),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
-  Widget _buildMarkerSection({
-    required String title,
-    required List<Map<String, dynamic>> markers,
-  }) {
+  Widget _buildPersonalizedInsights() {
+    final personalInsights = insightsData?['personal_insights'];
+    if (personalInsights == null) {
+      return const Text('No personalized insights available.');
+    }
+    return Column(
+      children: [
+        _buildInsightCard(
+          'You had high glucose levels in ${personalInsights['high_glucose']} sessions.',
+          Icons.warning,
+          Colors.red,
+        ),
+        _buildInsightCard(
+          'You had less than 6 hours of sleep in ${personalInsights['low_sleep']} sessions.',
+          Icons.bed,
+          Colors.blue,
+        ),
+        _buildInsightCard(
+          'Exercise made you feel energized in ${personalInsights['exercise_impact']} sessions.',
+          Icons.fitness_center,
+          Colors.green,
+        ),
+        _buildInsightCard(
+          'You skipped meals in ${personalInsights['skipped_meals']} sessions.',
+          Icons.fastfood,
+          Colors.orange,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildGeneralTrends() {
+    final generalTrends = insightsData?['general_trends'];
+    if (generalTrends == null) {
+      return const Text('No general trends available.');
+    }
+    return Column(
+      children: [
+        const Text(
+          'Average Glucose Levels',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          'Average glucose: ${generalTrends['avg_glucose']['avg_glucose']?.toStringAsFixed(1) ?? 'N/A'} mg/dL',
+        ),
+        const SizedBox(height: 20),
+        const Text(
+          'Average Sleep Hours',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          'Average sleep: ${generalTrends['avg_sleep']['avg_sleep']?.toStringAsFixed(1) ?? 'N/A'} hours',
+        ),
+        const SizedBox(height: 20),
+        const Text(
+          'Impact of Exercise on Wellness',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          'Sessions where exercise made people feel energized: ${generalTrends['exercise_effect'] ?? 'N/A'}',
+        ),
+        const SizedBox(height: 20),
+        const Text(
+          'Impact of Skipped Meals on Wellness',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          'Sessions where skipped meals negatively impacted wellness: ${generalTrends['skipped_meals_effect'] ?? 'N/A'}',
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInsightCard(String text, IconData icon, Color iconColor) {
     return Card(
-      elevation: 4.0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            Text(
-              title,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 10),
-            ...markers.map((event) =>
-                Text("Date: ${event['date']}, Level: ${event['value']}")),
-          ],
+      elevation: 4,
+      margin: const EdgeInsets.only(bottom: 16.0),
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor: iconColor.withOpacity(0.2),
+          child: Icon(icon, color: iconColor),
+        ),
+        title: Text(
+          text,
+          style: const TextStyle(fontSize: 14),
         ),
       ),
     );

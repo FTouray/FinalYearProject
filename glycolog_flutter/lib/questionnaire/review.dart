@@ -29,7 +29,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
       if (token == null) throw Exception('User not authenticated.');
 
       final response = await http.get(
-        Uri.parse('http://192.168.1.11:8000/api/questionnaire/review/'),
+        Uri.parse('http://192.168.1.14:8000/api/questionnaire/review/'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',

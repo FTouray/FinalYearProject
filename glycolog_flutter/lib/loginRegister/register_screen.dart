@@ -53,7 +53,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     try {
       final response = await http.post(
         // Uri.parse('http://10.0.2.2:8000/api/register/'), // For Android Emulator
-        Uri.parse('http://192.168.1.11:8000/api/register/'), // For Physical Device
+        Uri.parse('http://192.168.1.14:8000/api/register/'), // For Physical Device
         // Uri.parse('http://192.168.40.184:8000/api/register/'), //Ethernet IP
         // Uri.parse('http://172.20.10.3:8000/api/register/'), //Hotspot
         headers: {'Content-Type': 'application/json'},

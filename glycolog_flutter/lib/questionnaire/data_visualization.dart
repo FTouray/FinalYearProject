@@ -55,7 +55,7 @@ class _QuestionnaireVisualizationScreenState
       String rangeQuery = _mapRangeToQueryParam(_selectedRange);
       final response = await http.get(
         Uri.parse(
-            'http://192.168.1.11:8000/api/questionnaire/data-visualization/?range=$rangeQuery'),
+            'http://192.168.1.14:8000/api/questionnaire/data-visualization/?range=$rangeQuery'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
