@@ -8,11 +8,11 @@ from rest_framework.response import Response
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
 
-from ai_model import feature_engineering
-from ai_model.data_processing import load_data_from_db
-from ai_model.recommendation_engine import generate_recommendations, load_models, predict_glucose, predict_wellness
+from core.ai_model import feature_engineering
+from core.ai_model.data_processing import load_data_from_db
+from core.ai_model.recommendation_engine import generate_recommendations, load_models, predict_glucose, predict_wellness_risk
 from .serializers import ExerciseCheckSerializer, FoodCategorySerializer, FoodItemSerializer, GlucoseCheckSerializer, GlucoseLogSerializer, MealCheckSerializer, MealSerializer, QuestionnaireSessionSerializer, RegisterSerializer, LoginSerializer, SettingsSerializer, SymptomCheckSerializer
-from .models import CustomUser, FeelingCheck, FoodCategory, FoodItem, GlucoseCheck, GlucoseLog, GlycaemicResponseTracker, Meal, QuestionnaireSession  
+from .models import CustomUser, ExerciseCheck, ExerciseRecommendation, FeelingCheck, FoodCategory, FoodItem, GlucoseCheck, GlucoseLog, GlycaemicResponseTracker, Meal, MealCheck, QuestionnaireSession, SymptomCheck  
 from django.contrib.auth import get_user_model
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.permissions import AllowAny
@@ -21,6 +21,8 @@ from django.shortcuts import get_object_or_404, render
 from django.db.models import Q
 from django.db.models import Avg
 import joblib
+import openai
+import os
 
 
 User = get_user_model()
@@ -552,7 +554,7 @@ def get_insights(request):
 
     # Analyze user-specific data
     personal_insights = {
-        "high_glucose": user_sessions.filter(glucose_check__glucose_level__gt=F("glucose_check__target_max")).count(),
+        "high_glucose": user_sessions.filter(glucose_check__glucose_level__gt=("glucose_check__target_max")).count(),
         "low_sleep": user_sessions.filter(symptom_check__sleep_hours__lt=6).count(),
         "exercise_impact": user_sessions.filter(exercise_check__post_exercise_feeling="Energised").count(),
         "skipped_meals": user_sessions.filter(meal_check__skipped_meals__len__gt=0).count(),
@@ -577,26 +579,57 @@ def get_insights(request):
 @permission_classes([IsAuthenticated])
 def get_ai_insights(request):
     """
-    Fetch AI-generated insights and recommendations with symptoms and exercise data.
+    Fetch AI-generated insights and recommendations based on all logged data.
     """
     user = request.user
-    sessions = QuestionnaireSession.objects.filter(user=user, completed=True)
 
-    if not sessions.exists():
-        return Response({"error": "No completed sessions found."}, status=404)
+    # Fetch all relevant data
+    symptom_data = SymptomCheck.objects.filter(session__user=user)
+    exercise_data = ExerciseCheck.objects.filter(session__user=user)
+    glucose_data = GlucoseCheck.objects.filter(session__user=user)
+    meal_data = MealCheck.objects.filter(session__user=user)
+    glucose_logs = GlucoseLog.objects.filter(user=user)
 
-    # Load data from sessions
-    data = load_data_from_db(sessions)
-    data = feature_engineering(data)  # Apply feature engineering
+    if not (
+        symptom_data.exists()
+        or exercise_data.exists()
+        or glucose_data.exists()
+        or meal_data.exists()
+        or glucose_logs.exists()
+    ):
+        return Response(
+            {"error": "No relevant data found for AI insights."}, status=404
+        )
 
-    # Load pretrained models
+    # Load all data for AI processing
+    data = load_data_from_db(
+        questionnaire_queryset=QuestionnaireSession.objects.filter(
+            user=user, completed=True
+        ),
+        symptom_queryset=symptom_data,
+        glucose_check_queryset=glucose_data,
+        meal_check_queryset=meal_data,
+        exercise_queryset=exercise_data,
+        glucose_log_queryset=glucose_logs,
+        glycaemic_response_queryset=GlycaemicResponseTracker.objects.filter(user=user),
+        meal_queryset=Meal.objects.filter(user=user),
+        feeling_queryset=FeelingCheck.objects.filter(user=user),
+    )
+
+    if data.empty:
+        return Response({"error": "No sufficient data available."}, status=400)
+
+    # Apply feature engineering before predictions
+    data = feature_engineering(data)
+
+    # Load AI models
     wellness_model, glucose_model = load_models()
 
-    # Predict wellness and glucose levels
-    wellness_predictions = predict_wellness(wellness_model, data)
+    # Make predictions
+    wellness_predictions = predict_wellness_risk(wellness_model, data)
     glucose_predictions = predict_glucose(glucose_model, data)
 
-    # Generate recommendations
+    # Generate AI-based recommendations
     recommendations = generate_recommendations(data)
 
     response_data = {
@@ -604,4 +637,117 @@ def get_ai_insights(request):
         "glucose_predictions": glucose_predictions.tolist(),
         "recommendations": recommendations,
     }
+
     return Response(response_data, status=200)
+
+
+# Load OpenAI API Key
+openai.api_key = os.getenv("OPENAI_API_KEY")
+
+
+def convert_glucose_units(glucose_value, preferred_unit="mg/dL"):
+    """Convert glucose levels based on user preference (mg/dL or mmol/L)."""
+    if preferred_unit == "mmol/L":
+        return round(glucose_value / 18, 2)  # Convert mg/dL to mmol/L
+    return glucose_value  # Keep mg/dL as is
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def virtual_health_coach(request):
+    user = request.user
+
+    # Fetch user’s glucose unit preference
+    user_settings = user_settings.objects.filter(user=user).first()
+    preferred_unit = user_settings.glucose_unit if user_settings else "mg/dL"
+
+    # Fetch most recent exercise log (always AFTER glucose logs)
+    latest_exercise = ExerciseCheck.objects.filter(user=user).order_by("-created_at").first()
+
+    # Fetch the most recent glucose logs from BOTH `GlucoseLog` and `GlucoseCheck`
+    latest_glucose_log = GlucoseLog.objects.filter(user=user).order_by("-timestamp").first()
+    latest_glucose_check = GlucoseCheck.objects.filter(user=user).order_by("-timestamp").first()
+
+    # Determine the latest glucose reading
+    latest_glucose = max(
+        filter(None, [latest_glucose_log, latest_glucose_check]),
+        key=lambda x: x.timestamp,
+        default=None
+    )
+
+    # Format data for OpenAI prompt
+    exercise_summary = (
+        f"- {latest_exercise.exercise_type} for {latest_exercise.exercise_duration} mins "
+        f"at {latest_exercise.exercise_intensity} intensity."
+        if latest_exercise else "No recent exercise logs."
+    )
+
+    glucose_summary = (
+        f"{latest_glucose.timestamp}: {convert_glucose_units(latest_glucose.glucose_level, preferred_unit)} {preferred_unit}"
+        if latest_glucose else "No recent glucose logs."
+    )
+
+    # OpenAI Prompt
+    prompt = f"""
+    The user has diabetes and has logged the following data:
+
+    - **Most Recent Glucose Reading (before exercise):** 
+      {glucose_summary}
+    
+    - **Most Recent Exercise Session (after glucose reading):** 
+      {exercise_summary}
+
+    **Your task:** Generate personalized **exercise recommendations** for a diabetic user:
+    - Ensure recommendations align with their **glucose level before exercise**.
+    - Suggest **ways to stabilize glucose through exercise**.
+    - If **glucose was low before exercise**, recommend **pre-workout carbohydrate intake**.
+    - If **glucose was high before exercise**, suggest best intensity & duration for stabilization.
+    - Ensure **recommendations are diabetes-safe** and support **glucose stability and overall health**.
+
+    Provide **clear, actionable** recommendations using the correct glucose unit: **{preferred_unit}**.
+    """
+
+    # Send prompt to OpenAI
+    response = openai.ChatCompletion.create(
+        model="gpt-4",
+        messages=[
+            {"role": "system", "content": "You are a fitness expert for diabetic users."},
+            {"role": "user", "content": prompt},
+        ],
+    )
+
+    ai_response = response["choices"][0]["message"]["content"]
+
+    # Save the recommendation in the database
+    ExerciseRecommendation.objects.create(
+        user=user,
+        glucose_level=latest_glucose.glucose_level if latest_glucose else None,
+        glucose_unit=preferred_unit,
+        exercise_type=latest_exercise.exercise_type if latest_exercise else None,
+        exercise_duration=latest_exercise.exercise_duration if latest_exercise else None,
+        exercise_intensity=latest_exercise.exercise_intensity if latest_exercise else None,
+        recommendation_text=ai_response
+    )
+
+    return JsonResponse({"recommendation": ai_response})
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def get_past_recommendations(request):
+    """Retrieve past AI-generated exercise recommendations."""
+    user = request.user
+    recommendations = ExerciseRecommendation.objects.filter(user=user).order_by("-timestamp")[:10]
+
+    data = [
+        {
+            "timestamp": rec.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+            "glucose_level": rec.glucose_level,
+            "glucose_unit": rec.glucose_unit,
+            "exercise_type": rec.exercise_type,
+            "exercise_duration": rec.exercise_duration,
+            "exercise_intensity": rec.exercise_intensity,
+            "recommendation": rec.recommendation_text
+        }
+        for rec in recommendations
+    ]
+    
+    return JsonResponse({"past_recommendations": data})

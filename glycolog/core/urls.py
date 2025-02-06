@@ -1,6 +1,6 @@
 from django.urls import path
-from .views import (exercise_step, get_insights, meal_step, glucose_step, glycaemic_response_main, list_categories, list_food_items_by_category, log_glucose, log_meal, meal_log_detail,  meal_log_history, questionnaire_data_visualization, register_user, 
-    login_user, review_answers, settings_view, glucose_log_details, glucose_log_history, start_questionnaire, symptom_step)
+from .views import (exercise_step, get_ai_insights, get_insights, meal_step, glucose_step, glycaemic_response_main, list_categories, list_food_items_by_category, log_glucose, log_meal, meal_log_detail,  meal_log_history, questionnaire_data_visualization, register_user, 
+    login_user, review_answers, settings_view, glucose_log_details, glucose_log_history, start_questionnaire, symptom_step, virtual_health_coach)
 from rest_framework_simplejwt.views import (TokenObtainPairView, TokenRefreshView)
 
 urlpatterns = [
@@ -34,4 +34,6 @@ urlpatterns = [
     path("questionnaire/review/", review_answers, name="review-answers"),
     path("questionnaire/data-visualization/", questionnaire_data_visualization, name="data-visualization"),
     path("insights/", get_insights, name="insights"),  # Get insights
+    path('ai-insights/', get_ai_insights, name='ai-insights'),
+    path("virtual-health-coach/", virtual_health_coach, name="virtual_health_coach"),
 ]

@@ -186,7 +186,7 @@ class MealCheck(models.Model):
             if food.carbs
         ) / total_carb
         return round(weighted_gi, 2)
-    
+
 # Model to store exercise checks
 class ExerciseCheck(models.Model):
     session = models.ForeignKey(QuestionnaireSession, on_delete=models.CASCADE, related_name="exercise_check")
@@ -284,6 +284,18 @@ class Insight(models.Model):
     def __str__(self):
         return f"Insight for {self.user.username} - {self.timestamp.strftime('%d/%m/%Y %H:%M:%S')}"
 
+class ExerciseRecommendation(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    glucose_level = models.FloatField(null=True, blank=True)
+    glucose_unit = models.CharField(max_length=10, default="mg/dL")
+    exercise_type = models.CharField(max_length=100, null=True, blank=True)
+    exercise_duration = models.IntegerField(null=True, blank=True)  # Minutes
+    exercise_intensity = models.CharField(max_length=50, null=True, blank=True)
+    recommendation_text = models.TextField()  # AI-generated recommendation
+
+    def __str__(self):
+        return f"{self.user.username} - {self.timestamp}"
 
 # Virtual health coach model to provide personalised health guidance
 class VirtualHealthCoach(models.Model):
