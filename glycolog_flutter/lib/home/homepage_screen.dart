@@ -259,6 +259,13 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                       Navigator.pushNamed(context, '/insights');
                     },
                   ),
+                   FeatureIcon(
+                    icon: Icons.fitness_center,
+                    label: 'Virtual Health Coach',
+                    onTap: () {
+                      Navigator.pushNamed(context, '/virtual-health-coach');
+                    },
+                  ),
                 ],
               ),
             ],

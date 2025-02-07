@@ -8,138 +8,118 @@ from .test_analysis import (
     extract_common_words,
 )
 
+# Global variables to cache models for efficiency
+GLUCOSE_MODEL = None
+MEAL_MODEL = None
+WELLNESS_RISK_MODEL = None
+
 
 def load_models():
-    # Load pretrained models from disk
-    wellness_model = joblib.load("ai_model/model_weights/wellness_model.pkl")
-    glucose_model = joblib.load("ai_model/model_weights/glucose_model.pkl")
-    return wellness_model, glucose_model
+    """Load pretrained models from disk and cache them for efficiency."""
+    global GLUCOSE_MODEL, MEAL_MODEL, WELLNESS_RISK_MODEL
+    if GLUCOSE_MODEL is None or MEAL_MODEL is None or WELLNESS_RISK_MODEL is None:
+        GLUCOSE_MODEL = joblib.load("ai_model/model_weights/glucose_model.pkl")
+        MEAL_MODEL = joblib.load("ai_model/model_weights/meal_model.pkl")
+        WELLNESS_RISK_MODEL = joblib.load(
+            "ai_model/model_weights/wellness_risk_model.pkl"
+        )
+    return GLUCOSE_MODEL, MEAL_MODEL, WELLNESS_RISK_MODEL
 
 
 def convert_glucose_units(glucose_value, preferred_unit="mg/dL"):
-    # Convert glucose levels to the user's preferred unit
-    # The database stores glucose levels in mg/dL
+    """Convert glucose levels to the user's preferred unit."""
     if preferred_unit == "mmol/L":
         return round(glucose_value / 18, 2)  # Convert mg/dL to mmol/L
     return glucose_value  # Keep mg/dL as is
- 
-
-def predict_wellness(wellness_model, data):
-    # Predict the wellness score for a user based on symptoms, stress, and exercise
-    X, _ = preprocess_data(data, target_column=None)  # No target column for prediction
-    predictions = wellness_model.predict(X)
-    return predictions
 
 
 def predict_glucose(glucose_model, data, preferred_unit="mg/dL"):
-    # Predict glucose levels based on meals, symptoms, stress, and exercise
-    # Convert the predicted glucose levels to the user’s preferred unit
+    """Predict glucose levels and return predictions with confidence scores."""
     X, _ = preprocess_data(data, target_column=None)
     predictions = glucose_model.predict(X)
     return [
-        convert_glucose_units(value, preferred_unit) for value in predictions
-    ]  # Convert before returning
+        {
+            "predicted_glucose": convert_glucose_units(value, preferred_unit),
+        }
+        for value in predictions
+    ]
 
 
-def generate_recommendations(data, preferred_unit="mg/dL"):
-    # Generate personalized recommendations based on glycaemic response, symptoms, glucose levels, stress, and exercise
+def predict_meal_impact(meal_model, data):
+    """Predicts how different meals impact glucose levels."""
+    X, _ = preprocess_data(data, target_column=None)
+    predictions = meal_model.predict(X)
+    return [{"meal_impact_score": round(value, 2)} for value in predictions]
+
+
+def predict_wellness_risk(wellness_model, data):
+    """Predicts wellness risk based on symptoms, exercise, and glucose trends."""
+    X, _ = preprocess_data(data, target_column=None)
+    predictions = wellness_model.predict(X)
+    return [{"wellness_risk_score": round(value, 2)} for value in predictions]
+
+
+def generate_recommendations(data, all_users_data):
+    """Generate AI-powered recommendations based on user trends and general trends."""
     recommendations = []
 
-    data["glucose_level"] = data["glucose_level"].apply(
-        lambda x: convert_glucose_units(x, preferred_unit)
-    )
+    # Meal Adjustments
+    if data.get("meal_impact_score", 0) > 50:
+        recommendations.append("Consider reducing high-GI meals to stabilize glucose.")
 
-    # Glycaemic Response & Meal Impact
-    if data.get("glycaemic_response_score", pd.Series()).fillna(0).mean() > 5:
+    # Glucose Adjustments
+    if data.get("glucose_variability", 0) > 30:
         recommendations.append(
-            "Your body reacts strongly to high GI foods. Consider switching to low-GI alternatives."
+            "Your glucose fluctuates frequently. Try balanced meals."
         )
 
-    if data.get("meal_impact", pd.Series()).mean() > 50:
+    # Wellness Insights
+    if data.get("wellness_risk_score", 0) > 70:
         recommendations.append(
-            "Your skipped meals and high GI foods might be impacting glucose control. Try balanced meal timing."
+            "High risk detected! Prioritize sleep & stress management."
         )
 
-    if data.get("post_meal_glucose_spike", pd.Series()).mean() > 50:
+    # Behavioral Pattern Insights
+    if data.get("exercise_duration", 0) < 20 and data.get("glucose_level", 0) > 140:
         recommendations.append(
-            "Post-meal glucose spikes detected. Reduce high-carb intake or increase fiber intake."
-        )
-
-    # Glucose Variability & Control
-    if data.get("glucose_variability", pd.Series()).mean() > 30:
-        recommendations.append(
-            "Your glucose levels fluctuate frequently. Adjust meal timing and portion sizes."
-        )
-
-    if data.get("low_glucose_sessions", pd.Series()).mean() > 5:
-        recommendations.append(
-            "Frequent low glucose detected. Monitor carb intake and consider small, frequent meals."
-        )
-
-    # Symptoms & Health Monitoring
-    if data.get("severe_symptom_correlation", pd.Series()).mean() > 0.5:
-        recommendations.append(
-            "Your symptoms may be affecting glucose. Track patterns and discuss with a healthcare provider."
+            "You tend to have high glucose levels when you don't exercise much. Consider increasing activity levels."
         )
 
     if (
-        data.get("frequent_symptoms", pd.Series())
-        .explode()
-        .value_counts()
-        .get("Fatigue", 0)
-        > 3
+        data.get("meal_impact_score", 0) > 50
+        and data.get("glucose_variability", 0) > 30
     ):
         recommendations.append(
-            "Frequent fatigue detected. Ensure hydration, nutrition, and proper sleep."
+            "Your glucose variability is high after high-GI meals. Opt for more fiber and protein."
         )
 
-    # Exercise & Activity Adjustments
-    if data.get("exercise_duration_avg", pd.Series()).mean() < 20:
+    if data.get("sleep_hours", 0) < 6 and data.get("glucose_level", 0) > 140:
         recommendations.append(
-            "Your exercise duration is below the recommended 30 mins. Try increasing activity levels."
+            "Your glucose levels tend to rise when you get insufficient sleep. Try improving sleep quality."
         )
 
-    if data.get("exercise_glucose_stability", pd.Series()).mean() < -0.3:
+    if data.get("stress_level", 0) > 70 and data.get("glucose_level", 0) > 140:
         recommendations.append(
-            "Exercise seems to help your glucose stability! Keep it up."
+            "High stress seems to correlate with elevated glucose. Consider stress management techniques."
         )
 
-    if (
-        data.get("exercise_intensity_avg", pd.Series()).mean() > 2
-        and data.get("post_exercise_feeling", pd.Series())
-        .value_counts()
-        .get("Tired", 0)
-        > 3
-    ):
-        recommendations.append(
-            "Your workouts may be too intense. Consider lowering intensity or ensuring post-exercise recovery."
-        )
+    # General Population-Based Trends
+    if not all_users_data.empty:
+        avg_glucose = all_users_data["glucose_level"].mean()
+        avg_meal_impact = all_users_data["meal_impact_score"].mean()
+        avg_wellness_risk = all_users_data["wellness_risk_score"].mean()
 
-    # Stress & Sleep Adjustments
-    if data.get("low_sleep_sessions", pd.Series()).mean() > 5:
-        recommendations.append(
-            "You frequently sleep less than 6 hours. Prioritize sleep for better glucose regulation."
-        )
-
-    if data.get("stress_correlation", pd.Series()).mean() > 0.5:
-        recommendations.append(
-            "Stress appears to impact your glucose. Try relaxation techniques or light exercise."
-        )
-
-    # Analyze the effect of exercise on glucose levels
-    if "exercise_duration" in data.columns and "glucose_level" in data.columns:
-        exercise_effect = data["exercise_duration"].corr(data["glucose_level"])
-        if exercise_effect and exercise_effect < -0.4:
+        if data.get("glucose_level", 0) > avg_glucose:
             recommendations.append(
-                "Exercise seems to lower your glucose effectively. Maintain your activity routine."
+                "Your glucose levels are higher than the average user. This may indicate a need for dietary adjustments, increased physical activity, or better stress management."
             )
-
-    # Analyze the effect of meals on glucose levels
-    if "weighted_gi" in data.columns and "glucose_level" in data.columns:
-        meal_effect = data["weighted_gi"].corr(data["glucose_level"])
-        if meal_effect and meal_effect > 0.5:
+        if data.get("meal_impact_score", 0) > avg_meal_impact:
             recommendations.append(
-                "Your glucose levels tend to rise after high-GI meals. Consider lower GI alternatives."
+                "Compared to most users, your meals have a greater impact on glucose levels. Try incorporating balanced macronutrients and fiber-rich foods."
+            )
+        if data.get("wellness_risk_score", 0) > avg_wellness_risk:
+            recommendations.append(
+                "Your wellness risk score is above the average user. Consider tracking sleep, hydration, and activity levels to improve overall health."
             )
 
     # Extract Insights from User Notes
