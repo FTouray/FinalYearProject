@@ -4,6 +4,7 @@
 
 list(APPEND FLUTTER_PLUGIN_LIST
   file_selector_windows
+  google_fit
   permission_handler_windows
 )
 

@@ -11,18 +11,20 @@ from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
 from core.ai_model import feature_engineering
 from core.ai_model.data_processing import load_data_from_db
 from core.ai_model.recommendation_engine import generate_recommendations, load_models, predict_glucose, predict_wellness_risk
-from .serializers import ExerciseCheckSerializer, FoodCategorySerializer, FoodItemSerializer, GlucoseCheckSerializer, GlucoseLogSerializer, MealCheckSerializer, MealSerializer, QuestionnaireSessionSerializer, RegisterSerializer, LoginSerializer, SettingsSerializer, SymptomCheckSerializer
-from .models import CustomUser, ExerciseCheck, ExerciseRecommendation, FeelingCheck, FoodCategory, FoodItem, GlucoseCheck, GlucoseLog, GlycaemicResponseTracker, Meal, MealCheck, QuestionnaireSession, SymptomCheck  
+from services.google_fit_service import get_smartwatch_data
+from .serializers import ExerciseCheckSerializer, ExerciseRecommendationSerializer, FoodCategorySerializer, FoodItemSerializer, GlucoseCheckSerializer, GlucoseLogSerializer, MealCheckSerializer, MealSerializer, QuestionnaireSessionSerializer, RegisterSerializer, LoginSerializer, SettingsSerializer, SymptomCheckSerializer
+from .models import CustomUser, CustomUserToken, ExerciseCheck, ExerciseRecommendation, FeelingCheck, FoodCategory, FoodItem, GlucoseCheck, GlucoseLog, GlycaemicResponseTracker, Meal, MealCheck, QuestionnaireSession, SymptomCheck  
 from django.contrib.auth import get_user_model
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.permissions import AllowAny
 from rest_framework.decorators import api_view, permission_classes
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.db.models import Q
 from django.db.models import Avg
 import joblib
 import openai
 import os
+from google_auth_oauthlib.flow import Flow
 
 
 User = get_user_model()
@@ -644,7 +646,6 @@ def get_ai_insights(request):
 # Load OpenAI API Key
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-
 def convert_glucose_units(glucose_value, preferred_unit="mg/dL"):
     """Convert glucose levels based on user preference (mg/dL or mmol/L)."""
     if preferred_unit == "mmol/L":
@@ -656,28 +657,27 @@ def convert_glucose_units(glucose_value, preferred_unit="mg/dL"):
 def virtual_health_coach(request):
     user = request.user
 
-    # Fetch user’s glucose unit preference
-    user_settings = user_settings.objects.filter(user=user).first()
+    # Fetch user’s glucose unit preference from settings
+    user_settings = user.settings.first()  # Adjust if settings is related differently
     preferred_unit = user_settings.glucose_unit if user_settings else "mg/dL"
 
-    # Fetch most recent exercise log (always AFTER glucose logs)
+    # Fetch the most recent exercise and glucose data
     latest_exercise = ExerciseCheck.objects.filter(user=user).order_by("-created_at").first()
-
-    # Fetch the most recent glucose logs from BOTH `GlucoseLog` and `GlucoseCheck`
     latest_glucose_log = GlucoseLog.objects.filter(user=user).order_by("-timestamp").first()
     latest_glucose_check = GlucoseCheck.objects.filter(user=user).order_by("-timestamp").first()
 
-    # Determine the latest glucose reading
+    # Determine the most recent glucose reading
     latest_glucose = max(
         filter(None, [latest_glucose_log, latest_glucose_check]),
         key=lambda x: x.timestamp,
         default=None
     )
 
-    # Format data for OpenAI prompt
+    smartwatch_data = get_smartwatch_data(user)  # Implement this function to fetch smartwatch data
+    
+    # Formatting exercise and glucose data for the OpenAI prompt
     exercise_summary = (
-        f"- {latest_exercise.exercise_type} for {latest_exercise.exercise_duration} mins "
-        f"at {latest_exercise.exercise_intensity} intensity."
+        f"- {latest_exercise.exercise_type} for {latest_exercise.exercise_duration} mins at {latest_exercise.exercise_intensity} intensity."
         if latest_exercise else "No recent exercise logs."
     )
 
@@ -686,31 +686,36 @@ def virtual_health_coach(request):
         if latest_glucose else "No recent glucose logs."
     )
 
+    smartwatch_summary = smartwatch_data if smartwatch_data else "No smartwatch data available."
+
     # OpenAI Prompt
     prompt = f"""
-    The user has diabetes and has logged the following data:
+    The user has diabetes (type unspecified) and has logged the following health data:
 
     - **Most Recent Glucose Reading (before exercise):** 
-      {glucose_summary}
-    
+    {glucose_summary}
+
     - **Most Recent Exercise Session (after glucose reading):** 
-      {exercise_summary}
+    {exercise_summary}
 
-    **Your task:** Generate personalized **exercise recommendations** for a diabetic user:
-    - Ensure recommendations align with their **glucose level before exercise**.
-    - Suggest **ways to stabilize glucose through exercise**.
-    - If **glucose was low before exercise**, recommend **pre-workout carbohydrate intake**.
-    - If **glucose was high before exercise**, suggest best intensity & duration for stabilization.
-    - Ensure **recommendations are diabetes-safe** and support **glucose stability and overall health**.
+    - **Smartwatch/Phone Fitness Data (recent activity trends):**
+    {smartwatch_summary}
 
-    Provide **clear, actionable** recommendations using the correct glucose unit: **{preferred_unit}**.
+    **Your task:** Generate personalized **exercise recommendations** tailored for a diabetic user:
+    1. Align exercise advice with their **current glucose levels** and **recent exercise history**.
+    2. Use smartwatch data to adjust plans and suggest achievable fitness goals.
+    3. Include **safety precautions** for exercising with diabetes, particularly regarding **hypoglycemia** and **hyperglycemia**.
+    4. Provide **clear, actionable steps** for stabilizing glucose levels through appropriate exercise intensity and duration.
+    5. Ensure all advice is **diabetes-friendly**, supports **glucose stability**, and promotes **overall wellness**.
+
+    Present the recommendations in **bullet-point format** for clarity.
     """
 
-    # Send prompt to OpenAI
+    # Sending prompt to OpenAI API
     response = openai.ChatCompletion.create(
         model="gpt-4",
         messages=[
-            {"role": "system", "content": "You are a fitness expert for diabetic users."},
+            {"role": "system", "content": "You are a certified fitness coach specializing in diabetic health management."},
             {"role": "user", "content": prompt},
         ],
     )
@@ -718,7 +723,7 @@ def virtual_health_coach(request):
     ai_response = response["choices"][0]["message"]["content"]
 
     # Save the recommendation in the database
-    ExerciseRecommendation.objects.create(
+    recommendation = ExerciseRecommendation.objects.create(
         user=user,
         glucose_level=latest_glucose.glucose_level if latest_glucose else None,
         glucose_unit=preferred_unit,
@@ -728,7 +733,9 @@ def virtual_health_coach(request):
         recommendation_text=ai_response
     )
 
-    return JsonResponse({"recommendation": ai_response})
+    serialized_recommendation = ExerciseRecommendationSerializer(recommendation)
+
+    return JsonResponse(serialized_recommendation.data)
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
@@ -737,17 +744,49 @@ def get_past_recommendations(request):
     user = request.user
     recommendations = ExerciseRecommendation.objects.filter(user=user).order_by("-timestamp")[:10]
 
-    data = [
-        {
-            "timestamp": rec.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
-            "glucose_level": rec.glucose_level,
-            "glucose_unit": rec.glucose_unit,
-            "exercise_type": rec.exercise_type,
-            "exercise_duration": rec.exercise_duration,
-            "exercise_intensity": rec.exercise_intensity,
-            "recommendation": rec.recommendation_text
-        }
-        for rec in recommendations
-    ]
+    data = ExerciseRecommendationSerializer(recommendations, many=True).data
     
     return JsonResponse({"past_recommendations": data})
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def authorize_google_fit(request):
+    """Redirect user to Google Fit OAuth for authorization."""
+    flow = Flow.from_client_secrets_file(
+        'path/to/client_secret.json',  # Replace with your client secret file path
+        scopes=['https://www.googleapis.com/auth/fitness.activity.read'],
+        redirect_uri='http://localhost:8000/api/google_fit/callback/'  # Match with Google Console redirect URI
+    )
+    authorization_url, state = flow.authorization_url(access_type='offline', include_granted_scopes='true')
+    request.session['oauth_state'] = state  # Save state to session for security
+    return redirect(authorization_url)
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def google_fit_callback(request):
+    """Handle the callback from Google Fit OAuth."""
+    state = request.session.get('oauth_state')
+    flow = Flow.from_client_secrets_file(
+        'path/to/client_secret.json',
+        scopes=['https://www.googleapis.com/auth/fitness.activity.read'],
+        redirect_uri='http://localhost:8000/api/google_fit/callback/'
+    )
+    flow.fetch_token(authorization_response=request.build_absolute_uri())
+
+    credentials = flow.credentials
+    user = request.user
+    
+    # Save credentials to the database
+    CustomUserToken.objects.update_or_create(
+        user=user,
+        defaults={
+            'token': credentials.token,
+            'refresh_token': credentials.refresh_token,
+            'token_uri': credentials.token_uri,
+            'client_id': credentials.client_id,
+            'client_secret': credentials.client_secret,
+            'scopes': credentials.scopes
+        }
+    )
+    
+    return JsonResponse({"message": "Google Fit connected successfully!"})

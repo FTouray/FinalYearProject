@@ -1,3 +1,4 @@
 {
-  "python.analysis.extraPaths": ["./glycolog/core"]
+  "python.analysis.extraPaths": ["./glycolog/core"],
+  "java.configuration.updateBuildConfiguration": "interactive"
 }

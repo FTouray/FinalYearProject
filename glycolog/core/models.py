@@ -296,6 +296,21 @@ class ExerciseRecommendation(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.timestamp}"
+    
+class CustomUserToken(models.Model):
+    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name="google_fit_token")
+    token = models.CharField(max_length=255)
+    refresh_token = models.CharField(max_length=255)
+    token_uri = models.URLField(default='https://oauth2.googleapis.com/token')
+    client_id = models.CharField(max_length=255)
+    client_secret = models.CharField(max_length=255)
+    scopes = models.TextField()
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.user.username} - Google Fit Token"
 
 # Virtual health coach model to provide personalised health guidance
 class VirtualHealthCoach(models.Model):
