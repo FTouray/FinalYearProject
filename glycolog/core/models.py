@@ -296,7 +296,7 @@ class ExerciseRecommendation(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.timestamp}"
-    
+
 class CustomUserToken(models.Model):
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name="google_fit_token")
     token = models.CharField(max_length=255)
@@ -321,7 +321,31 @@ class VirtualHealthCoach(models.Model):
     class Meta:
         constraints = [
             models.CheckConstraint(check=Q(motivational_messages__isnull=False), name='motivational_messages_not_null'),  # Ensure messages are not null
-        ]
+        ]  
+class ChatMessage(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    sender = models.CharField(max_length=50, choices=[('user', 'User'), ('assistant', 'Assistant')])
+    message = models.TextField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user.username} - {self.sender} - {self.timestamp}"
+
+# Model to store user activity data from smartwatch
+class SmartwatchActivity(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    activity_type = models.CharField(max_length=100)
+    start_time = models.DateTimeField()
+    end_time = models.DateTimeField()
+    duration_minutes = models.IntegerField()
+    steps = models.IntegerField(null=True, blank=True)
+    calories_burned = models.FloatField(null=True, blank=True)
+    distance_meters = models.FloatField(null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user.username} - {self.activity_type} on {self.start_time.strftime('%Y-%m-%d')}"
 
 # Model to store medication details
 class Medication(models.Model):

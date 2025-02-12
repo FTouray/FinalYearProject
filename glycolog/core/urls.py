@@ -1,7 +1,6 @@
 from django.urls import path
 
-from services.google_fit_service import fetch_google_fit_data
-from .views import (authorize_google_fit, exercise_step, get_ai_insights, get_insights, get_past_recommendations, google_fit_callback, meal_step, glucose_step, glycaemic_response_main, list_categories, list_food_items_by_category, log_glucose, log_meal, meal_log_detail,  meal_log_history, questionnaire_data_visualization, register_user, 
+from .views import (authorize_google_fit, chat_with_health_coach, exercise_step, get_ai_insights, get_chat_history, get_insights, get_past_recommendations, google_fit_callback, meal_step, glucose_step, glycaemic_response_main, list_categories, list_food_items_by_category, log_glucose, log_meal, meal_log_detail,  meal_log_history, questionnaire_data_visualization, register_user, 
     login_user, review_answers, settings_view, glucose_log_details, glucose_log_history, start_questionnaire, symptom_step, virtual_health_coach)
 from rest_framework_simplejwt.views import (TokenObtainPairView, TokenRefreshView)
 
@@ -37,10 +36,14 @@ urlpatterns = [
     path("questionnaire/data-visualization/", questionnaire_data_visualization, name="data-visualization"),
     path("insights/", get_insights, name="insights"),  # Get insights
     path('ai-insights/', get_ai_insights, name='ai-insights'),
+     # Virtual Health Coach Endpoints
     path("virtual-health-coach/", virtual_health_coach, name="virtual_health_coach"),
-    path("virtual-health-coach/past-recommendations/", get_past_recommendations, name="get_past_recommendations"),
+    path("virtual-health-coach/recommendations/", get_past_recommendations, name="get_past_recommendations"),
+    # Google Fit Integration
     path("google-fit/authorize/", authorize_google_fit, name="authorize_google_fit"),
     path("google-fit/callback/", google_fit_callback, name="google_fit_callback"),
-    path("google-fit/fetch-data/", fetch_google_fit_data, name="fetch_google_fit_data"),
+    # Chat with Virtual Health Coach
+    path("virtual-health-coach/chat/", chat_with_health_coach, name="chat_with_health_coach"),
+    path("virtual-health-coach/chat/history/", get_chat_history, name="get_chat_history"),
 
 ]

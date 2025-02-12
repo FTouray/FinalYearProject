@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'gL_detail_screen.dart';
 import 'package:Glycolog/utils.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class GlucoseLogHistoryScreen extends StatefulWidget {
   const GlucoseLogHistoryScreen({super.key});
@@ -46,11 +47,9 @@ class _GlucoseLogHistoryScreenState extends State<GlucoseLogHistoryScreen> {
 
     if (token != null) {
       try {
+        final apiUrl = dotenv.env['API_URL'];
         final response = await http.get(
-          // Uri.parse('http://10.0.2.2:8000/api/glucose-log/'), // For Android Emulator
-           Uri.parse('http://192.168.1.14:8000/api/glucose-log/'), // For Physical Device
-          // Uri.parse('http://172.20.10.3:8000/api/glucose-log/'), // Hotspot
-          // Uri.parse('http://192.168.40.184:8000/api/glucose-log/'), // Ethernet IP
+          Uri.parse('$apiUrl/glucose-log/'), 
           headers: {'Authorization': 'Bearer $token'},
         );
 

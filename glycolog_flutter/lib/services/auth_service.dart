@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class AuthService {
+  final String? apiUrl = dotenv.env['API_URL']; 
   // Function to get the access token from SharedPreferences
   Future<String?> getAccessToken() async {
     final prefs = await SharedPreferences.getInstance();
@@ -23,10 +25,7 @@ class AuthService {
 
     try {
       final response = await http.post(
-        //   Uri.parse('http://10.0.2.2:8000/api/token/refresh/'), // For Android Emulator
-        Uri.parse('http://192.168.1.14:8000/api/token/refresh/'), // For Physical Device
-       // Uri.parse('http://172.20.10.3:8000/api/token/refresh/'), // Hotspot
-        //  Uri.parse('http://192.168.40.184:8000/api/token/refresh/'), //Ethernet IP
+        Uri.parse('$apiUrl/token/refresh/'), 
         headers: {
           'Content-Type': 'application/json',
         },

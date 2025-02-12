@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -22,6 +23,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _obscurePasswordConfirm =
       true; // Password visibility for confirm password field
   String? errorMessage;
+  final String? apiUrl = dotenv.env['API_URL']; 
 
   Future<void> register() async {
     // Gather data from form fields
@@ -52,10 +54,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     try {
       final response = await http.post(
-        // Uri.parse('http://10.0.2.2:8000/api/register/'), // For Android Emulator
-        Uri.parse('http://192.168.1.14:8000/api/register/'), // For Physical Device
-        // Uri.parse('http://192.168.40.184:8000/api/register/'), //Ethernet IP
-        // Uri.parse('http://172.20.10.3:8000/api/register/'), //Hotspot
+        Uri.parse('$apiUrl/register/'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'username': username,

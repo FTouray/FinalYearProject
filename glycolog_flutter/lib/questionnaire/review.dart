@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-
 import '../services/auth_service.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class ReviewScreen extends StatefulWidget {
   const ReviewScreen({Key? key}) : super(key: key);
@@ -15,6 +15,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
   bool _isLoading = true;
   bool _hasError = false;
   Map<String, dynamic> _reviewData = {};
+  final String? apiUrl = dotenv.env['API_URL'];     
 
   @override
   void initState() {
@@ -25,11 +26,11 @@ class _ReviewScreenState extends State<ReviewScreen> {
   Future<void> _fetchReviewData() async {
     try {
       String? token = await AuthService().getAccessToken();
-      
+
       if (token == null) throw Exception('User not authenticated.');
 
       final response = await http.get(
-        Uri.parse('http://192.168.1.14:8000/api/questionnaire/review/'),
+        Uri.parse('$apiUrl/questionnaire/review/'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
@@ -103,7 +104,8 @@ class _ReviewScreenState extends State<ReviewScreen> {
                         style: TextStyle(
                             fontSize: 20, fontWeight: FontWeight.bold),
                       ),
-                      ...(_reviewData['exercise_check'] as List).map((exercise) {
+                      ...(_reviewData['exercise_check'] as List)
+                          .map((exercise) {
                         return ListTile(
                           title: Text(
                               'Intensity: ${exercise['exercise_intensity']} | Duration: ${exercise['exercise_duration']} mins'),
@@ -119,8 +121,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
                       ),
                       ...(_reviewData['symptom_check'] as List).map((symptom) {
                         return ListTile(
-                          title: Text(
-                              'Symptoms: ${symptom['symptoms']}'),
+                          title: Text('Symptoms: ${symptom['symptoms']}'),
                           subtitle: Text('Notes: ${symptom['notes']}'),
                         );
                       }).toList(),
@@ -139,7 +140,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
                           ),
                         ),
                         child: const Text(
-                          'View Insights',
+                          'View Data Visualization',
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 18,

@@ -17,12 +17,20 @@ samples, guidance on mobile development, and a full API reference.
 
 ## SERVER
 cd "C:\Users\ftour\OneDrive - Technological University Dublin\4th Year\FYP\glycologapp\glycolog"
+python manage.py runserver 
 python manage.py runserver 0.0.0.0:8000
+
+ngrok http 8000
+
+python manage.py makemigrations
+python manage.py migrate
 
 ## FRONTEND
 cd "C:\Users\ftour\OneDrive - Technological University Dublin\4th Year\FYP\glycologapp\glycolog_flutter"
 flutter run
 
+## RETRAIN MODEL
+python model_training.py
 
 ## Maybe move to services/auth_service.dart
 - auth_service
@@ -97,3 +105,59 @@ Once you have insights generated on the backend, display these insights in the F
 
 Insights UI: Design a page or section that shows users how specific foods or meal times affect their glucose levels.
 Data Visualization (Optional): Add graphs or visualizations to make data trends clear (e.g., using fl_chart for displaying response trends over time).
+
+# Users
+johnd person1
+logan1 Assignment1 
+
+# Questionnaire
+- Edit Answers in review page
+- Enhancing the Experience:
+Interactive Features:
+
+Allow the user to hover over data points for detailed values.
+Enable filtering by date ranges or specific events (e.g., meal types or exercise types).
+Annotations:
+
+Allow users to annotate graphs to mark specific events (e.g., "felt bad today") for easier correlation.
+Recommendations:
+
+Based on patterns in the data, provide personalized recommendations (e.g., "Try avoiding high GI foods after 7 PM" or "Exercise for at least 30 minutes to improve wellness").
+Statistical Analysis:
+
+Incorporate simple statistical insights (e.g., correlation coefficients) to highlight stronger patterns, such as "Glucose levels have a strong negative correlation with wellness."
+
+- Edit answer make sure it updates
+# Info Gathered
+Response Completeness:
+
+Identify unanswered questions (-1 values) to gauge user engagement.
+Highlight trends in frequently skipped questions.
+Behavioral Trends:
+
+Track patterns over time (e.g., increase/decrease in exercise intensity or meal skipping).
+Compare different metrics, such as stress vs. wellness, or exercise vs. glucose levels.
+Correlations:
+
+Identify relationships between metrics:
+Does higher stress correlate with worse wellness scores?
+Do skipped meals lead to lower glucose control or reduced exercise intensity?
+Personalized Insights:
+
+Provide feedback to users based on their trends:
+"You're skipping meals more often; consider revisiting your meal schedule."
+"Increased exercise intensity correlates with improved wellness."
+Data for Interventions:
+
+Highlight areas for potential intervention:
+If many users report "severe" fatigue and stress, suggest stress-reduction techniques.
+For skipped questions, prompt users with more engaging forma
+
+## More
+virtual health coach could I use open ai for it and basically it can advice the user on different exercise regimen based on data that is in the database for that and in this chat they should be able to see past regimen and exercises and also the data that was captured from the phone or smart watch (the feature may need to be renamed) 
+
+## OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "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")
+
+🔜 Step 2: Store and Show Past Exercise Advice (So users can see past recommendations).
+🔜 Step 3: Connect to Google Fit / Apple Health (Optional).
+🔜 Step 4: Build the Flutter UI for Virtual Health Coach Chat.

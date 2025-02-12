@@ -10,6 +10,7 @@ import 'package:path_provider/path_provider.dart';
 import 'dart:convert';
 import 'gL_confirmation_screen.dart';
 import 'package:Glycolog/utils.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class AddGlucoseLevelScreen extends StatefulWidget {
   const AddGlucoseLevelScreen({super.key});
@@ -260,11 +261,10 @@ class _AddGlucoseLevelScreenState extends State<AddGlucoseLevelScreen> {
 
   Future<void> _saveGlucoseLog(double glucoseLevel) async {
     String? token = await AuthService().getAccessToken();
+    final apiUrl = dotenv.env['API_URL'];
+    
     final response = await http.post(
-      // Uri.parse('http://10.0.2.2:8000/api/glucose-log/'), // For Emulator API endpoint
-      Uri.parse('http://192.168.1.11:8000/api/glucose-log/'), // For Physical Device API endpoint
-         // Uri.parse('http://172.20.10.3:8000/api/glucose-log/'), // Hotspot
-      // Uri.parse('http://192.168.40.184:8000/api/glucose-log/'), // Ethernet IP
+     Uri.parse('$apiUrl/glucose-log/'),
       
       headers: {
         'Authorization': 'Bearer $token', // Send the token in the header

@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'base_screen.dart'; // Import BaseScreen
 import 'package:Glycolog/services/auth_service.dart'; // Import AuthServiceScreen
 import 'package:http/http.dart' as http;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class HomePage extends StatefulWidget {
   final String firstName; // Pass the first name to this page
@@ -19,6 +20,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   int _selectedIndex = 0;
+final String? apiUrl = dotenv.env['API_URL'];
 
   @override
   void initState() {
@@ -144,7 +146,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       }
 
       final response = await http.post(
-        Uri.parse('http://192.168.1.14:8000/api/questionnaire/start/'),
+        Uri.parse('$apiUrl/questionnaire/start/'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',

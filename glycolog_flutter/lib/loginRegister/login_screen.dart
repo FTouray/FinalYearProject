@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -15,6 +16,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController passwordController = TextEditingController();
   bool _obscureText = true; // Track password visibility
   String? errorMessage;
+  final String? apiUrl = dotenv.env['API_URL']; 
 
   Future<void> resetOnboardingStatus() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -36,11 +38,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       final response = await http.post(
-        // Uri.parse('http://10.0.2.2:8000/api/login/'), // For Android Emulator
-        Uri.parse('http://192.168.1.14:8000/api/login/'), // For Physical Device
-       // Uri.parse('http://172.20.10.3:8000/api/login/'), // Hotspot
-        // Uri.parse('http://192.168.40.184:8000/api/login/'), // Ethernet IP
-
+        Uri.parse('$apiUrl/login/'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({
           'username': username,
@@ -63,8 +61,9 @@ class _LoginScreenState extends State<LoginScreen> {
           errorMessage = null; // Clear error if login is successful
         });
 
-         // Check if onboarding is completed
-        bool onboardingCompleted = prefs.getBool('onboardingCompleted') ?? false;
+        // Check if onboarding is completed
+        bool onboardingCompleted =
+            prefs.getBool('onboardingCompleted') ?? false;
 
         if (onboardingCompleted) {
           // Navigate to HomePage if onboarding is done

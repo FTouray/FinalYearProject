@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../services/auth_service.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class SymptomStepScreen extends StatefulWidget {
   const SymptomStepScreen({Key? key}) : super(key: key);
@@ -13,6 +14,7 @@ class SymptomStepScreen extends StatefulWidget {
 class _SymptomStepScreenState extends State<SymptomStepScreen> {
   final Map<String, bool> selectedSymptoms = {};
   final Map<String, dynamic> responseValues = {};
+  final String? apiUrl = dotenv.env['API_URL']; 
 
   final List<String> symptoms = [
     'Fatigue',
@@ -324,7 +326,7 @@ class _SymptomStepScreenState extends State<SymptomStepScreen> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://192.168.1.14:8000/api/questionnaire/symptom-step/'),
+        Uri.parse('$apiUrl/questionnaire/symptom-step/'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',

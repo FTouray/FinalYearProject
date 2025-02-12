@@ -7,6 +7,7 @@ import 'dart:convert'; // For JSON handling
 import 'package:shared_preferences/shared_preferences.dart'; // For retrieving user settings
 import '../home/base_screen.dart'; // Import BaseScreen
 import 'package:Glycolog/utils.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class GlucoseLogScreen extends StatefulWidget {
   const GlucoseLogScreen({super.key});
@@ -55,13 +56,12 @@ class _GlucoseLogScreenState extends State<GlucoseLogScreen> {
   // Fetch glucose logs from the server
   Future<void> fetchGlucoseLogs() async {
     String? token = await AuthService().getAccessToken();
+    final apiUrl = dotenv.env['API_URL'];
 
     if (token != null) {
       try {
         final response = await http.get(
-          Uri.parse('http://192.168.1.14:8000/api/glucose-log/'), // Physical Device
-        // Uri.parse('http://147.252.148.38:8000/api/glucose-log/'),
-        // Uri.parse('http://172.20.10.3:8000/api/glucose-log/'), // Hotspot
+          Uri.parse('$apiUrl/glucose-log/'),
           headers: {
             'Authorization': 'Bearer $token', // Include token in headers
           },
@@ -383,7 +383,8 @@ class _GlucoseLogScreenState extends State<GlucoseLogScreen> {
                                       getTitlesWidget: (value, meta) {
                                         final hour = value.toInt();
                                         return SideTitleWidget(
-                                          axisSide: meta.axisSide,
+                                          fitInside: SideTitleFitInsideData.fromTitleMeta(meta),
+                                          meta: meta,
                                           child: Transform.translate(
                                             offset: Offset(-10,
                                                 5), // Adjust for better spacing

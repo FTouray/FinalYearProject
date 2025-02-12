@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../services/auth_service.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class GlucoseStepScreen extends StatefulWidget {
   const GlucoseStepScreen({Key? key}) : super(key: key);
@@ -15,6 +16,7 @@ class _GlucoseStepScreenState extends State<GlucoseStepScreen> {
   final TextEditingController _glucoseController = TextEditingController();
   bool _isLoading = false;
   String? _error;
+  final String? apiUrl = dotenv.env['API_URL']; 
 
   @override
   Widget build(BuildContext context) {
@@ -122,7 +124,7 @@ class _GlucoseStepScreenState extends State<GlucoseStepScreen> {
       };
 
       final response = await http.post(
-        Uri.parse('http://192.168.1.14:8000/api/questionnaire/glucose-step/'),
+        Uri.parse('$apiUrl/questionnaire/glucose-step/'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',

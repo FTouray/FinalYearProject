@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../services/auth_service.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class FoodCategory {
   final int id;
@@ -53,6 +54,7 @@ class _MealStepScreenState extends State<MealStepScreen> {
   List<FoodItem> _filteredFoodItems = [];
   TextEditingController _searchController = TextEditingController();
   bool _isSearching = false;
+  final String? apiUrl = dotenv.env['API_URL']; 
 
   @override
   void initState() {
@@ -67,7 +69,7 @@ class _MealStepScreenState extends State<MealStepScreen> {
       if (token == null) throw Exception('No access token found.');
 
       final response = await http.get(
-        Uri.parse('http://192.168.1.14:8000/api/categories'),
+        Uri.parse('$apiUrl/categories'),
         headers: {'Authorization': 'Bearer $token'},
       );
 
@@ -93,8 +95,7 @@ class _MealStepScreenState extends State<MealStepScreen> {
       if (token == null) throw Exception('No access token found.');
 
       final response = await http.get(
-        Uri.parse(
-            'http://192.168.1.14:8000/api/categories/$categoryId/food-items/'),
+        Uri.parse('$apiUrl/categories/$categoryId/food-items/'),
         headers: {'Authorization': 'Bearer $token'},
       );
 
@@ -171,7 +172,7 @@ class _MealStepScreenState extends State<MealStepScreen> {
       };
 
       final response = await http.post(
-        Uri.parse('http://192.168.1.14:8000/api/questionnaire/meal-step/'),
+        Uri.parse('$apiUrl/questionnaire/meal-step/'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-
 import '../services/auth_service.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class ExerciseStepScreen extends StatefulWidget {
   const ExerciseStepScreen({Key? key}) : super(key: key);
@@ -23,6 +23,7 @@ class _ExerciseStepScreenState extends State<ExerciseStepScreen> {
   String? discomfortDetails;
   bool isLoading = false;
   String? errorMessage;
+  final String? apiUrl = dotenv.env['API_URL']; 
 
   final List<String> exerciseTimes = [
     'Today',
@@ -77,7 +78,7 @@ class _ExerciseStepScreenState extends State<ExerciseStepScreen> {
       print('Submitting data: $data'); // Debug: Log data being submitted
 
       final response = await http.post(
-        Uri.parse('http://192.168.1.14:8000/api/questionnaire/exercise-step/'),
+        Uri.parse('$apiUrl/questionnaire/exercise-step/'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
@@ -107,7 +108,6 @@ class _ExerciseStepScreenState extends State<ExerciseStepScreen> {
       });
     }
   }
-
 
   @override
   Widget build(BuildContext context) {

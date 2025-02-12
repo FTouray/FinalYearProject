@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'gRT_meal_log_screen.dart';
 import 'package:Glycolog/utils.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class MealConfirmationScreen extends StatefulWidget {
   final List<FoodItem> selectedItems;
@@ -28,6 +29,7 @@ class _MealConfirmationScreenState extends State<MealConfirmationScreen> {
       widget.selectedItems.fold(0, (sum, item) => sum + item.carbs);
 
   final TextEditingController mealNameController = TextEditingController();
+  final String? apiUrl = dotenv.env['API_URL'];
 
   void _removeItem(FoodItem item) {
     setState(() {
@@ -51,8 +53,7 @@ class _MealConfirmationScreenState extends State<MealConfirmationScreen> {
       }
 
       final response = await http.post(
-        Uri.parse('http://192.168.1.11:8000/api/log-meal/'), // Physical Device
-        // Uri.parse('http://172.20.10.3:8000/api/log-meal/'), // Hotspot
+        Uri.parse('$apiUrl/log-meal/'), 
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',

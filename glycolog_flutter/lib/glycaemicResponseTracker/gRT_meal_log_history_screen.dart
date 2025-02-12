@@ -4,6 +4,7 @@ import 'package:Glycolog/services/auth_service.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:Glycolog/utils.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class MealLogHistoryScreen extends StatefulWidget {
   const MealLogHistoryScreen({super.key});
@@ -21,6 +22,7 @@ class _MealLogHistoryScreenState extends State<MealLogHistoryScreen> {
   DateTime? _endDate;
   double? _minGI;
   double? _maxGI;
+   final String? apiUrl = dotenv.env['API_URL'];
 
   @override
   void initState() {
@@ -33,8 +35,7 @@ class _MealLogHistoryScreenState extends State<MealLogHistoryScreen> {
     if (token != null) {
       try {
         final response = await http.get(
-           Uri.parse('http://192.168.1.11:8000/api/meal-log/history/'), // Physical Device
-          //Uri.parse('http://172.20.10.3:8000/api/meal-log-history/'), // Hotspot
+           Uri.parse('$apiUrl/meal-log/history/'), 
           headers: {
             'Authorization': 'Bearer $token',
           },

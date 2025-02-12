@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:Glycolog/utils.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class GRTMainScreen extends StatefulWidget {
   @override
@@ -23,6 +24,7 @@ class _GRTMainScreenState extends State<GRTMainScreen> {
   List<dynamic> allMealLogs = [];
   List<dynamic> insights = [];
   String measurementUnit = 'mg/dL'; // Default measurement unit
+  final String? apiUrl = dotenv.env['API_URL'];
 
   @override
   void initState() {
@@ -41,7 +43,7 @@ class _GRTMainScreenState extends State<GRTMainScreen> {
     String? token = await AuthService().getAccessToken();
     try {
       final response = await http.get(
-        Uri.parse('http://192.168.1.14:8000/api/glycaemic-response-main'),
+        Uri.parse('$apiUrl/glycaemic-response-main'),
         headers: {
           'Authorization': 'Bearer $token',
         },
@@ -99,8 +101,7 @@ class _GRTMainScreenState extends State<GRTMainScreen> {
     String? token = await AuthService().getAccessToken();
     try {
       final response = await http.get(
-        Uri.parse('http://192.168.1.14:8000/api/glycaemic-response-analysis'), // Physical Device
-        // Uri.parse('http://172.20.10.3:8000/api/glycaemic-response-analysis/'), // Hotspot
+        Uri.parse('$apiUrl/glycaemic-response-analysis'),
         headers: {
           'Authorization': 'Bearer $token',
         },

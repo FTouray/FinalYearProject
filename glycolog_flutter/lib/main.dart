@@ -6,6 +6,7 @@ import 'package:Glycolog/questionnaire/exercise_step.dart';
 import 'package:Glycolog/questionnaire/meal_step.dart';
 import 'package:Glycolog/questionnaire/symptom_step.dart';
 import 'package:Glycolog/services/auth_service.dart';
+import 'package:Glycolog/virtualHealthCoach/virtual_health_coach.dart';
 import 'package:flutter/material.dart';
 import 'glucoseLog/gL_add_level_screen.dart';
 import 'glucoseLog/gL_history_screen.dart';
@@ -21,12 +22,13 @@ import 'glycaemicResponseTracker/gRT_main_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-
+import 'package:flutter_dotenv/flutter_dotenv.dart';  
 import 'questionnaire/glucose_step.dart';
 import 'questionnaire/review.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized(); // Ensure bindings are initialized
+  await dotenv.load(fileName: ".env");
   final darkMode =
       await _loadDarkModePreference(); // Load dark mode preference before running app
   final token = await _loadToken(); // Load token from SharedPreferences
@@ -87,12 +89,12 @@ class _MyAppState extends State<MyApp> {
         'darkModeEnabled', isEnabled); // Save the user's dark mode preference
   }
 
+  final String baseUrl = dotenv.env['API_URL']!;
+
   // Function to refresh the token
   Future<void> _refreshToken(BuildContext context) async {
     final response = await http.post(
-      // Uri.parse('http://10.0.2.2:8000/api/token/refresh/'), // For Emulator Token refresh API endpoint
-      Uri.parse('http://192.168.1.14:8000/api/token/refresh/'), // For Physical Device
-     // Uri.parse('http://172.20.10.3:8000/api/token/refresh/'), // Hotspot
+      Uri.parse('${baseUrl}token/refresh/'),
       headers: {'Content-Type': 'application/json'},
       body:
           json.encode({'refresh': _token}), // Include refresh token in the body
@@ -171,6 +173,7 @@ class _MyAppState extends State<MyApp> {
         '/review': (context) => const ReviewScreen(),
         '/data-visualization': (context) => const QuestionnaireVisualizationScreen(),
         '/insights': (context) => const InsightsScreen(),
+        'virtual_health_coach': (context) => const VirtualHealthCoachScreen(),
       },
     );
   }
