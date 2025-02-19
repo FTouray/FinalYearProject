@@ -8,12 +8,12 @@ from rest_framework.response import Response
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
 
+from core.ai_services import generate_ai_recommendation
 from core.ai_model import feature_engineering
 from core.ai_model.data_processing import load_data_from_db
 from core.ai_model.recommendation_engine import generate_recommendations, load_models, predict_glucose, predict_wellness_risk
-from core.services.google_fit_service import get_smartwatch_data
-from .serializers import ChatMessageSerializer, ExerciseCheckSerializer, ExerciseRecommendationSerializer, FoodCategorySerializer, FoodItemSerializer, GlucoseCheckSerializer, GlucoseLogSerializer, MealCheckSerializer, MealSerializer, QuestionnaireSessionSerializer, RegisterSerializer, LoginSerializer, SettingsSerializer, SymptomCheckSerializer
-from .models import ChatMessage, CustomUser, CustomUserToken, ExerciseCheck, ExerciseRecommendation, FeelingCheck, FoodCategory, FoodItem, GlucoseCheck, GlucoseLog, GlycaemicResponseTracker, Meal, MealCheck, QuestionnaireSession, SymptomCheck  
+from .serializers import ChatMessageSerializer, ExerciseCheckSerializer, FoodCategorySerializer, FoodItemSerializer, GlucoseCheckSerializer, GlucoseLogSerializer, MealCheckSerializer, MealSerializer, QuestionnaireSessionSerializer, RegisterSerializer, LoginSerializer, SettingsSerializer, SymptomCheckSerializer
+from .models import AIHealthTrend, AIRecommendation, ChatMessage, CustomUser, CustomUserToken, ExerciseCheck, FeelingCheck, FitnessActivity, FoodCategory, FoodItem, GlucoseCheck, GlucoseLog, GlycaemicResponseTracker, LocalNotificationPrompt, Meal, MealCheck, QuestionnaireSession, SymptomCheck  
 from django.contrib.auth import get_user_model
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.permissions import AllowAny
@@ -654,113 +654,6 @@ def convert_glucose_units(glucose_value, preferred_unit="mg/dL"):
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
-def virtual_health_coach(request):
-    user = request.user
-
-    # Fetch user’s glucose unit preference from settings
-    user_settings = user.settings.first()
-    preferred_unit = user_settings.glucose_unit if user_settings else "mg/dL"
-
-    # Fetch the most recent exercise and glucose data
-    latest_exercise = ExerciseCheck.objects.filter(user=user).order_by("-created_at").first()
-    latest_glucose_log = GlucoseLog.objects.filter(user=user).order_by("-timestamp").first()
-    latest_glucose_check = GlucoseCheck.objects.filter(user=user).order_by("-timestamp").first()
-
-    # Determine the most recent glucose reading
-    latest_glucose = max(
-        filter(None, [latest_glucose_log, latest_glucose_check]),
-        key=lambda x: x.timestamp,
-        default=None
-    )
-
-    # Count total exercise sessions
-    total_exercise_sessions = ExerciseCheck.objects.filter(user=user).count()
-
-    # Calculate average glucose level from both sources
-    avg_glucose_log = GlucoseLog.objects.filter(user=user).aggregate(Avg('glucose_level'))['glucose_level__avg']
-    avg_glucose_check = GlucoseCheck.objects.filter(user=user).aggregate(Avg('glucose_level'))['glucose_level__avg']
-
-    # Determine the overall average glucose level
-    if avg_glucose_log and avg_glucose_check:
-        avg_glucose_level = (avg_glucose_log + avg_glucose_check) / 2
-    else:
-        avg_glucose_level = avg_glucose_log or avg_glucose_check or None
-
-    # Fetch smartwatch data
-    smartwatch_data = get_smartwatch_data(user)
-
-    # Format summaries for OpenAI prompt
-    exercise_summary = (
-        f"- {latest_exercise.exercise_type} for {latest_exercise.exercise_duration} mins at {latest_exercise.exercise_intensity} intensity."
-        if latest_exercise else "No recent exercise logs."
-    )
-
-    glucose_summary = (
-        f"{latest_glucose.timestamp}: {convert_glucose_units(latest_glucose.glucose_level, preferred_unit)} {preferred_unit}"
-        if latest_glucose else "No recent glucose logs."
-    )
-
-    smartwatch_summary = smartwatch_data if smartwatch_data else "No smartwatch data available."
-
-    # OpenAI Prompt
-    prompt = f"""
-    The user has diabetes and their health data is as follows:
-    
-    - **Most Recent Glucose Reading (before exercise):** {glucose_summary}
-    - **Most Recent Exercise Session (after glucose reading):** {exercise_summary}
-    - **Smartwatch/Phone Fitness Data (recent activity trends):** {smartwatch_summary}
-
-    **Historical Data Summary:**
-    - Total Exercise Sessions: {total_exercise_sessions}
-    - Average Glucose Level: {avg_glucose_level if avg_glucose_level else 'N/A'} {preferred_unit}
-
-    **Your task:**
-    1. Provide personalized exercise recommendations that align with glucose levels and exercise history.
-    2. Use smartwatch data to adjust plans, ensuring they meet the user's fitness goals.
-    3. Suggest ways to stabilize glucose through exercise.
-    4. Ensure all recommendations are diabetes-friendly and promote overall wellness.
-
-    Present recommendations in bullet-point format.
-    """
-
-    # Sending prompt to OpenAI API
-    response = openai.ChatCompletion.create(
-        model="gpt-4",
-        messages=[
-            {"role": "system", "content": "You are a certified fitness coach specializing in diabetic health management."},
-            {"role": "user", "content": prompt},
-        ],
-    )
-
-    ai_response = response["choices"][0]["message"]["content"]
-
-    # Save AI-generated recommendation
-    recommendation = ExerciseRecommendation.objects.create(
-        user=user,
-        glucose_level=latest_glucose.glucose_level if latest_glucose else None,
-        glucose_unit=preferred_unit,
-        exercise_type=latest_exercise.exercise_type if latest_exercise else None,
-        exercise_duration=latest_exercise.exercise_duration if latest_exercise else None,
-        exercise_intensity=latest_exercise.exercise_intensity if latest_exercise else None,
-        recommendation_text=ai_response
-    )
-
-    serialized_recommendation = ExerciseRecommendationSerializer(recommendation)
-    return JsonResponse(serialized_recommendation.data)
-
-@api_view(["GET"])
-@permission_classes([IsAuthenticated])
-def get_past_recommendations(request):
-    """Retrieve past AI-generated exercise recommendations."""
-    user = request.user
-    recommendations = ExerciseRecommendation.objects.filter(user=user).order_by("-timestamp")[:10]
-
-    data = ExerciseRecommendationSerializer(recommendations, many=True).data
-    
-    return JsonResponse({"past_recommendations": data})
-
-@api_view(["GET"])
-@permission_classes([IsAuthenticated])
 def authorize_google_fit(request):
     """Redirect user to Google Fit OAuth for authorization."""
     flow = Flow.from_client_secrets_file(
@@ -802,9 +695,85 @@ def google_fit_callback(request):
 
     return JsonResponse({"message": "Google Fit connected successfully!"})
 
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def virtual_health_coach(request):
+    """Generate AI-driven personalized fitness recommendations based on user’s health data."""
+    user = request.user
+
+    # Fetch user's glucose unit preference
+    user_settings = getattr(user, "settings", None)
+    preferred_unit = user_settings.preferred_unit if user_settings else "mg/dL"
+
+    # Fetch most recent glucose reading
+    latest_glucose = (
+        FitnessActivity.objects.filter(user=user, activity_type="Glucose Measurement")
+        .order_by("-start_time")
+        .first()
+    )
+
+    # Fetch past 5 fitness activities (exercise, sleep, etc.)
+    recorded_fitness_activities = FitnessActivity.objects.filter(user=user).order_by("-start_time")[:5]
+
+    # Aggregate health stats
+    avg_glucose_level = (
+        FitnessActivity.objects.filter(user=user, activity_type="Glucose Measurement")
+        .aggregate(Avg("glucose_level"))
+        .get("glucose_level__avg")
+    )
+
+    total_exercise_sessions = FitnessActivity.objects.filter(user=user, activity_type="Exercise").count()
+
+    # Format data summaries for AI
+    glucose_summary = (
+        f"{latest_glucose.start_time.strftime('%Y-%m-%d %H:%M')}: {latest_glucose.glucose_level} {preferred_unit}"
+        if latest_glucose else "No recent glucose logs."
+    )
+
+    # Call AI function to generate recommendations
+    ai_response = generate_ai_recommendation(user, recorded_fitness_activities)
+
+    # Save AI-generated recommendation linked to multiple FitnessActivity records
+    ai_recommendation = AIRecommendation.objects.create(
+        user=user,
+        recommendation_text=ai_response,
+    )
+    ai_recommendation.fitness_activities.set(recorded_fitness_activities)
+
+    return JsonResponse({
+        "recommendation": ai_response,
+        "glucose_summary": glucose_summary,
+        "total_exercise_sessions": total_exercise_sessions,
+        "average_glucose_level": avg_glucose_level if avg_glucose_level else "N/A",
+    })
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def get_past_recommendations(request):
+    """Retrieve past AI-generated exercise recommendations."""
+    user = request.user
+    recommendations = AIRecommendation.objects.filter(user=user).order_by("-generated_at")[:10]
+
+    data = [
+        {
+            "generated_at": rec.generated_at.strftime("%Y-%m-%d %H:%M:%S"),
+            "recommendation": rec.recommendation_text,
+            "related_activities": [
+                f"{activity.activity_type} ({activity.start_time.strftime('%Y-%m-%d %H:%M')})"
+                for activity in rec.fitness_activities.all()
+            ],
+        }
+        for rec in recommendations
+    ]
+
+    return JsonResponse({"past_recommendations": data})
+
+
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def chat_with_health_coach(request):
+    """Allow users to chat with the AI-driven health coach."""
     user = request.user
     user_message = request.data.get("message")
 
@@ -812,18 +781,13 @@ def chat_with_health_coach(request):
     ChatMessage.objects.create(user=user, sender="user", message=user_message)
 
     # Fetch recent health data
-    latest_exercise = ExerciseCheck.objects.filter(user=user).order_by("-created_at").first()
-    latest_glucose_log = GlucoseLog.objects.filter(user=user).order_by("-timestamp").first()
-    smartwatch_data = get_smartwatch_data(user)
+    recorded_fitness_activities = FitnessActivity.objects.filter(user=user).order_by("-start_time")[:5]
 
-    # Build system context for OpenAI
-    health_context = f"""
-    The user has diabetes. Here's their recent health data:
-    
-    - Last Exercise: {latest_exercise.exercise_type if latest_exercise else 'N/A'} for {latest_exercise.exercise_duration if latest_exercise else 'N/A'} mins
-    - Last Glucose Level: {latest_glucose_log.glucose_level if latest_glucose_log else 'N/A'} mg/dL
-    - Smartwatch Data: {smartwatch_data if smartwatch_data else 'No data available'}
-    """
+    # Fetch past AI recommendations
+    past_recommendations = AIRecommendation.objects.filter(user=user).order_by("-generated_at")[:5]
+    recommendations_summary = "\n".join(
+        [f"{rec.recommendation_text} (given on {rec.generated_at.strftime('%Y-%m-%d')})" for rec in past_recommendations]
+    ) if past_recommendations else "No past recommendations available."
 
     # Fetch past chat history
     past_messages = ChatMessage.objects.filter(user=user).order_by("timestamp")
@@ -832,14 +796,20 @@ def chat_with_health_coach(request):
         for msg in past_messages
     ]
 
-    # Append latest user message
+    # Append past recommendations & latest fitness data
+    fitness_summary = "\n".join(
+        [f"{activity.activity_type} for {activity.duration_minutes} mins" for activity in recorded_fitness_activities]
+    ) if recorded_fitness_activities else "No fitness data available."
+
+    conversation_history.append({"role": "system", "content": f"Previously given recommendations:\n{recommendations_summary}"})
+    conversation_history.append({"role": "system", "content": f"Recent fitness data:\n{fitness_summary}"})
     conversation_history.append({"role": "user", "content": user_message})
 
     # Send prompt to OpenAI API
     response = openai.ChatCompletion.create(
         model="gpt-4",
         messages=[
-            {"role": "system", "content": f"You are a fitness coach specialized in diabetic health. {health_context}"},
+            {"role": "system", "content": "You are a virtual fitness coach providing expert diabetic health recommendations."},
             *conversation_history,
         ],
     )
@@ -855,7 +825,58 @@ def chat_with_health_coach(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def get_chat_history(request):
+    """Retrieve user’s chat history with the AI coach."""
     user = request.user
     chat_history = ChatMessage.objects.filter(user=user).order_by("timestamp")
-    serialized_history = ChatMessageSerializer(chat_history, many=True)
-    return JsonResponse({"chat_history": serialized_history.data})
+
+    data = [
+        {
+            "timestamp": msg.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+            "sender": msg.sender,
+            "message": msg.message,
+        }
+        for msg in chat_history
+    ]
+
+    return JsonResponse({"chat_history": data})
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def get_local_notifications(request):
+    """Return pending local notifications for the user."""
+    user = request.user
+    notifications = LocalNotificationPrompt.objects.filter(user=user, is_sent=False)
+
+    data = [
+        {"id": notif.id, "message": notif.message}
+        for notif in notifications
+    ]
+
+    # Mark notifications as sent so they are not resent
+    notifications.update(is_sent=True)
+
+    return JsonResponse({"notifications": data})
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def get_health_trends(request, period_type="weekly"):
+    """Fetch the latest AI-generated health trends (weekly/monthly)."""
+    user = request.user
+    latest_trend = AIHealthTrend.objects.filter(user=user, period_type=period_type).order_by("-start_date").first()
+
+    if not latest_trend:
+        return JsonResponse({"message": f"No {period_type} trends available."}, status=404)
+
+    data = {
+        "start_date": latest_trend.start_date.strftime("%Y-%m-%d"),
+        "end_date": latest_trend.end_date.strftime("%Y-%m-%d"),
+        "avg_glucose_level": latest_trend.avg_glucose_level,
+        "avg_steps": latest_trend.avg_steps,
+        "avg_sleep_hours": latest_trend.avg_sleep_hours,
+        "avg_heart_rate": latest_trend.avg_heart_rate,
+        "total_exercise_sessions": latest_trend.total_exercise_sessions,
+        "ai_summary": latest_trend.ai_summary,
+    }
+
+    return JsonResponse({"trend": data})

@@ -284,19 +284,6 @@ class Insight(models.Model):
     def __str__(self):
         return f"Insight for {self.user.username} - {self.timestamp.strftime('%d/%m/%Y %H:%M:%S')}"
 
-class ExerciseRecommendation(models.Model):
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
-    timestamp = models.DateTimeField(auto_now_add=True)
-    glucose_level = models.FloatField(null=True, blank=True)
-    glucose_unit = models.CharField(max_length=10, default="mg/dL")
-    exercise_type = models.CharField(max_length=100, null=True, blank=True)
-    exercise_duration = models.IntegerField(null=True, blank=True)  # Minutes
-    exercise_intensity = models.CharField(max_length=50, null=True, blank=True)
-    recommendation_text = models.TextField()  # AI-generated recommendation
-
-    def __str__(self):
-        return f"{self.user.username} - {self.timestamp}"
-
 class CustomUserToken(models.Model):
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name="google_fit_token")
     token = models.CharField(max_length=255)
@@ -331,21 +318,102 @@ class ChatMessage(models.Model):
     def __str__(self):
         return f"{self.user.username} - {self.sender} - {self.timestamp}"
 
-# Model to store user activity data from smartwatch
-class SmartwatchActivity(models.Model):
+# Model to store user activity data from Google Fit 
+class FitnessActivity(models.Model):
+    ACTIVITY_SOURCES = [
+        ("Smartwatch", "Smartwatch"),
+        ("Phone", "Phone"),
+        ("Manual Entry", "Manual Entry"),
+    ]
+
+    SLEEP_STAGES = [
+        ("Light Sleep", "Light Sleep"),
+        ("Deep Sleep", "Deep Sleep"),
+        ("REM Sleep", "REM Sleep"),
+        ("Unspecified", "Unspecified"),
+    ]
+    
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     activity_type = models.CharField(max_length=100)
+    source = models.CharField(max_length=20, choices=ACTIVITY_SOURCES, default="Smartwatch")
     start_time = models.DateTimeField()
     end_time = models.DateTimeField()
-    duration_minutes = models.IntegerField()
+    duration_minutes = models.FloatField()
     steps = models.IntegerField(null=True, blank=True)
+    heart_rate = models.FloatField(null=True, blank=True)
+    sleep_stage = models.CharField(max_length=50, choices=SLEEP_STAGES, null=True, blank=True)
+    total_sleep_hours = models.FloatField(null=True, blank=True)
     calories_burned = models.FloatField(null=True, blank=True)
     distance_meters = models.FloatField(null=True, blank=True)
+
+    last_activity_time = models.DateTimeField(null=True, blank=True)  # Last recorded activity time
+    last_synced = models.DateTimeField(auto_now=True)  # Timestamp of last sync with Google Fit
+
+    
+    class Meta:
+        indexes = [
+            models.Index(fields=["start_time"]),
+        ]
+        ordering = ["-start_time"]
+
+    def __str__(self):
+        return f"{self.user.username} - {self.activity_type} on {self.start_time.strftime('%Y-%m-%d')}"
+    
+# Model to store AI-generated insights based on weekly/monthly trends
+class AIHealthTrend(models.Model):
+    """Stores AI-generated insights based on weekly/monthly trends."""
+    
+    PERIOD_CHOICES = [("weekly", "Weekly"), ("monthly", "Monthly")]
+
+    user = models.ForeignKey("CustomUser", on_delete=models.CASCADE)
+    period_type = models.CharField(max_length=10, choices=PERIOD_CHOICES)
+    start_date = models.DateField()  # Start of the period (week/month)
+    end_date = models.DateField()  # End of the period
+    avg_glucose_level = models.FloatField(null=True, blank=True)
+    avg_steps = models.IntegerField(null=True, blank=True)
+    avg_sleep_hours = models.FloatField(null=True, blank=True)
+    avg_heart_rate = models.FloatField(null=True, blank=True)
+    total_exercise_sessions = models.IntegerField(null=True, blank=True)
+    ai_summary = models.TextField(null=True, blank=True)  # AI-generated trend analysis
 
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.user.username} - {self.activity_type} on {self.start_time.strftime('%Y-%m-%d')}"
+        return f"{self.user.username} - {self.period_type.capitalize()} ({self.start_date} to {self.end_date})"
+
+    # Model to store ai-generated recommendations based on user fitness and health data
+class AIRecommendation(models.Model):
+    """Stores AI-generated recommendations based on user fitness and health data."""
+
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="ai_recommendations")
+    generated_at = models.DateTimeField(auto_now_add=True)
+    recommendation_text = models.TextField()  # AI-generated advice
+
+    fitness_activities = models.ManyToManyField(FitnessActivity, blank=True)
+
+    # Health-Specific Context
+    glucose_level = models.FloatField(null=True, blank=True)  # Latest glucose reading
+    glucose_unit = models.CharField(max_length=10, default="mg/dL")  # mg/dL or mmol/L
+    context_summary = models.TextField(blank=True, null=True)  # Explanation of AI’s reasoning
+    ai_version = models.CharField(max_length=20, default="GPT-4")  # Track AI model version used
+    
+    health_trend = models.ForeignKey(AIHealthTrend, on_delete=models.SET_NULL, null=True, blank=True)
+
+    class Meta:
+        ordering = ["-generated_at"]
+
+    def __str__(self):
+        return f"AI Recommendation for {self.user.username} - {self.generated_at.strftime('%Y-%m-%d %H:%M:%S')}"
+
+# Model to store notifications sent to users
+class LocalNotificationPrompt(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    message = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_sent = models.BooleanField(default=False)  # Mark if it was sent to the user
+
+    def __str__(self):
+        return f"{self.user.username} - {self.message}"
 
 # Model to store medication details
 class Medication(models.Model):

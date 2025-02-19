@@ -36,6 +36,8 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://192.168.1.12",
     "http://192.168.1.14",
+    "http://147.252.144.128"
+    
 ]
 
 
@@ -52,7 +54,18 @@ INSTALLED_APPS = [
     "rest_framework",
     "rest_framework_simplejwt",
     "corsheaders",
+    'django_q',
 ]
+
+Q_CLUSTER = {
+    "name": "DjangoQ",
+    "workers": 4,
+    "timeout": 90,
+    "retry": 120,
+    "queue_limit": 50,
+    "bulk": 10,
+    "orm": "default",
+}
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",

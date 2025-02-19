@@ -16,49 +16,48 @@ class _VirtualHealthCoachScreenState extends State<VirtualHealthCoachScreen> {
   final TextEditingController _controller = TextEditingController();
   List<Map<String, String>> _messages = [];
   List<Map<String, String>> _recommendations = [];
+  List<Map<String, String>> _notifications = [];
+  Map<String, dynamic> _healthTrends = {};
   bool isLoading = false;
-  final String? apiUrl = dotenv.env['API_URL']; 
+  final String? apiUrl = dotenv.env['API_URL'];
 
   @override
   void initState() {
     super.initState();
     _fetchChatHistory();
     _fetchRecommendations();
+    _fetchNotifications();
+    _fetchHealthTrends("weekly");
   }
 
   Future<void> _fetchChatHistory() async {
     String? token = await AuthService().getAccessToken();
     final response = await http.get(
-      Uri.parse('$apiUrl/get-chat-history/'),
+      Uri.parse('$apiUrl/virtual-health-coach/chat/history/'),
       headers: {
         'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json'
       },
     );
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
       setState(() {
-        _messages =
-            List<Map<String, String>>.from(data['chat_history'].map((msg) => {
-                  'role': msg['sender'],
-                  'content': msg['message'],
-                }));
+        _messages = List<Map<String, String>>.from(data['chat_history']
+            .map((msg) => {'role': msg['sender'], 'content': msg['message']}));
       });
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to load chat history')),
-      );
+      _showErrorMessage('Failed to load chat history');
     }
   }
 
   Future<void> _fetchRecommendations() async {
     String? token = await AuthService().getAccessToken();
     final response = await http.get(
-      Uri.parse('$apiUrl/get-past-recommendations/'),
+      Uri.parse('$apiUrl/virtual-health-coach/recommendations/'),
       headers: {
         'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json'
       },
     );
 
@@ -67,14 +66,53 @@ class _VirtualHealthCoachScreenState extends State<VirtualHealthCoachScreen> {
       setState(() {
         _recommendations = List<Map<String, String>>.from(
             data['past_recommendations'].map((rec) => {
-                  'timestamp': rec['timestamp'],
-                  'recommendation': rec['recommendation'],
+                  'timestamp': rec['generated_at'],
+                  'recommendation': rec['recommendation']
                 }));
       });
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to load recommendations')),
-      );
+      _showErrorMessage('Failed to load recommendations');
+    }
+  }
+
+  Future<void> _fetchNotifications() async {
+    String? token = await AuthService().getAccessToken();
+    final response = await http.get(
+      Uri.parse('$apiUrl/local-notifications/'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json'
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      setState(() {
+        _notifications = List<Map<String, String>>.from(data['notifications']
+            .map((notif) => {'message': notif['message']}));
+      });
+    } else {
+      _showErrorMessage('Failed to load notifications');
+    }
+  }
+
+  Future<void> _fetchHealthTrends(String period) async {
+    String? token = await AuthService().getAccessToken();
+    final response = await http.get(
+      Uri.parse('$apiUrl/health-trends/$period/'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json'
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      setState(() {
+        _healthTrends = data['trend'];
+      });
+    } else {
+      _showErrorMessage('Failed to load health trends');
     }
   }
 
@@ -87,10 +125,10 @@ class _VirtualHealthCoachScreenState extends State<VirtualHealthCoachScreen> {
 
     String? token = await AuthService().getAccessToken();
     final response = await http.post(
-      Uri.parse('$apiUrl/chat-with-health-coach/'),
+      Uri.parse('$apiUrl/virtual-health-coach/chat/'),
       headers: {
         'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json'
       },
       body: json.encode({'message': message}),
     );
@@ -102,27 +140,14 @@ class _VirtualHealthCoachScreenState extends State<VirtualHealthCoachScreen> {
         isLoading = false;
       });
     } else {
-      setState(() {
-        isLoading = false;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to send message')),
-      );
+      _showErrorMessage('Failed to send message');
+      setState(() => isLoading = false);
     }
   }
 
-  void _navigateToRecommendations() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) =>
-            RecommendationsScreen(recommendations: _recommendations),
-      ),
-    );
-  }
-
-  void _navigateToSmartwatchData() {
-    Navigator.pushNamed(context, '/smartwatch-data');
+  void _showErrorMessage(String message) {
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -131,18 +156,6 @@ class _VirtualHealthCoachScreenState extends State<VirtualHealthCoachScreen> {
       appBar: AppBar(
         title: const Text('Virtual Health Coach'),
         backgroundColor: Colors.blue[800],
-        actions: [
-          IconButton(
-            icon: Icon(Icons.fitness_center),
-            onPressed: _navigateToRecommendations,
-            tooltip: 'View Recommendations',
-          ),
-          IconButton(
-            icon: Icon(Icons.watch),
-            onPressed: _navigateToSmartwatchData,
-            tooltip: 'Smartwatch Data',
-          ),
-        ],
       ),
       body: Column(
         children: [
@@ -196,36 +209,6 @@ class _VirtualHealthCoachScreenState extends State<VirtualHealthCoachScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-// Recommendations Screen to display past AI-generated recommendations
-class RecommendationsScreen extends StatelessWidget {
-  final List<Map<String, String>> recommendations;
-
-  const RecommendationsScreen({super.key, required this.recommendations});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Exercise Recommendations'),
-        backgroundColor: Colors.blue[800],
-      ),
-      body: ListView.builder(
-        itemCount: recommendations.length,
-        itemBuilder: (context, index) {
-          final recommendation = recommendations[index];
-          return Card(
-            margin: EdgeInsets.all(8.0),
-            child: ListTile(
-              title: Text(recommendation['recommendation'] ?? ''),
-              subtitle: Text('Date: ${recommendation['timestamp']}'),
-            ),
-          );
-        },
       ),
     );
   }

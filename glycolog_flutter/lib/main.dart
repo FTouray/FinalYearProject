@@ -28,7 +28,7 @@ import 'questionnaire/review.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized(); // Ensure bindings are initialized
-  await dotenv.load(fileName: ".env");
+  await dotenv.load(fileName: "assets/.env");
   final darkMode =
       await _loadDarkModePreference(); // Load dark mode preference before running app
   final token = await _loadToken(); // Load token from SharedPreferences
@@ -173,7 +173,7 @@ class _MyAppState extends State<MyApp> {
         '/review': (context) => const ReviewScreen(),
         '/data-visualization': (context) => const QuestionnaireVisualizationScreen(),
         '/insights': (context) => const InsightsScreen(),
-        'virtual_health_coach': (context) => const VirtualHealthCoachScreen(),
+        '/virtual-health-coach': (context) => const VirtualHealthCoachScreen(),
       },
     );
   }
