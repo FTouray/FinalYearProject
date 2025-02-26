@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -24,6 +25,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
       true; // Password visibility for confirm password field
   String? errorMessage;
   final String? apiUrl = dotenv.env['API_URL']; 
+  final String? oneSignalAppId = dotenv.env['ONESIGNAL_APP_ID'];
+  final String? oneSignalApiKey = dotenv.env['ONESIGNAL_API_KEY'];
 
   Future<void> register() async {
     // Gather data from form fields
@@ -72,6 +75,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
           errorMessage = null; // Clear error if registration is successful
         });
         print('User registered successfully!');
+        
+        final responseData = json.decode(response.body);
+        String accessToken = responseData['access']; // Get access token
+
+        SharedPreferences prefs = await SharedPreferences.getInstance();
+        await prefs.setString('access_token', accessToken);
+
+         await fetchOneSignalPlayerId(accessToken);
 
         // Navigate back to the login screen after successful registration
         Navigator.pushReplacementNamed(context, '/login');
@@ -85,6 +96,45 @@ class _RegisterScreenState extends State<RegisterScreen> {
       setState(() {
         errorMessage = 'An error occurred. Please try again.';
       });
+    }
+  }
+
+     Future<void> fetchOneSignalPlayerId(String accessToken) async {
+    final response = await http.get(
+      Uri.parse("https://onesignal.com/api/v1/players?app_id=$oneSignalAppId"),
+      headers: {
+        "Authorization": "Basic $oneSignalApiKey",
+        "Content-Type": "application/json"
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> players = json.decode(response.body)['players'];
+
+      if (players.isNotEmpty) {
+        String playerId = players.first['id'];
+        await sendPlayerIdToBackend(accessToken, playerId);
+      }
+    } else {
+      print("Failed to fetch OneSignal Player ID: ${response.body}");
+    }
+  }
+
+  Future<void> sendPlayerIdToBackend(
+      String accessToken, String playerId) async {
+    final response = await http.post(
+      Uri.parse('$apiUrl/update-onesignal-player-id/'),
+      headers: {
+        'Authorization': 'Bearer $accessToken',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({"player_id": playerId}),
+    );
+
+    if (response.statusCode == 200) {
+      print("OneSignal Player ID registered successfully.");
+    } else {
+      print("Failed to register OneSignal Player ID: ${response.body}");
     }
   }
 

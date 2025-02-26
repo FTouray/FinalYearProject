@@ -45,6 +45,5 @@ flutter {
 }
 
 dependencies {
-    // Add the Google Fit SDK dependency here
     implementation 'com.google.android.gms:play-services-fitness:21.1.0'
 }

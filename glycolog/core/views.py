@@ -1,19 +1,23 @@
 from datetime import datetime, timedelta, timezone
 from django.utils import timezone
 from django.http import JsonResponse
+import firebase_admin
 import pandas as pd
 from django.db.models import Max
+import requests
 from rest_framework import status
 from rest_framework.response import Response
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
-
-from core.ai_services import generate_ai_recommendation
+from django.conf import settings
+from core.ai_services import generate_ai_recommendation, generate_health_trends
 from core.ai_model import feature_engineering
 from core.ai_model.data_processing import load_data_from_db
 from core.ai_model.recommendation_engine import generate_recommendations, load_models, predict_glucose, predict_wellness_risk
+from core.services.google_fit_service import fetch_all_users_fitness_data, fetch_fitness_data
+from core.tasks import send_push_notification
 from .serializers import ChatMessageSerializer, ExerciseCheckSerializer, FoodCategorySerializer, FoodItemSerializer, GlucoseCheckSerializer, GlucoseLogSerializer, MealCheckSerializer, MealSerializer, QuestionnaireSessionSerializer, RegisterSerializer, LoginSerializer, SettingsSerializer, SymptomCheckSerializer
-from .models import AIHealthTrend, AIRecommendation, ChatMessage, CustomUser, CustomUserToken, ExerciseCheck, FeelingCheck, FitnessActivity, FoodCategory, FoodItem, GlucoseCheck, GlucoseLog, GlycaemicResponseTracker, LocalNotificationPrompt, Meal, MealCheck, QuestionnaireSession, SymptomCheck  
+from .models import AIHealthTrend, AIRecommendation, ChatMessage, CustomUser, CustomUserToken, ExerciseCheck, FeelingCheck, FitnessActivity, FoodCategory, FoodItem, GlucoseCheck, GlucoseLog, GlycaemicResponseTracker, LocalNotificationPrompt, Meal, MealCheck, OneSignalPlayerID, QuestionnaireSession, SymptomCheck  
 from django.contrib.auth import get_user_model
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.permissions import AllowAny
@@ -25,9 +29,12 @@ import joblib
 import openai
 import os
 from google_auth_oauthlib.flow import Flow
-
+import logging
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
+ONESIGNAL_APP_ID = os.getenv("ONESIGNAL_APP_ID")
+ONESIGNAL_API_KEY = os.getenv("ONESIGNAL_API_KEY")
 
 
 def parse_date(date_str):
@@ -45,12 +52,42 @@ def register_user(request):
 
     if serializer.is_valid():
         serializer.save()
-        return Response({"message": "User registered successfully"}, status=status.HTTP_201_CREATED)
+        player_id = create_onesignal_player_id(user)
+
+        return Response({
+            "message": "User registered successfully", "onesignal_player_id": player_id}, status=status.HTTP_201_CREATED)
     else:
         # Print validation errors for debugging
         print("Validation errors:", serializer.errors)
         # Return validation errors from the serializer
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+def create_onesignal_player_id(user):
+    """
+    Creates a OneSignal Player ID for the new user.
+    """
+    url = "https://onesignal.com/api/v1/players"
+    headers = {
+        "Authorization": f"Basic {ONESIGNAL_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "app_id": ONESIGNAL_APP_ID,
+        "identifier": user.email,  # Use email as identifier
+        "language": "en",
+        "timezone": 0,
+        "device_type": 0  # 0 = iOS & Android
+    }
+
+    response = requests.post(url, headers=headers, json=payload)
+
+    if response.status_code == 200:
+        player_id = response.json().get("id")
+        print(f"OneSignal Player ID created: {player_id}")
+        return player_id
+    else:
+        print(f"Failed to create OneSignal Player ID: {response.json()}")
+        return None
 
 @api_view(['POST'])
 @permission_classes([AllowAny])  
@@ -68,13 +105,15 @@ def login_user(request):
             # Generate access token
             refresh = RefreshToken.for_user(user)
             access = AccessToken.for_user(user)
+            player_id = fetch_onesignal_player_id(user)
 
             print(f"Login successful for user: {username}")
             return Response({
                 "access": str(access),  # Include the access token in the response
                 "refresh": str(refresh),  # Refresh token
                 "first_name": user.first_name,  # Include the first name in the response
-                "username": user.username
+                "username": user.username,
+                "onesignal_player_id": player_id
             }, status=status.HTTP_200_OK)
         else:
             print(f"Login failed for user: {username}")
@@ -82,6 +121,42 @@ def login_user(request):
     else:
         print("Serializer validation failed:", serializer.errors)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+def fetch_onesignal_player_id(user):
+    """
+    Fetches OneSignal Player ID from OneSignal API.
+    """
+    url = f"https://onesignal.com/api/v1/players?app_id={ONESIGNAL_APP_ID}"
+    headers = {
+        "Authorization": f"Basic {ONESIGNAL_API_KEY}",
+        "Content-Type": "application/json"
+    }
+
+    response = requests.get(url, headers=headers)
+
+    if response.status_code == 200:
+        players = response.json().get("players", [])
+        for player in players:
+            if player.get("identifier") == user.email:  # Check if email matches
+                return player.get("id")
+
+    return None
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def update_onesignal_player_id(request):
+    """
+    Allows authenticated users to update their OneSignal Player ID.
+    """
+    user = request.user
+    player_id = request.data.get("player_id")
+
+    if not player_id:
+        return Response({"error": "OneSignal Player ID is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+    OneSignalPlayerID.objects.update_or_create(user=user, defaults={"player_id": player_id})
+
+    return Response({"message": "OneSignal Player ID updated successfully."}, status=status.HTTP_200_OK)
 
 @api_view(['GET','POST'])
 @permission_classes([IsAuthenticated])  # Ensure the user is authenticated
@@ -652,67 +727,78 @@ def convert_glucose_units(glucose_value, preferred_unit="mg/dL"):
         return round(glucose_value / 18, 2)  # Convert mg/dL to mmol/L
     return glucose_value  # Keep mg/dL as is
 
-@api_view(["GET"])
-@permission_classes([IsAuthenticated])
 def authorize_google_fit(request):
     """Redirect user to Google Fit OAuth for authorization."""
-    flow = Flow.from_client_secrets_file(
-        'path/to/client_secret.json',  # Replace with your client secret file path
-        scopes=['https://www.googleapis.com/auth/fitness.activity.read'],
-        redirect_uri='http://localhost:8000/api/google_fit/callback/'  # Match with Google Console redirect URI
-    )
-    authorization_url, state = flow.authorization_url(access_type='offline', include_granted_scopes='true')
-    request.session['oauth_state'] = state  # Save state to session for security
-    return redirect(authorization_url)
+    try:
+        flow = Flow.from_client_secrets_file(
+            settings.GOOGLE_FIT_CLIENT_SECRET,  # Load from settings
+            scopes=['https://www.googleapis.com/auth/fitness.activity.read'],
+            redirect_uri=f"{settings.API_URL}/google-fit/callback/"
+        )
+        authorization_url, state = flow.authorization_url(
+            access_type='offline', 
+            include_granted_scopes='true'
+        )
+        request.session['oauth_state'] = state  # Store state in session
+        return redirect(authorization_url)
+    except Exception as e:
+        logger.error(f"Google Fit Authorization Error: {e}")
+        return JsonResponse({"error": "Failed to start Google Fit OAuth"}, status=500)
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def google_fit_callback(request):
     """Handle the callback from Google Fit OAuth."""
-    state = request.session.get('oauth_state')
-    flow = Flow.from_client_secrets_file(
-        'path/to/client_secret.json',
-        scopes=['https://www.googleapis.com/auth/fitness.activity.read'],
-        redirect_uri='http://localhost:8000/api/google_fit/callback/'
-    )
-    flow.fetch_token(authorization_response=request.build_absolute_uri())
+    try:
+        state = request.session.get('oauth_state')
+        if not state:
+            return JsonResponse({"error": "Invalid OAuth state."}, status=400)
 
-    credentials = flow.credentials
-    user = request.user
+        flow = Flow.from_client_secrets_file(
+            settings.GOOGLE_FIT_CLIENT_SECRET,
+            scopes=['https://www.googleapis.com/auth/fitness.activity.read'],
+            redirect_uri=f"{settings.API_URL}/google-fit/callback/"
+        )
+        flow.fetch_token(authorization_response=request.build_absolute_uri())
 
-    # Save credentials to the database
-    CustomUserToken.objects.update_or_create(
-        user=user,
-        defaults={
-            'token': credentials.token,
-            'refresh_token': credentials.refresh_token,
-            'token_uri': credentials.token_uri,
-            'client_id': credentials.client_id,
-            'client_secret': credentials.client_secret,
-            'scopes': credentials.scopes
-        }
-    )
+        credentials = flow.credentials
+        user = request.user
 
-    return JsonResponse({"message": "Google Fit connected successfully!"})
+        # Save credentials securely
+        CustomUserToken.objects.update_or_create(
+            user=user,
+            defaults={
+                'token': credentials.token,
+                'refresh_token': credentials.refresh_token,
+                'token_uri': credentials.token_uri,
+                'client_id': credentials.client_id,
+                'client_secret': credentials.client_secret,
+                'scopes': credentials.scopes
+            }
+        )
+
+        return JsonResponse({"message": "Google Fit connected successfully!"})
+    except Exception as e:
+        logger.error(f"Google Fit Callback Error: {e}")
+        return JsonResponse({"error": "Failed to connect Google Fit"}, status=500)
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def virtual_health_coach(request):
-    """Generate AI-driven personalized fitness recommendations based on user’s health data."""
+    """Generate AI-driven personalized fitness recommendations based on user’s latest health data."""
     user = request.user
 
-    # Fetch user's glucose unit preference
-    user_settings = getattr(user, "settings", None)
-    preferred_unit = user_settings.preferred_unit if user_settings else "mg/dL"
+    # Fetch Google Fit Data before AI recommendation
+    fitness_data = fetch_fitness_data(user)
 
-    # Fetch most recent glucose reading
+    # Fetch latest glucose level
     latest_glucose = (
         FitnessActivity.objects.filter(user=user, activity_type="Glucose Measurement")
         .order_by("-start_time")
         .first()
     )
 
-    # Fetch past 5 fitness activities (exercise, sleep, etc.)
+    # Fetch last 5 fitness activities
     recorded_fitness_activities = FitnessActivity.objects.filter(user=user).order_by("-start_time")[:5]
 
     # Aggregate health stats
@@ -726,14 +812,14 @@ def virtual_health_coach(request):
 
     # Format data summaries for AI
     glucose_summary = (
-        f"{latest_glucose.start_time.strftime('%Y-%m-%d %H:%M')}: {latest_glucose.glucose_level} {preferred_unit}"
+        f"{latest_glucose.start_time.strftime('%Y-%m-%d %H:%M')}: {latest_glucose.glucose_level} mg/dL"
         if latest_glucose else "No recent glucose logs."
     )
 
     # Call AI function to generate recommendations
     ai_response = generate_ai_recommendation(user, recorded_fitness_activities)
 
-    # Save AI-generated recommendation linked to multiple FitnessActivity records
+    # Save AI-generated recommendation
     ai_recommendation = AIRecommendation.objects.create(
         user=user,
         recommendation_text=ai_response,
@@ -745,13 +831,13 @@ def virtual_health_coach(request):
         "glucose_summary": glucose_summary,
         "total_exercise_sessions": total_exercise_sessions,
         "average_glucose_level": avg_glucose_level if avg_glucose_level else "N/A",
+        "latest_fitness_data": fitness_data
     })
-
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def get_past_recommendations(request):
-    """Retrieve past AI-generated exercise recommendations."""
+    """Retrieve past AI-generated recommendations."""
     user = request.user
     recommendations = AIRecommendation.objects.filter(user=user).order_by("-generated_at")[:10]
 
@@ -769,6 +855,59 @@ def get_past_recommendations(request):
 
     return JsonResponse({"past_recommendations": data})
 
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def get_health_trends(request, period_type="weekly"):
+    """Fetch AI-generated health trends for the user."""
+    user = request.user
+    latest_trend = AIHealthTrend.objects.filter(user=user, period_type=period_type).order_by("-start_date").first()
+
+    # If no trends exist, generate new ones
+    if not latest_trend:
+        generate_health_trends(user, period_type)
+        latest_trend = AIHealthTrend.objects.filter(user=user, period_type=period_type).order_by("-start_date").first()
+
+    if not latest_trend:
+        return JsonResponse({"message": f"No {period_type} trends available."}, status=404)
+
+    data = {
+        "start_date": latest_trend.start_date.strftime("%Y-%m-%d"),
+        "end_date": latest_trend.end_date.strftime("%Y-%m-%d"),
+        "avg_glucose_level": latest_trend.avg_glucose_level,
+        "avg_steps": latest_trend.avg_steps,
+        "avg_sleep_hours": latest_trend.avg_sleep_hours,
+        "avg_heart_rate": latest_trend.avg_heart_rate,
+        "total_exercise_sessions": latest_trend.total_exercise_sessions,
+        "ai_summary": latest_trend.ai_summary,
+    }
+
+    return JsonResponse({"trend": data})
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def fetch_all_users_google_fit(request):
+    """Manually fetch and update Google Fit data for all users (Admin Only)."""
+    if not request.user.is_staff:
+        return JsonResponse({"error": "Unauthorized access."}, status=403)
+
+    fetch_all_users_fitness_data()
+    return JsonResponse({"message": "Google Fit data updated for all users."})
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def link_google_fit(request):
+    """Link Google Fit account to the user's profile."""
+    user = request.user
+    google_fit_email = request.data.get("google_fit_email")
+
+    if not google_fit_email:
+        return JsonResponse({"error": "Google Fit email is required."}, status=400)
+
+    # Update user profile with Google Fit email
+    user.profile.google_fit_email = google_fit_email
+    user.profile.save()
+
+    return JsonResponse({"message": "Google Fit account linked successfully!"})
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
@@ -858,25 +997,34 @@ def get_local_notifications(request):
 
     return JsonResponse({"notifications": data})
 
-@api_view(["GET"])
+
+@api_view(["POST"])
 @permission_classes([IsAuthenticated])
-def get_health_trends(request, period_type="weekly"):
-    """Fetch the latest AI-generated health trends (weekly/monthly)."""
+def update_onesignal_player_id(request):
+    """Store OneSignal Player ID for a logged-in user."""
     user = request.user
-    latest_trend = AIHealthTrend.objects.filter(user=user, period_type=period_type).order_by("-start_date").first()
+    player_id = request.data.get("player_id")
 
-    if not latest_trend:
-        return JsonResponse({"message": f"No {period_type} trends available."}, status=404)
+    if not player_id:
+        return JsonResponse({"error": "OneSignal Player ID is required."}, status=400)
 
-    data = {
-        "start_date": latest_trend.start_date.strftime("%Y-%m-%d"),
-        "end_date": latest_trend.end_date.strftime("%Y-%m-%d"),
-        "avg_glucose_level": latest_trend.avg_glucose_level,
-        "avg_steps": latest_trend.avg_steps,
-        "avg_sleep_hours": latest_trend.avg_sleep_hours,
-        "avg_heart_rate": latest_trend.avg_heart_rate,
-        "total_exercise_sessions": latest_trend.total_exercise_sessions,
-        "ai_summary": latest_trend.ai_summary,
-    }
+    OneSignalPlayerID.objects.update_or_create(user=user, defaults={"player_id": player_id})
 
-    return JsonResponse({"trend": data})
+    return JsonResponse({"message": "OneSignal Player ID updated successfully."})
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def send_notification(request):
+    """Send a push notification to a specific user via OneSignal."""
+    user_id = request.data.get("user_id")
+    title = request.data.get("title")
+    body = request.data.get("body")
+
+    if not user_id or not title or not body:
+        return JsonResponse({"error": "User ID, title, and body are required."}, status=400)
+
+    user = get_object_or_404(CustomUser, id=user_id)
+
+    send_push_notification(user, title, body)
+
+    return JsonResponse({"message": "Notification sent successfully."})

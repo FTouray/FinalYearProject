@@ -4,10 +4,12 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.BODY_SENSORS" />
-
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    
     <application
         android:label="glycolog_flutter"
-        android:name="${applicationName}"
+        android:name="android.app.Application"
         android:icon="@mipmap/ic_launcher">
         <activity
             android:name=".MainActivity"
@@ -26,6 +28,12 @@
               android:name="io.flutter.embedding.android.NormalTheme"
               android:resource="@style/NormalTheme"
               />
+              <meta-data
+                android:name="com.google.android.gms.auth.api.signin.GoogleSignIn"
+                android:value="true"/>
+              <meta-data android:name="com.onesignal.NotificationServiceExtension" android:value="true"/>
+                <meta-data android:name="com.onesignal.AppId" android:value="0f726e49-950b-4eea-a396-ab38785f8fc0"/>
+
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>

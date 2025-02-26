@@ -16,12 +16,41 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController passwordController = TextEditingController();
   bool _obscureText = true; // Track password visibility
   String? errorMessage;
-  final String? apiUrl = dotenv.env['API_URL']; 
+  final String? apiUrl = dotenv.env['API_URL'];
+  final String? oneSignalAppId = dotenv.env['ONESIGNAL_APP_ID'];
+  final String? oneSignalApiKey = dotenv.env['ONESIGNAL_API_KEY'];
+
 
   Future<void> resetOnboardingStatus() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.remove('onboardingCompleted');
     print('Onboarding status reset for testing.');
+  }
+
+  Future<String?> getAccessToken() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    return prefs.getString('access_token');
+  }
+
+  Future<void> updateOneSignalPlayerId(String playerId) async {
+    String? accessToken = await getAccessToken(); // Get the user's access token
+    if (accessToken == null) return;
+
+    final String onesignalApiUrl = "$apiUrl/update-onesignal-player-id/";
+    final response = await http.post(
+      Uri.parse(onesignalApiUrl),
+      headers: {
+        "Authorization": "Bearer $accessToken",
+        "Content-Type": "application/json",
+      },
+      body: jsonEncode({"player_id": playerId}),
+    );
+
+    if (response.statusCode == 200) {
+      print("OneSignal Player ID registered successfully!");
+    } else {
+      print("Failed to register OneSignal Player ID: ${response.body}");
+    }
   }
 
   Future<void> login() async {
@@ -51,6 +80,7 @@ class _LoginScreenState extends State<LoginScreen> {
         String firstName = data['first_name']; // API returns the first name
         String accessToken = data['access']; // Get the access token
         String refreshToken = data['refresh']; // Get the refresh token
+        String? playerId = data['onesignal_player_id']; // OneSignal Player ID from backend
 
         // Store the access token and refresh token in shared preferences
         SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -60,6 +90,13 @@ class _LoginScreenState extends State<LoginScreen> {
         setState(() {
           errorMessage = null; // Clear error if login is successful
         });
+
+        // Register OneSignal Player ID
+        if (playerId != null) {
+          await updateOneSignalPlayerId(playerId);
+        } else {
+          await sendPlayerIdToBackend(accessToken, playerId!);
+        }
 
         // Check if onboarding is completed
         bool onboardingCompleted =
@@ -82,6 +119,44 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() {
         errorMessage = 'An error occurred. Please try again.';
       });
+    }
+  }
+
+  Future<void> fetchOneSignalPlayerId(String accessToken) async {
+    final response = await http.get(
+      Uri.parse("https://onesignal.com/api/v1/players?app_id=$oneSignalAppId"),
+      headers: {
+        "Authorization": "Basic $oneSignalApiKey",
+        "Content-Type": "application/json"
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> players = json.decode(response.body)['players'];
+      if (players.isNotEmpty) {
+        String playerId = players.first['id'];
+        await sendPlayerIdToBackend(accessToken, playerId);
+      }
+    } else {
+      print("Failed to fetch OneSignal Player ID: ${response.body}");
+    }
+  }
+
+  Future<void> sendPlayerIdToBackend(
+      String accessToken, String playerId) async {
+    final response = await http.post(
+      Uri.parse('$apiUrl/update-onesignal-player-id/'),
+      headers: {
+        'Authorization': 'Bearer $accessToken',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({"player_id": playerId}),
+    );
+
+    if (response.statusCode == 200) {
+      print("OneSignal Player ID registered successfully.");
+    } else {
+      print("Failed to register OneSignal Player ID: ${response.body}");
     }
   }
 

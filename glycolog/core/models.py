@@ -405,15 +405,44 @@ class AIRecommendation(models.Model):
     def __str__(self):
         return f"AI Recommendation for {self.user.username} - {self.generated_at.strftime('%Y-%m-%d %H:%M:%S')}"
 
-# Model to store notifications sent to users
 class LocalNotificationPrompt(models.Model):
+    """Stores local notifications for users."""
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     message = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
-    is_sent = models.BooleanField(default=False)  # Mark if it was sent to the user
+    is_sent = models.BooleanField(default=False)  # Mark if sent
 
     def __str__(self):
         return f"{self.user.username} - {self.message}"
+
+class UserNotification(models.Model):
+    """Stores push notifications sent to users."""
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="notifications")
+    message = models.TextField()
+    notification_type = models.CharField(
+        max_length=20,
+        choices=[
+            ("health_alert", "Health Alert"),
+            ("reminder", "Reminder"),
+            ("motivation", "Motivation"),
+        ],
+        default="health_alert",
+    )
+    is_sent = models.BooleanField(default=False)
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user.username} - {self.notification_type} - {self.timestamp}"
+
+class OneSignalPlayerID(models.Model):
+    """Stores OneSignal Player ID for sending push notifications."""
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="onesignal_ids")
+    player_id = models.CharField(max_length=255, unique=True)  # Unique OneSignal Player ID
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user.username} - {self.player_id}"
+
 
 # Model to store medication details
 class Medication(models.Model):

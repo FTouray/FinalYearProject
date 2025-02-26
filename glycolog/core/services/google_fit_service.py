@@ -1,13 +1,16 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 import time
 from googleapiclient.discovery import build
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from django.utils.timezone import now
-from core.models import CustomUserToken, FitnessActivity, UserNotification
-from tasks import check_inactivity
+from core.models import CustomUserToken, FitnessActivity, CustomUser
+import logging
+from core.ai_services import generate_health_trends, generate_ai_recommendation
 
-# Mapping activity types from Google Fit API
+logger = logging.getLogger(__name__)
+
+# **Mapping Google Fit Activity Codes to Human-Readable Labels**
 ACTIVITY_TYPE_MAP = {
     8: "Running",
     7: "Walking",
@@ -22,11 +25,12 @@ ACTIVITY_TYPE_MAP = {
     77: "REM Sleep",
 }
 
-def fetch_fitness_data(user):
-    """Fetch and process fitness-related data from Google Fit (Steps, Activity, Sleep, Heart Rate)."""
+def get_google_fit_credentials(user):
+    """Retrieve Google Fit credentials for a user."""
     user_token = CustomUserToken.objects.filter(user=user).first()
     if not user_token:
-        return "No fitness data available."
+        logger.warning(f"No Google Fit token found for user {user.username}")
+        return None
 
     creds = Credentials(
         token=user_token.token,
@@ -34,15 +38,22 @@ def fetch_fitness_data(user):
         token_uri=user_token.token_uri,
         client_id=user_token.client_id,
         client_secret=user_token.client_secret,
-        scopes=user_token.scopes.split(","),  # Ensure Google Fit scopes are included
+        scopes=user_token.scopes.split(","),
     )
 
     if creds.expired and creds.refresh_token:
         creds.refresh(Request())
 
+    return creds
+
+def fetch_fitness_data(user):
+    """Fetch and process fitness-related data from Google Fit for an individual user."""
+    creds = get_google_fit_credentials(user)
+    if not creds:
+        return "No fitness data available."
+
     fitness_service = build("fitness", "v1", credentials=creds)
-    
-    # Define the timeframe (last 24 hours)
+
     now_millis = int(time.time() * 1000)
     yesterday_millis = now_millis - (24 * 60 * 60 * 1000)
 
@@ -55,12 +66,23 @@ def fetch_fitness_data(user):
     # Update last activity time for inactivity tracking
     update_last_activity_time(user, last_activity_time)
 
+    # Generate AI insights for the individual user
+    generate_health_trends(user=user, period_type="weekly")
+    generate_health_trends(user=user, period_type="monthly")
+
     return {
         "steps": steps,
         "activities": activities if activities else "No activity data.",
         "sleep_hours": total_sleep_hours,
         "average_heart_rate": avg_heart_rate if avg_heart_rate else "No heart rate data.",
     }
+
+def fetch_all_users_fitness_data():
+    """Fetch and update Google Fit data for all users."""
+    users = CustomUser.objects.all()
+    for user in users:
+        fetch_fitness_data(user)
+    logger.info("Google Fit data synced for all users.")
 
 def fetch_step_count(fitness_service, start_time, end_time):
     """Fetch step count from Google Fit."""
@@ -96,12 +118,12 @@ def fetch_activity_sessions(fitness_service, user, start_time, end_time):
         duration_minutes = (end_time_dt - start_time_dt).total_seconds() / 60
         activity_name = ACTIVITY_TYPE_MAP.get(activity_type, "Unknown Activity")
 
-        # Update last activity time
         if not last_activity_time or start_time_dt > last_activity_time:
             last_activity_time = start_time_dt
 
-        # Prevent duplication before storing activity
-        exists = FitnessActivity.objects.filter(user=user, start_time=start_time_dt, end_time=end_time_dt, activity_type=activity_name).exists()
+        exists = FitnessActivity.objects.filter(
+            user=user, start_time=start_time_dt, end_time=end_time_dt, activity_type=activity_name
+        ).exists()
 
         if not exists:
             FitnessActivity.objects.create(
@@ -164,37 +186,3 @@ def update_last_activity_time(user, last_activity_time):
         if latest_activity:
             latest_activity.last_activity_time = last_activity_time
             latest_activity.save()
-
-def send_smart_prompt(user):
-    """Store smart health prompts in the database for the Flutter app to fetch."""
-    inactivity_hours = check_inactivity(user)
-
-    prompts = []
-
-    # Inactivity Alert
-    if inactivity_hours >= 6:
-        prompts.append("You haven't exercised in 6+ hours. A short walk can help stabilize glucose levels.")
-
-    # Sleep Reminder
-    total_sleep_hours = fetch_sleep_data(user)
-    if total_sleep_hours < 6:
-        prompts.append("Your sleep pattern shows you've been getting less than 6 hours on average. Try winding down earlier tonight.")
-
-    # Hydration Reminder
-    prompts.append("Have you had water today? Staying hydrated supports your metabolism and energy levels.")
-
-    # High Heart Rate Alert
-    avg_heart_rate = fetch_heart_rate_data(user)
-    if avg_heart_rate and avg_heart_rate > 100:
-        prompts.append("Your heart rate has been higher than usual today. Consider taking a short break or deep breathing exercises.")
-
-    # Habit Streaks & Motivation
-    exercise_streak = FitnessActivity.objects.filter(user=user, duration_minutes__gte=30).count()
-    if exercise_streak >= 5:
-        prompts.append(f"You're on a {exercise_streak}-day streak of exercise. Keep it up.")
-
-    # Store all generated prompts
-    for prompt in prompts:
-        UserNotification.objects.create(user=user, message=prompt, notification_type="health_alert")
-
-    return prompts if prompts else None

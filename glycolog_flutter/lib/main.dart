@@ -1,11 +1,13 @@
 import 'package:Glycolog/glycaemicResponseTracker/gRT_history_detail_screen.dart';
 import 'package:Glycolog/glycaemicResponseTracker/gRT_meal_log_history_screen.dart';
 import 'package:Glycolog/glycaemicResponseTracker/gRT_meal_log_screen.dart';
+import 'package:Glycolog/notification_screen.dart';
 import 'package:Glycolog/questionnaire/data_visualization.dart';
 import 'package:Glycolog/questionnaire/exercise_step.dart';
 import 'package:Glycolog/questionnaire/meal_step.dart';
 import 'package:Glycolog/questionnaire/symptom_step.dart';
 import 'package:Glycolog/services/auth_service.dart';
+import 'package:Glycolog/virtualHealthCoach/chatbot_screen.dart';
 import 'package:Glycolog/virtualHealthCoach/virtual_health_coach.dart';
 import 'package:flutter/material.dart';
 import 'glucoseLog/gL_add_level_screen.dart';
@@ -26,28 +28,52 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'questionnaire/glucose_step.dart';
 import 'questionnaire/review.dart';
 
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized(); // Ensure bindings are initialized
+  WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: "assets/.env");
-  final darkMode =
-      await _loadDarkModePreference(); // Load dark mode preference before running app
-  final token = await _loadToken(); // Load token from SharedPreferences
-  runApp(MyApp(
-      darkModeEnabled: darkMode,
-      token: token)); // Pass dark mode state and token to MyApp
+
+  final darkMode = await _loadDarkModePreference();
+  final token = await _loadToken();
+
+  runApp(MyApp(darkModeEnabled: darkMode, token: token));
 }
 
-// Function to load dark mode preference from SharedPreferences
+// Function to send OneSignal Player ID to backend
+Future<void> sendPlayerIdToBackend(String? playerId) async {
+  if (playerId == null) return;
+
+  final String? apiUrl = dotenv.env['API_URL'];
+  SharedPreferences prefs = await SharedPreferences.getInstance();
+  String? token = prefs.getString('access_token');
+
+  final response = await http.post(
+    Uri.parse('$apiUrl/update-onesignal-player-id/'),
+    headers: {
+      'Authorization': 'Bearer $token',
+      'Content-Type': 'application/json',
+    },
+    body: jsonEncode({"player_id": playerId}),
+  );
+
+  if (response.statusCode == 200) {
+    print("OneSignal Player ID registered successfully");
+  } else {
+    print("Failed to register OneSignal Player ID: ${response.body}");
+  }
+}
+
+// Function to load dark mode preference
 Future<bool> _loadDarkModePreference() async {
   final prefs = await SharedPreferences.getInstance();
-  return prefs.getBool('darkModeEnabled') ??
-      false; // Return saved dark mode preference or default to false
+  return prefs.getBool('darkModeEnabled') ?? false;
 }
 
 // Function to load token from SharedPreferences
 Future<String?> _loadToken() async {
   final prefs = await SharedPreferences.getInstance();
-  return prefs.getString('access_token'); // Use 'access_token' consistently
+  return prefs.getString('access_token');
 }
 
 class MyApp extends StatefulWidget {
@@ -72,21 +98,18 @@ class _MyAppState extends State<MyApp> {
     _token = widget.token;
   }
 
-
-  // Method to toggle dark mode across the app
+  // Toggle dark mode
   void _toggleDarkMode(bool isEnabled) {
     setState(() {
       _isDarkMode = isEnabled;
     });
-    _saveDarkModePreference(
-        isEnabled); // Save dark mode preference when toggled
+    _saveDarkModePreference(isEnabled);
   }
 
-  // Save dark mode preference in SharedPreferences
+  // Save dark mode preference
   Future<void> _saveDarkModePreference(bool isEnabled) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(
-        'darkModeEnabled', isEnabled); // Save the user's dark mode preference
+    await prefs.setBool('darkModeEnabled', isEnabled);
   }
 
   final String baseUrl = dotenv.env['API_URL']!;
@@ -94,20 +117,17 @@ class _MyAppState extends State<MyApp> {
   // Function to refresh the token
   Future<void> _refreshToken(BuildContext context) async {
     final response = await http.post(
-      Uri.parse('${baseUrl}token/refresh/'),
+      Uri.parse('$baseUrl/token/refresh/'),
       headers: {'Content-Type': 'application/json'},
-      body:
-          json.encode({'refresh': _token}), // Include refresh token in the body
+      body: json.encode({'refresh': _token}),
     );
 
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
-      _token = data['access']; // Store the new access token
-      await _saveToken(_token!); // Save the token to SharedPreferences
+      _token = data['access'];
+      await _saveToken(_token!);
     } else {
-      // Handle token refresh error
       print('Failed to refresh token: ${response.reasonPhrase}');
-      // Log out and redirect to login if refresh fails
       await authService.logout(context);
     }
   }
@@ -115,7 +135,7 @@ class _MyAppState extends State<MyApp> {
   // Save the token in SharedPreferences
   Future<void> _saveToken(String token) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('access_token', token); // Use 'access_token'
+    await prefs.setString('access_token', token);
   }
 
   @override
@@ -174,6 +194,8 @@ class _MyAppState extends State<MyApp> {
         '/data-visualization': (context) => const QuestionnaireVisualizationScreen(),
         '/insights': (context) => const InsightsScreen(),
         '/virtual-health-coach': (context) => const VirtualHealthCoachScreen(),
+        '/chatbot': (context) => const ChatbotScreen(),
+        '/notifications': (context) => const NotificationsScreen(),
       },
     );
   }

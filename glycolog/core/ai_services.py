@@ -2,14 +2,12 @@ from datetime import timedelta
 from django.utils.timezone import now
 from django.db.models import Avg, Sum, Count
 import openai  
-from core.models import AIHealthTrend, FitnessActivity
+from core.models import AIHealthTrend, FitnessActivity, CustomUser
 
 def generate_ai_recommendation(user, fitness_data):
     """
     Generates AI-based health recommendations using OpenAI GPT.
-    :param user: The user object.
-    :param fitness_data: List of recent fitness activities for context.
-    :return: AI-generated health recommendation text.
+    Supports **individual** user insights.
     """
 
     # Format fitness data into a readable summary
@@ -46,37 +44,42 @@ def generate_ai_recommendation(user, fitness_data):
     
     return ai_response
 
-def generate_health_trends(user, period_type="weekly"):
+def generate_health_trends(user=None, period_type="weekly"):
     """
-    Analyze health trends for a user over a specified period (weekly/monthly).
+    Analyze **both** individual and system-wide health trends over a specified period (weekly/monthly).
+    - If `user` is provided, it analyzes **only that user**.
+    - If `user` is None, it generates **system-wide trends**.
     """
     end_date = now().date()
     start_date = end_date - timedelta(days=7) if period_type == "weekly" else end_date - timedelta(days=30)
 
+    # Get the user filter or analyze all users together
+    user_filter = {"user": user} if user else {}
+
     # Aggregate data for the period
     avg_glucose = FitnessActivity.objects.filter(
-        user=user, activity_type="Glucose Measurement", start_time__date__range=[start_date, end_date]
+        **user_filter, activity_type="Glucose Measurement", start_time__date__range=[start_date, end_date]
     ).aggregate(Avg("glucose_level"))["glucose_level__avg"]
 
     avg_steps = FitnessActivity.objects.filter(
-        user=user, start_time__date__range=[start_date, end_date]
+        **user_filter, start_time__date__range=[start_date, end_date]
     ).aggregate(Sum("steps"))["steps__sum"]
 
     avg_sleep = FitnessActivity.objects.filter(
-        user=user, start_time__date__range=[start_date, end_date]
+        **user_filter, start_time__date__range=[start_date, end_date]
     ).aggregate(Avg("total_sleep_hours"))["total_sleep_hours__avg"]
 
     avg_heart_rate = FitnessActivity.objects.filter(
-        user=user, start_time__date__range=[start_date, end_date]
+        **user_filter, start_time__date__range=[start_date, end_date]
     ).aggregate(Avg("heart_rate"))["heart_rate__avg"]
 
     total_exercise_sessions = FitnessActivity.objects.filter(
-        user=user, activity_type="Exercise", start_time__date__range=[start_date, end_date]
+        **user_filter, activity_type="Exercise", start_time__date__range=[start_date, end_date]
     ).count()
 
-    # Construct OpenAI prompt
+    # Construct OpenAI prompt for trend analysis
     trend_prompt = f"""
-    The user has diabetes and their recent {period_type} health trends are as follows:
+    The {'entire system' if user is None else 'user'} has diabetes and their recent {period_type} health trends are as follows:
 
     - Average Glucose Level: {avg_glucose if avg_glucose else 'N/A'}
     - Total Steps: {avg_steps if avg_steps else 'N/A'}
@@ -119,3 +122,17 @@ def generate_health_trends(user, period_type="weekly"):
     )
 
     return ai_summary
+
+def generate_system_wide_health_trends():
+    """
+    Generate health trends across **all users** (not per individual).
+    """
+    return generate_health_trends(user=None, period_type="weekly"), generate_health_trends(user=None, period_type="monthly")
+
+def generate_individual_health_trends():
+    """
+    Generate health trends for **each user individually**.
+    """
+    for user in CustomUser.objects.all():
+        generate_health_trends(user=user, period_type="weekly")
+        generate_health_trends(user=user, period_type="monthly")

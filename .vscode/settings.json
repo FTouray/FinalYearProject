@@ -1,5 +1,5 @@
 {
   "python.analysis.extraPaths": ["./glycolog/core"],
-  "java.configuration.updateBuildConfiguration": "interactive",
+  "java.configuration.updateBuildConfiguration": "automatic",
   "dart.flutterSdkPath": "C:\\flutter"
 }

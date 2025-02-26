@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="gcm_defaultSenderId" translatable="false">353377462193</string>
+    <string name="google_api_key" translatable="false">AIzaSyDc88F6Z5QsuCT_eMkyqKxpmE6ptKzDuts</string>
+    <string name="google_app_id" translatable="false">1:353377462193:android:78e5582b34e8959bf7ff90</string>
+    <string name="google_crash_reporting_api_key" translatable="false">AIzaSyDc88F6Z5QsuCT_eMkyqKxpmE6ptKzDuts</string>
+    <string name="google_storage_bucket" translatable="false">glycolog-38c29.firebasestorage.app</string>
+    <string name="project_id" translatable="false">glycolog-38c29</string>
+</resources>
