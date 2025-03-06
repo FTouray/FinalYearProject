@@ -140,3 +140,11 @@ def schedule_trend_analysis():
     for user in CustomUser.objects.all():
         schedule("core.ai_services.generate_health_trends", user.id, period_type="weekly", schedule_type="W", repeats=-1)
         schedule("core.ai_services.generate_health_trends", user.id, period_type="monthly", schedule_type="M", repeats=-1)
+
+def schedule_daily_fitness_fetch():
+    """Schedule daily Google Fit data fetch."""
+    schedule(
+        "core.google_fit_service.fetch_all_users_fitness_data",
+        schedule_type="D",  # Daily
+        repeats=-1
+    )

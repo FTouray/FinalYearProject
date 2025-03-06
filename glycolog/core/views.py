@@ -912,15 +912,15 @@ def link_google_fit(request):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def chat_with_health_coach(request):
-    """Allow users to chat with the AI-driven health coach."""
+    """Allow users to chat with the AI-driven health coach, considering recent glucose levels and unit preference."""
     user = request.user
     user_message = request.data.get("message")
 
+    if not user_message:
+        return JsonResponse({"error": "Message cannot be empty"}, status=400)
+
     # Save user message in chat history
     ChatMessage.objects.create(user=user, sender="user", message=user_message)
-
-    # Fetch recent health data
-    recorded_fitness_activities = FitnessActivity.objects.filter(user=user).order_by("-start_time")[:5]
 
     # Fetch past AI recommendations
     past_recommendations = AIRecommendation.objects.filter(user=user).order_by("-generated_at")[:5]
@@ -928,31 +928,43 @@ def chat_with_health_coach(request):
         [f"{rec.recommendation_text} (given on {rec.generated_at.strftime('%Y-%m-%d')})" for rec in past_recommendations]
     ) if past_recommendations else "No past recommendations available."
 
-    # Fetch past chat history
-    past_messages = ChatMessage.objects.filter(user=user).order_by("timestamp")
+    # Fetch past chat history (last 50 messages)
+    past_messages = ChatMessage.objects.filter(user=user).order_by("-timestamp")[:50]
     conversation_history = [
-        {"role": "user" if msg.sender == "user" else "assistant", "content": msg.message}
-        for msg in past_messages
+        {"role": msg.sender, "content": msg.message} for msg in past_messages
     ]
 
-    # Append past recommendations & latest fitness data
-    fitness_summary = "\n".join(
-        [f"{activity.activity_type} for {activity.duration_minutes} mins" for activity in recorded_fitness_activities]
-    ) if recorded_fitness_activities else "No fitness data available."
+    # 🔹 Fetch the user's preferred glucose unit
+    user_settings = getattr(user, "settings", None)
+    preferred_unit = user_settings.glucose_unit if user_settings else "mg/dL"
 
-    conversation_history.append({"role": "system", "content": f"Previously given recommendations:\n{recommendations_summary}"})
-    conversation_history.append({"role": "system", "content": f"Recent fitness data:\n{fitness_summary}"})
-    conversation_history.append({"role": "user", "content": user_message})
+    # 🔹 Fetch the most recent glucose reading
+    latest_glucose_log = GlucoseLog.objects.filter(user=user).order_by("-timestamp").first()
+    
+    if latest_glucose_log:
+        glucose_value = latest_glucose_log.glucose_level
+        if preferred_unit == "mmol/L":
+            glucose_value = round(glucose_value / 18, 2)  # Convert mg/dL to mmol/L
+        glucose_summary = f"Latest glucose reading: {glucose_value} {preferred_unit}"
+    else:
+        glucose_summary = "No recent glucose readings available."
 
-    # Send prompt to OpenAI API
-    response = openai.ChatCompletion.create(
-        model="gpt-4",
-        messages=[
-            {"role": "system", "content": "You are a virtual fitness coach providing expert diabetic health recommendations."},
-            *conversation_history,
-        ],
+    # Construct AI prompt
+    system_message = (
+        "You are a virtual fitness coach providing expert diabetic health recommendations. "
+        "You analyze glucose levels, fitness data, and past recommendations to provide guidance."
     )
 
+    conversation_history.append({"role": "system", "content": system_message})
+    conversation_history.append({"role": "system", "content": f"Previously given recommendations:\n{recommendations_summary}"})
+    conversation_history.append({"role": "system", "content": f"{glucose_summary}"})
+    conversation_history.append({"role": "user", "content": user_message})
+
+    # Send to AI
+    response = openai.ChatCompletion.create(
+        model="gpt-4",
+        messages=conversation_history,
+    )
     ai_response = response["choices"][0]["message"]["content"]
 
     # Save AI response in chat history
@@ -960,13 +972,12 @@ def chat_with_health_coach(request):
 
     return JsonResponse({"response": ai_response})
 
-
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def get_chat_history(request):
     """Retrieve user’s chat history with the AI coach."""
     user = request.user
-    chat_history = ChatMessage.objects.filter(user=user).order_by("timestamp")
+    chat_history = ChatMessage.objects.filter(user=user).order_by("timestamp")[:50]
 
     data = [
         {
@@ -1028,3 +1039,25 @@ def send_notification(request):
     send_push_notification(user, title, body)
 
     return JsonResponse({"message": "Notification sent successfully."})
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def get_today_fitness_data(request):
+    """Fetch today's fitness data for pre-filling the symptom report form."""
+    user = request.user
+    creds = get_google_fit_credentials(user)
+    if not creds:
+        return JsonResponse({"error": "Google Fit is not connected"}, status=400)
+
+    fitness_service = build("fitness", "v1", credentials=creds)
+    today_millis = int(time.time() * 1000) - (12 * 60 * 60 * 1000)  # Last 12 hours
+
+    # Fetch today's sleep & exercise data
+    steps = fetch_step_count(fitness_service, today_millis, int(time.time() * 1000))
+    total_sleep_hours = fetch_sleep_data(fitness_service, today_millis, int(time.time() * 1000))
+
+    return JsonResponse({
+        "steps": steps,
+        "total_sleep_hours": total_sleep_hours,
+    })
+
