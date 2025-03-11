@@ -1,6 +1,6 @@
 from django.urls import path
 
-from .views import (authorize_google_fit, chat_with_health_coach, exercise_step, get_ai_insights, get_chat_history, get_health_trends, get_insights, get_local_notifications, get_past_recommendations, google_fit_callback, link_google_fit, meal_step, glucose_step, glycaemic_response_main, list_categories, list_food_items_by_category, log_glucose, log_meal, meal_log_detail,  meal_log_history, questionnaire_data_visualization, register_user, 
+from .views import (authorize_google_fit, chat_with_health_coach, exercise_step, fetch_google_fit_data, get_ai_insights, get_chat_history, get_health_trends, get_insights, get_local_notifications, get_past_recommendations, google_fit_callback, link_google_fit, meal_step, glucose_step, glycaemic_response_main, list_categories, list_food_items_by_category, log_glucose, log_meal, meal_log_detail,  meal_log_history, questionnaire_data_visualization, register_user, 
     login_user, review_answers, send_notification, settings_view, glucose_log_details, glucose_log_history, start_questionnaire, symptom_step, update_onesignal_player_id, virtual_health_coach)
 from rest_framework_simplejwt.views import (TokenObtainPairView, TokenRefreshView)
 
@@ -43,6 +43,7 @@ urlpatterns = [
     path("google-fit/authorize/", authorize_google_fit, name="authorize_google_fit"),
     path("google-fit/callback/", google_fit_callback, name="google_fit_callback"),
     path("link-google-fit/", link_google_fit, name="link_google_fit"),
+    path("fetch-google-fit-data/", fetch_google_fit_data, name="fetch_google_fit_data"),
     # Chat with Virtual Health Coach
     path("virtual-health-coach/chat/", chat_with_health_coach, name="chat_with_health_coach"),
     path("virtual-health-coach/chat/history/", get_chat_history, name="get_chat_history"),

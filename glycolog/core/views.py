@@ -748,7 +748,7 @@ def authorize_google_fit(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def google_fit_callback(request):
-    """Handle the callback from Google Fit OAuth."""
+    """Handle OAuth callback and save Google Fit tokens."""
     try:
         state = request.session.get('oauth_state')
         if not state:
@@ -764,7 +764,7 @@ def google_fit_callback(request):
         credentials = flow.credentials
         user = request.user
 
-        # Save credentials securely
+        # 🔹 **Save tokens securely in the database**
         CustomUserToken.objects.update_or_create(
             user=user,
             defaults={
@@ -773,11 +773,12 @@ def google_fit_callback(request):
                 'token_uri': credentials.token_uri,
                 'client_id': credentials.client_id,
                 'client_secret': credentials.client_secret,
-                'scopes': credentials.scopes
+                'scopes': ",".join(credentials.scopes),
             }
         )
 
         return JsonResponse({"message": "Google Fit connected successfully!"})
+    
     except Exception as e:
         logger.error(f"Google Fit Callback Error: {e}")
         return JsonResponse({"error": "Failed to connect Google Fit"}, status=500)
@@ -908,6 +909,27 @@ def link_google_fit(request):
     user.profile.save()
 
     return JsonResponse({"message": "Google Fit account linked successfully!"})
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def fetch_google_fit_data(request):
+    """Fetch fitness data from Google Fit for the authenticated user."""
+    user = request.user
+
+    # Check if user has linked Google Fit
+    user_token = CustomUserToken.objects.filter(user=user).first()
+    if not user_token:
+        return JsonResponse({"error": "Google Fit is not linked to your account. Please connect Google Fit first."}, status=400)
+
+    # Fetch the fitness data
+    fitness_data = fetch_fitness_data(user)
+
+    # Ensure fitness_data is a dictionary before returning it
+    if not isinstance(fitness_data, dict):
+        return JsonResponse({"error": "Unexpected response format from Google Fit"}, status=500)
+
+    return JsonResponse(fitness_data, safe=False)  # Ensure safe=False if it's not a dict
+
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])

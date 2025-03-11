@@ -1,5 +1,7 @@
 from datetime import datetime, timedelta
+import os
 import time
+from django.conf import settings
 from googleapiclient.discovery import build
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
@@ -9,6 +11,7 @@ import logging
 from core.ai_services import generate_health_trends, generate_ai_recommendation
 
 logger = logging.getLogger(__name__)
+GOOGLE_CLIENT_SECRET_FILE = os.path.join(settings.BASE_DIR, "config", "client_secret.json")
 
 # **Google Fit Activity Type Mapping**
 ACTIVITY_TYPE_MAP = {
@@ -42,7 +45,14 @@ def get_google_fit_credentials(user):
     )
 
     if creds.expired and creds.refresh_token:
-        creds.refresh(Request())
+        try:
+            creds.refresh(Request())
+            # Save updated token in DB
+            user_token.token = creds.token
+            user_token.save()
+        except Exception as e:
+            logger.error(f"Error refreshing Google Fit token for {user.username}: {e}")
+            return None
 
     return creds
 
@@ -56,7 +66,7 @@ def fetch_fitness_data(user):
 
     now_millis = int(time.time() * 1000)
     yesterday_millis = now_millis - (24 * 60 * 60 * 1000)
-
+    
     # Fetch health data
     steps = fetch_step_count(fitness_service, yesterday_millis, now_millis)
     activities, last_activity_time = fetch_activity_sessions(fitness_service, user, yesterday_millis, now_millis)
@@ -79,6 +89,15 @@ def fetch_fitness_data(user):
         "latest_glucose_level": latest_glucose if latest_glucose else "No recent glucose data.",
         "glucose_unit": glucose_unit
     }
+        
+    
+def fetch_all_users_fitness_data():
+    """Fetch and update Google Fit data for all users."""
+    users = CustomUser.objects.all()
+    for user in users:
+        fetch_fitness_data(user)
+    logger.info("Google Fit data synced for all users.")
+
 
 def fetch_step_count(fitness_service, start_time, end_time):
     """Fetch step count from Google Fit."""

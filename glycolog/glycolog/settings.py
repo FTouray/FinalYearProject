@@ -27,6 +27,7 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 ONESIGNAL_APP_ID = os.getenv("ONESIGNAL_APP_ID")
 ONESIGNAL_API_KEY = os.getenv("ONESIGNAL_API_KEY")
+GOOGLE_CLIENT_SECRET_FILE = os.path.join(BASE_DIR, "config", "client_secret.json")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
