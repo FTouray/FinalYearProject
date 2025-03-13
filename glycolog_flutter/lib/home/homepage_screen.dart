@@ -268,6 +268,13 @@ final String? apiUrl = dotenv.env['API_URL'];
                       Navigator.pushNamed(context, '/virtual-health-coach');
                     },
                   ),
+                  FeatureIcon(
+                    icon: Icons.medication,
+                    label: 'Medication Tracker',
+                    onTap: () {
+                      Navigator.pushNamed(context, '/medication-tracker');
+                    },
+                  ),
                 ],
               ),
             ],

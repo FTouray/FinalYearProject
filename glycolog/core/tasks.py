@@ -2,6 +2,7 @@ import datetime
 import json
 from django.utils.timezone import now
 from django_q.tasks import schedule
+from celery import shared_task
 from django.db import models
 from django.conf import settings
 import os
@@ -148,3 +149,9 @@ def schedule_daily_fitness_fetch():
         schedule_type="D",  # Daily
         repeats=-1
     )
+    
+@shared_task
+def send_medication_reminder(user_id, medication_name):
+    """Background task to send medication reminders."""
+    print(f"Reminder: Time to take {medication_name} for User {user_id}")
+    return f"Reminder sent for {medication_name}"

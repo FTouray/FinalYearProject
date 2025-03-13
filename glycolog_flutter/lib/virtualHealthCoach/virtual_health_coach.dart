@@ -1,9 +1,10 @@
+// ignore_for_file: avoid_print
+
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import 'package:Glycolog/services/auth_service.dart';
 import 'package:Glycolog/services/google_fit_service.dart';
-import 'package:Glycolog/virtualHealthCoach/chatbot_screen.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class VirtualHealthCoachScreen extends StatefulWidget {
@@ -15,12 +16,11 @@ class VirtualHealthCoachScreen extends StatefulWidget {
 }
 
 class _VirtualHealthCoachScreenState extends State<VirtualHealthCoachScreen> {
-  Map<String, dynamic> _exerciseSummary = {};
+  Map<String, dynamic> _fitnessData = {};
   List<Map<String, String>> _recommendations = [];
-  List<Map<String, String>> _pastRecommendations = [];
-  Map<String, dynamic> _healthTrends = {};
   bool isGoogleFitConnected = false;
   bool isLoading = true;
+  final GoogleFitService googleFitService = GoogleFitService();
   final String? apiUrl = dotenv.env['API_URL'];
 
   @override
@@ -31,31 +31,22 @@ class _VirtualHealthCoachScreenState extends State<VirtualHealthCoachScreen> {
 
   Future<void> _initializeData() async {
     setState(() => isLoading = true);
-    await _fetchExerciseSummary();
+    await _fetchFitnessData();
     await _fetchRecommendations();
-    await _fetchPastRecommendations();
-    await _fetchHealthTrends("weekly");
     setState(() => isLoading = false);
   }
 
-  Future<void> _fetchExerciseSummary() async {
-    String? token = await AuthService().getAccessToken();
-    final response = await http.get(
-      Uri.parse('$apiUrl/virtual-health-coach/exercise-summary/'),
-      headers: {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json'
-      },
-    );
-
-    if (response.statusCode == 200) {
+  Future<void> _fetchFitnessData() async {
+    final data = await googleFitService.fetchFitnessData();
+    if (data != null) {
       setState(() {
-        _exerciseSummary = jsonDecode(response.body);
+        _fitnessData = data;
       });
     } else {
-      _showErrorMessage('Failed to load exercise summary');
+      _showErrorMessage('Failed to load fitness data');
     }
   }
+
 
   Future<void> _fetchRecommendations() async {
     String? token = await AuthService().getAccessToken();
@@ -81,49 +72,6 @@ class _VirtualHealthCoachScreenState extends State<VirtualHealthCoachScreen> {
     }
   }
 
-  Future<void> _fetchPastRecommendations() async {
-    String? token = await AuthService().getAccessToken();
-    final response = await http.get(
-      Uri.parse('$apiUrl/virtual-health-coach/past-recommendations/'),
-      headers: {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json'
-      },
-    );
-
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      setState(() {
-        _pastRecommendations = List<Map<String, String>>.from(
-            data['past_recommendations'].map((rec) => {
-                  'timestamp': rec['generated_at'],
-                  'recommendation': rec['recommendation']
-                }));
-      });
-    } else {
-      _showErrorMessage('Failed to load past recommendations');
-    }
-  }
-
-  Future<void> _fetchHealthTrends(String period) async {
-    String? token = await AuthService().getAccessToken();
-    final response = await http.get(
-      Uri.parse('$apiUrl/health-trends/$period/'),
-      headers: {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json'
-      },
-    );
-
-    if (response.statusCode == 200) {
-      setState(() {
-        _healthTrends = jsonDecode(response.body)['trend'];
-      });
-    } else {
-      _showErrorMessage('Failed to load health trends');
-    }
-  }
-
   void _connectGoogleFit() async {
     final googleFitService = GoogleFitService();
     bool isConnected = await googleFitService.signInWithGoogleFit();
@@ -146,15 +94,6 @@ class _VirtualHealthCoachScreenState extends State<VirtualHealthCoachScreen> {
         .showSnackBar(SnackBar(content: Text(message)));
   }
 
-  void _navigateToChatbot() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const ChatbotScreen(),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -168,26 +107,19 @@ class _VirtualHealthCoachScreenState extends State<VirtualHealthCoachScreen> {
               padding: const EdgeInsets.all(16.0),
               child: ListView(
                 children: [
-                  _buildSectionTitle("Exercise Summary for Today"),
-                  _exerciseSummary.isEmpty
-                      ? _buildEmptyState("No exercise data available.")
-                      : Card(
-                          margin: const EdgeInsets.symmetric(vertical: 10),
-                          child: Padding(
-                            padding: const EdgeInsets.all(10),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _buildSummaryItem(
-                                    "Steps", _exerciseSummary['steps']),
-                                _buildSummaryItem("Calories Burned",
-                                    _exerciseSummary['calories_burned']),
-                                _buildSummaryItem("Distance",
-                                    _exerciseSummary['distance_meters']),
-                              ],
-                            ),
-                          ),
-                        ),
+                  ElevatedButton(
+                    onPressed: _connectGoogleFit,
+                    child: const Text("Connect Google Fit"),
+                  ),
+                  ElevatedButton(
+                    onPressed: _fetchFitnessData,
+                    child: const Text("Sync Fitness Data"),
+                  ),
+                  const SizedBox(height: 20),
+                  _buildSectionTitle("Your Fitness Data"),
+                  _fitnessData.isEmpty
+                      ? _buildEmptyState("No fitness data available.")
+                      : _buildFitnessDataCard(),
                   const SizedBox(height: 20),
                   _buildSectionTitle("AI-Generated Recommendations"),
                   _recommendations.isEmpty
@@ -203,34 +135,13 @@ class _VirtualHealthCoachScreenState extends State<VirtualHealthCoachScreen> {
                             );
                           }).toList(),
                         ),
-                  const SizedBox(height: 20),
-                  _buildSectionTitle("Weekly Health Trends"),
-                  _healthTrends.isEmpty
-                      ? _buildEmptyState("No trend data available.")
-                      : Card(
-                          margin: const EdgeInsets.symmetric(vertical: 10),
-                          child: Padding(
-                            padding: const EdgeInsets.all(10),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _buildSummaryItem("Avg Glucose",
-                                    _healthTrends['avg_glucose_level']),
-                                _buildSummaryItem(
-                                    "Total Steps", _healthTrends['avg_steps']),
-                                _buildSummaryItem("Avg Sleep",
-                                    _healthTrends['avg_sleep_hours']),
-                                _buildSummaryItem("Avg Heart Rate",
-                                    _healthTrends['avg_heart_rate']),
-                              ],
-                            ),
-                          ),
-                        ),
                 ],
               ),
             ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _navigateToChatbot,
+        onPressed: () {
+          Navigator.pushNamed(context, '/chatbot');
+        },
         child: const Icon(Icons.chat),
         tooltip: 'Chat with AI Health Coach',
       ),
@@ -251,6 +162,29 @@ class _VirtualHealthCoachScreenState extends State<VirtualHealthCoachScreen> {
         const SizedBox(height: 10),
         Text(message, style: const TextStyle(fontSize: 16, color: Colors.grey)),
       ],
+    );
+  }
+
+  Widget _buildFitnessDataCard() {
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 10),
+      child: Padding(
+        padding: const EdgeInsets.all(10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildSummaryItem("Steps", _fitnessData['steps']),
+            _buildSummaryItem(
+                "Calories Burned", _fitnessData['calories_burned']),
+            _buildSummaryItem("Distance", _fitnessData['distance_meters']),
+            _buildSummaryItem("Sleep Hours", _fitnessData['sleep_hours']),
+            _buildSummaryItem(
+                "Avg Heart Rate", _fitnessData['average_heart_rate']),
+            _buildSummaryItem("Latest Glucose Level",
+                "${_fitnessData['latest_glucose_level']} ${_fitnessData['glucose_unit']}"),
+          ],
+        ),
+      ),
     );
   }
 

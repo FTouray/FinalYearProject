@@ -1,6 +1,10 @@
 import 'package:Glycolog/glycaemicResponseTracker/gRT_history_detail_screen.dart';
 import 'package:Glycolog/glycaemicResponseTracker/gRT_meal_log_history_screen.dart';
 import 'package:Glycolog/glycaemicResponseTracker/gRT_meal_log_screen.dart';
+import 'package:Glycolog/medicationTracker/add_medication_screen.dart';
+import 'package:Glycolog/medicationTracker/medication_reminder_screen.dart';
+import 'package:Glycolog/medicationTracker/edit_medication_screen.dart';
+import 'package:Glycolog/medicationTracker/medications_screen.dart';
 import 'package:Glycolog/notification_screen.dart';
 import 'package:Glycolog/questionnaire/data_visualization.dart';
 import 'package:Glycolog/questionnaire/exercise_step.dart';
@@ -196,7 +200,46 @@ class _MyAppState extends State<MyApp> {
         '/virtual-health-coach': (context) => const VirtualHealthCoachScreen(),
         '/chatbot': (context) => const ChatbotScreen(),
         '/notifications': (context) => const NotificationsScreen(),
+        '/add-medication': (context) => const AddMedicationScreen(),
+        '/medications': (context) => const MedicationsScreen(),
       },
+      onGenerateRoute: (settings) {
+        switch (settings.name) {
+          case '/edit-medication':
+            if (settings.arguments is Map<String, dynamic>) {
+              return MaterialPageRoute(
+                builder: (context) => EditMedicationScreen(
+                  medication: settings.arguments as Map<String, dynamic>,
+                ),
+              );
+            }
+            return _errorRoute(); // Handle missing/incorrect arguments safely
+
+          case '/medication-reminder':
+            if (settings.arguments is Map<String, dynamic>) {
+              return MaterialPageRoute(
+                builder: (context) => MedicationReminderScreen(
+                  medication: settings.arguments as Map<String, dynamic>,
+                ),
+              );
+            }
+            return _errorRoute(); // Handle incorrect argument passing
+
+          default:
+            return null; // If the route is not found, let Flutter handle it
+        }
+      },
+      
+    );
+  }
+
+  // Function to return an error page for invalid arguments
+  Route<dynamic> _errorRoute() {
+    return MaterialPageRoute(
+      builder: (context) => Scaffold(
+        appBar: AppBar(title: const Text("Error")),
+        body: const Center(child: Text("Invalid or missing arguments!")),
+      ),
     );
   }
 }

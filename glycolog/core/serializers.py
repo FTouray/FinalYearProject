@@ -3,7 +3,7 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
-from .models import ChatMessage, ExerciseCheck, FeelingCheck, FollowUpQuestion, FoodCategory, FoodItem, GlucoseCheck, GlycaemicResponseTracker, Insight, Meal, GlucoseLog, MealCheck, QuestionnaireSession, SymptomCheck  # Import your models
+from .models import ChatMessage, ExerciseCheck, FeelingCheck, FollowUpQuestion, FoodCategory, FoodItem, GlucoseCheck, GlycaemicResponseTracker, Insight, Meal, GlucoseLog, MealCheck, Medication, MedicationReminder, QuestionnaireSession, SymptomCheck  # Import your models
 
 # Get the custom user model
 User = get_user_model()
@@ -290,3 +290,15 @@ class InsightSerializer(serializers.ModelSerializer):
     class Meta:
         model = Insight
         fields = ['id', 'insight', 'timestamp']
+        
+class MedicationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Medication
+        fields = ['id', 'user', 'name', 'rxnorm_id', 'dosage', 'frequency', 'last_taken']
+
+class MedicationReminderSerializer(serializers.ModelSerializer):
+    medication_name = serializers.ReadOnlyField(source='medication.name')
+
+    class Meta:
+        model = MedicationReminder
+        fields = ['id', 'user', 'medication', 'medication_name', 'reminder_time', 'status']

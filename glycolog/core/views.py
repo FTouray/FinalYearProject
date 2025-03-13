@@ -1,6 +1,9 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, time, timedelta, timezone
+import json
 from django.utils import timezone
 from django.http import JsonResponse
+from django.utils.dateparse import parse_time
+from django_q.tasks import async_task
 import firebase_admin
 import pandas as pd
 from django.db.models import Max
@@ -14,15 +17,19 @@ from core.ai_services import generate_ai_recommendation, generate_health_trends
 from core.ai_model import feature_engineering
 from core.ai_model.data_processing import load_data_from_db
 from core.ai_model.recommendation_engine import generate_recommendations, load_models, predict_glucose, predict_wellness_risk
-from core.services.google_fit_service import fetch_all_users_fitness_data, fetch_fitness_data
+from core.services.google_fit_service import fetch_all_users_fitness_data, fetch_fitness_data, fetch_sleep_data, fetch_step_count, get_google_fit_credentials
 from core.tasks import send_push_notification
-from .serializers import ChatMessageSerializer, ExerciseCheckSerializer, FoodCategorySerializer, FoodItemSerializer, GlucoseCheckSerializer, GlucoseLogSerializer, MealCheckSerializer, MealSerializer, QuestionnaireSessionSerializer, RegisterSerializer, LoginSerializer, SettingsSerializer, SymptomCheckSerializer
-from .models import AIHealthTrend, AIRecommendation, ChatMessage, CustomUser, CustomUserToken, ExerciseCheck, FeelingCheck, FitnessActivity, FoodCategory, FoodItem, GlucoseCheck, GlucoseLog, GlycaemicResponseTracker, LocalNotificationPrompt, Meal, MealCheck, OneSignalPlayerID, QuestionnaireSession, SymptomCheck  
+from core.services.ocr_service import extract_text_from_image
+from core.services.rxnorm_service import fetch_medication_details
+from core.services.reminder_service import schedule_medication_reminder
+from .serializers import ChatMessageSerializer, ExerciseCheckSerializer, FoodCategorySerializer, FoodItemSerializer, GlucoseCheckSerializer, GlucoseLogSerializer, MealCheckSerializer, MealSerializer, MedicationReminderSerializer, MedicationSerializer, QuestionnaireSessionSerializer, RegisterSerializer, LoginSerializer, SettingsSerializer, SymptomCheckSerializer
+from .models import AIHealthTrend, AIRecommendation, ChatMessage, CustomUser, CustomUserToken, ExerciseCheck, FeelingCheck, FitnessActivity, FoodCategory, FoodItem, GlucoseCheck, GlucoseLog, GlycaemicResponseTracker, LocalNotificationPrompt, Meal, MealCheck, Medication, MedicationReminder, OneSignalPlayerID, QuestionnaireSession, SymptomCheck  
 from django.contrib.auth import get_user_model
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.permissions import AllowAny
 from rest_framework.decorators import api_view, permission_classes
 from django.shortcuts import get_object_or_404, redirect, render
+from django.views.decorators.csrf import csrf_exempt
 from django.db.models import Q
 from django.db.models import Avg
 import joblib
@@ -30,6 +37,10 @@ import openai
 import os
 from google_auth_oauthlib.flow import Flow
 import logging
+from googleapiclient.discovery import build
+from rest_framework.generics import ListAPIView
+import cv2
+import pytesseract
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -51,7 +62,7 @@ def register_user(request):
     serializer = RegisterSerializer(data=request.data)
 
     if serializer.is_valid():
-        serializer.save()
+        user = serializer.save()
         player_id = create_onesignal_player_id(user)
 
         return Response({
@@ -66,6 +77,10 @@ def create_onesignal_player_id(user):
     """
     Creates a OneSignal Player ID for the new user.
     """
+    if not user.email:
+        print("User has no email, skipping OneSignal registration.")
+        return None  
+
     url = "https://onesignal.com/api/v1/players"
     headers = {
         "Authorization": f"Basic {ONESIGNAL_API_KEY}",
@@ -73,10 +88,10 @@ def create_onesignal_player_id(user):
     }
     payload = {
         "app_id": ONESIGNAL_APP_ID,
-        "identifier": user.email,  # Use email as identifier
+        "identifier": user.email, 
         "language": "en",
         "timezone": 0,
-        "device_type": 0  # 0 = iOS & Android
+        "device_type": 0  
     }
 
     response = requests.post(url, headers=headers, json=payload)
@@ -87,7 +102,8 @@ def create_onesignal_player_id(user):
         return player_id
     else:
         print(f"Failed to create OneSignal Player ID: {response.json()}")
-        return None
+        return None  # ✅ Returns None instead of causing an error
+
 
 @api_view(['POST'])
 @permission_classes([AllowAny])  
@@ -1082,4 +1098,182 @@ def get_today_fitness_data(request):
         "steps": steps,
         "total_sleep_hours": total_sleep_hours,
     })
+    
+RXNORM_API_URL = "https://rxnav.nlm.nih.gov/REST/drugs.json?name={}"
 
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def fetch_medications_from_rxnorm(request):
+    """Fetches medication list from RxNorm API"""
+    search_query = request.GET.get("query", "")
+
+    if not search_query:
+        return JsonResponse({"error": "Search query required"}, status=400)
+
+    response = requests.get(RXNORM_API_URL.format(search_query))
+
+    if response.status_code == 200:
+        data = response.json()
+        medications = []
+
+        if "drugGroup" in data and "conceptGroup" in data["drugGroup"]:
+            for group in data["drugGroup"]["conceptGroup"]:
+                if "conceptProperties" in group:
+                    for med in group["conceptProperties"]:
+                        medications.append({
+                            "name": med["name"],
+                            "rxnorm_id": med["rxcui"]
+                        })
+
+        return JsonResponse({"medications": medications})
+
+    return JsonResponse({"error": "Failed to fetch medications"}, status=500)
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def set_reminder(request):
+    """Set a medication reminder for the user."""
+    user = request.user
+    medication_name = request.data.get("medication_name")
+    reminder_time = request.data.get("time")
+
+    if not medication_name or not reminder_time:
+        return JsonResponse({"error": "Medication name and time are required."}, status=400)
+
+    reminder, created = MedicationReminder.objects.get_or_create(
+        user=user,
+        medication_name=medication_name,
+        reminder_time=reminder_time
+    )
+
+    if created:
+        async_task("core.tasks.send_medication_reminder", user.id, medication_name, schedule_type="D", repeats=-1)
+
+    return JsonResponse({"message": "Reminder set successfully!"})
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def get_medication_reminders(request):
+    """Retrieve all medication reminders for the user"""
+    reminders = MedicationReminder.objects.filter(user=request.user)
+    serializer = MedicationReminderSerializer(reminders, many=True)
+    return JsonResponse({"reminders": serializer.data})
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def MedicationReminderListView(request):
+    if request.method == 'GET':
+        reminders = MedicationReminder.objects.filter(user=request.user)
+        serializer = MedicationReminderSerializer(reminders, many=True)
+        return Response(serializer.data)
+
+    if request.method == 'POST':
+        data = request.data
+        medication = Medication.objects.get(user=request.user, name=data['medication_name'])
+        reminder_time = parse_time(data['time'])
+        
+        reminder, created = MedicationReminder.objects.get_or_create(
+            user=request.user, medication=medication, reminder_time=reminder_time
+        )
+        if created:
+            return Response({'message': 'Reminder set successfully!'}, status=201)
+        return Response({'message': 'Reminder already exists.'}, status=200)
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def save_medication(request):
+    """Save selected medication from RxNorm API or manually entered"""
+    user = request.user
+    name = request.data.get("name")
+    rxnorm_id = request.data.get("rxnorm_id", None)  
+    dosage = request.data.get("dosage", "")
+    frequency = request.data.get("frequency", "")
+    last_taken = request.data.get("last_taken", None)
+
+    if not name:
+        return Response({"error": "Medication name is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+    medication, created = Medication.objects.get_or_create(
+        user=user,
+        name=name,
+        defaults={"rxnorm_id": rxnorm_id, "dosage": dosage, "frequency": frequency, "last_taken": last_taken}
+    )
+
+    serializer = MedicationSerializer(medication)
+    if created:
+        return Response({"message": "Medication saved successfully."}, status=status.HTTP_201_CREATED)
+    return Response({"message": "Medication already exists."}, status=status.HTTP_200_OK)
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def get_saved_medications(request):
+    """Retrieve all medications saved by the user"""
+    medications = Medication.objects.filter(user=request.user).order_by("-id")
+    serializer = MedicationSerializer(medications, many=True)
+    return JsonResponse({"medications": serializer.data})
+
+@api_view(["PUT"])
+@permission_classes([IsAuthenticated])
+def update_medication(request, medication_id):
+    """Edit a saved medication"""
+    try:
+        medication = Medication.objects.get(id=medication_id, user=request.user)
+    except Medication.DoesNotExist:
+        return JsonResponse({"error": "Medication not found"}, status=404)
+
+    data = request.data
+    medication.name = data.get("name", medication.name)
+    medication.dosage = data.get("dosage", medication.dosage)
+    medication.frequency = data.get("frequency", medication.frequency)
+    medication.save()
+
+    return JsonResponse({"message": "Medication updated successfully!"})
+
+
+@api_view(["DELETE"])
+@permission_classes([IsAuthenticated])
+def delete_medication(request, medication_id):
+    """Remove a saved medication"""
+    try:
+        medication = Medication.objects.get(id=medication_id, user=request.user)
+        medication.delete()
+        return JsonResponse({"message": "Medication deleted successfully!"})
+    except Medication.DoesNotExist:
+        return JsonResponse({"error": "Medication not found"}, status=404)
+    
+from core.services.ocr_service import extract_text_from_image
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def scan_medication(request):
+    """Extracts text from an image and fetches medication details."""
+    if 'image' not in request.FILES:
+        return JsonResponse({"error": "No image provided"}, status=400)
+
+    file = request.FILES['image']
+    file_path = "temp.jpg"
+
+    try:
+        with open(file_path, 'wb+') as destination:
+            for chunk in file.chunks():
+                destination.write(chunk)
+
+        extracted_text = extract_text_from_image(file_path)
+        medication_details = fetch_medication_details(extracted_text)
+
+        return JsonResponse(medication_details)
+
+    except Exception as e:
+        return JsonResponse({"error": f"Failed to process image: {e}"}, status=500)
+
+    
+class MedicationListView(ListAPIView):
+    queryset = Medication.objects.all().order_by("id")
+    serializer_class = MedicationSerializer
+    permission_classes = [IsAuthenticated]
+
+class MedicationReminderListView(ListAPIView):
+    queryset = MedicationReminder.objects.all()
+    serializer_class = MedicationReminderSerializer
+    permission_classes = [IsAuthenticated]

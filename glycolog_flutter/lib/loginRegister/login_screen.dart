@@ -91,23 +91,26 @@ class _LoginScreenState extends State<LoginScreen> {
           errorMessage = null; // Clear error if login is successful
         });
 
-        // Register OneSignal Player ID
-        if (playerId != null) {
+        // **Navigate First, Then Handle OneSignal** (Ensures UI updates)
+        Future.microtask(() {
+          bool onboardingCompleted =
+              prefs.getBool('onboardingCompleted') ?? false;
+
+          if (onboardingCompleted) {
+            Navigator.pushNamedAndRemoveUntil(
+                context, '/home', (route) => false,
+                arguments: firstName);
+          } else {
+            Navigator.pushNamedAndRemoveUntil(
+                context, '/onboarding', (route) => false);
+          }
+        });
+
+        // **Handle OneSignal Player ID in the Background**
+        if (playerId == null) {
+          await fetchOneSignalPlayerId(accessToken);
+        } else {
           await updateOneSignalPlayerId(playerId);
-        } else {
-          await sendPlayerIdToBackend(accessToken, playerId!);
-        }
-
-        // Check if onboarding is completed
-        bool onboardingCompleted =
-            prefs.getBool('onboardingCompleted') ?? false;
-
-        if (onboardingCompleted) {
-          // Navigate to HomePage if onboarding is done
-          Navigator.pushNamed(context, '/home', arguments: firstName);
-        } else {
-          // Navigate to OnboardingScreen if onboarding is incomplete
-          Navigator.pushNamed(context, '/onboarding');
         }
       } else {
         final data = json.decode(response.body);
