@@ -1,24 +1,25 @@
 from datetime import timedelta
 from django.utils.timezone import now
 from django.db.models import Avg, Sum, Count
-import openai  
+import openai
 from core.models import AIHealthTrend, FitnessActivity, CustomUser
 
-def generate_ai_recommendation(user, fitness_data):
+def generate_ai_recommendation(user, fitness_activities):
     """
     Generates AI-based health recommendations using OpenAI GPT.
-    Supports **individual** user insights.
+    Supports **individual** user insights based on recent workouts.
     """
 
-    # Format fitness data into a readable summary
-    fitness_summary = "\n".join(
-        [f"{activity.activity_type} for {activity.duration_minutes} mins on {activity.start_time.strftime('%Y-%m-%d')}"
-         for activity in fitness_data]
-    ) if fitness_data else "No recent fitness data available."
+    if not fitness_activities:
+        fitness_summary = "No recent fitness data available."
+    else:
+        fitness_summary = "\n".join(
+            f"- {activity.activity_type} for {activity.duration_minutes:.0f} mins on {activity.start_time.strftime('%Y-%m-%d')}"
+            for activity in fitness_activities
+        )
 
-    # Construct OpenAI prompt
     prompt = f"""
-    The user has diabetes and their recent health activities are as follows:
+    The user has diabetes and their recent health activities are:
 
     {fitness_summary}
 
@@ -27,112 +28,84 @@ def generate_ai_recommendation(user, fitness_data):
     - Provide personalized exercise recommendations.
     - Ensure all recommendations are diabetes-friendly and promote glucose stability.
 
-    Present recommendations in bullet-point format.
+    Return in bullet-point format.
     """
 
-    # Call OpenAI API
     response = openai.ChatCompletion.create(
         model="gpt-4",
         messages=[
-            {"role": "system", "content": "You are an AI fitness coach specializing in diabetic health recommendations."},
+            {"role": "system", "content": "You are an AI fitness coach specializing in diabetic health advice."},
             {"role": "user", "content": prompt},
         ],
     )
 
-    # Extract AI response
-    ai_response = response["choices"][0]["message"]["content"]
-    
-    return ai_response
+    return response["choices"][0]["message"]["content"]
+
 
 def generate_health_trends(user=None, period_type="weekly"):
     """
-    Analyze **both** individual and system-wide health trends over a specified period (weekly/monthly).
-    - If `user` is provided, it analyzes **only that user**.
-    - If `user` is None, it generates **system-wide trends**.
+    Analyze user or system-wide health trends.
     """
     end_date = now().date()
-    start_date = end_date - timedelta(days=7) if period_type == "weekly" else end_date - timedelta(days=30)
-
-    # Get the user filter or analyze all users together
+    start_date = end_date - timedelta(days=7 if period_type == "weekly" else 30)
     user_filter = {"user": user} if user else {}
 
-    # Aggregate data for the period
-    avg_glucose = FitnessActivity.objects.filter(
-        **user_filter, activity_type="Glucose Measurement", start_time__date__range=[start_date, end_date]
-    ).aggregate(Avg("glucose_level"))["glucose_level__avg"]
+    # Pull data from FitnessActivity model
+    activities = FitnessActivity.objects.filter(start_time__date__range=[start_date, end_date], **user_filter)
 
-    avg_steps = FitnessActivity.objects.filter(
-        **user_filter, start_time__date__range=[start_date, end_date]
-    ).aggregate(Sum("steps"))["steps__sum"]
+    avg_steps = activities.aggregate(Sum("steps"))["steps__sum"]
+    avg_sleep = activities.aggregate(Avg("total_sleep_hours"))["total_sleep_hours__avg"]
+    avg_hr = activities.aggregate(Avg("heart_rate"))["heart_rate__avg"]
+    total_sessions = activities.exclude(activity_type="Sleep").count()
 
-    avg_sleep = FitnessActivity.objects.filter(
-        **user_filter, start_time__date__range=[start_date, end_date]
-    ).aggregate(Avg("total_sleep_hours"))["total_sleep_hours__avg"]
-
-    avg_heart_rate = FitnessActivity.objects.filter(
-        **user_filter, start_time__date__range=[start_date, end_date]
-    ).aggregate(Avg("heart_rate"))["heart_rate__avg"]
-
-    total_exercise_sessions = FitnessActivity.objects.filter(
-        **user_filter, activity_type="Exercise", start_time__date__range=[start_date, end_date]
-    ).count()
-
-    # Construct OpenAI prompt for trend analysis
     trend_prompt = f"""
-    The {'entire system' if user is None else 'user'} has diabetes and their recent {period_type} health trends are as follows:
+    The {'entire user base' if user is None else 'user'}'s {period_type} trends are:
 
-    - Average Glucose Level: {avg_glucose if avg_glucose else 'N/A'}
-    - Total Steps: {avg_steps if avg_steps else 'N/A'}
-    - Average Sleep Duration: {avg_sleep if avg_sleep else 'N/A'} hours
-    - Average Heart Rate: {avg_heart_rate if avg_heart_rate else 'N/A'} bpm
-    - Total Exercise Sessions: {total_exercise_sessions}
+    - Total Steps: {avg_steps or 'N/A'}
+    - Avg Sleep: {avg_sleep or 'N/A'} hours
+    - Avg Heart Rate: {avg_hr or 'N/A'} bpm
+    - Exercise Sessions: {total_sessions}
 
-    Based on this, provide:
-    - Key insights on their health trends.
-    - Actionable fitness and lifestyle recommendations.
-    - Any potential concerns related to diabetes.
+    Provide:
+    - Key insights and progress
+    - Recommendations for improvement
+    - Diabetes-specific guidance
 
-    Present insights in bullet-point format.
+    Use bullet points.
     """
 
     response = openai.ChatCompletion.create(
         model="gpt-4",
         messages=[
-            {"role": "system", "content": "You are an AI fitness expert providing insights based on user health trends."},
+            {"role": "system", "content": "You are an AI health coach."},
             {"role": "user", "content": trend_prompt},
         ],
     )
 
-    ai_summary = response["choices"][0]["message"]["content"]
+    summary = response["choices"][0]["message"]["content"]
 
-    # Store insights in the database
     AIHealthTrend.objects.update_or_create(
         user=user,
         period_type=period_type,
         start_date=start_date,
         end_date=end_date,
         defaults={
-            "avg_glucose_level": avg_glucose,
             "avg_steps": avg_steps,
             "avg_sleep_hours": avg_sleep,
-            "avg_heart_rate": avg_heart_rate,
-            "total_exercise_sessions": total_exercise_sessions,
-            "ai_summary": ai_summary,
+            "avg_heart_rate": avg_hr,
+            "total_exercise_sessions": total_sessions,
+            "ai_summary": summary,
         },
     )
 
-    return ai_summary
+    return summary
+
 
 def generate_system_wide_health_trends():
-    """
-    Generate health trends across **all users** (not per individual).
-    """
     return generate_health_trends(user=None, period_type="weekly"), generate_health_trends(user=None, period_type="monthly")
 
+
 def generate_individual_health_trends():
-    """
-    Generate health trends for **each user individually**.
-    """
     for user in CustomUser.objects.all():
         generate_health_trends(user=user, period_type="weekly")
         generate_health_trends(user=user, period_type="monthly")

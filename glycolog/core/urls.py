@@ -1,7 +1,7 @@
 from django.urls import path
 
-from .views import (MedicationListView, MedicationReminderListView, authorize_google_fit, chat_with_health_coach, delete_medication, exercise_step, fetch_google_fit_data, fetch_medications_from_rxnorm, get_ai_insights, get_chat_history, get_health_trends, get_insights, get_local_notifications, get_medication_reminders, get_past_recommendations, get_saved_medications, google_fit_callback, link_google_fit, meal_step, glucose_step, glycaemic_response_main, list_categories, list_food_items_by_category, log_glucose, log_meal, meal_log_detail,  meal_log_history, questionnaire_data_visualization, register_user, 
-    login_user, review_answers, save_medication, scan_medication, send_notification, set_reminder, settings_view, glucose_log_details, glucose_log_history, start_questionnaire, symptom_step, update_medication, update_onesignal_player_id, virtual_health_coach)
+from .views import (MedicationListView, MedicationReminderListView, chat_with_health_coach, delete_medication, exercise_step, fetch_medications_from_rxnorm, get_ai_insights, get_chat_history, get_health_trends, get_insights, get_latest_fitness_data, get_local_notifications, get_medication_reminders, get_past_recommendations, get_saved_medications, get_today_health_data, google_signin, health_connect_callback, link_google_fit, meal_step, glucose_step, glycaemic_response_main, list_categories, list_food_items_by_category, log_glucose, log_meal, meal_log_detail,  meal_log_history, questionnaire_data_visualization, register_user, 
+    login_user, review_answers, save_medication, scan_medication, send_notification, set_reminder, settings_view, glucose_log_details, glucose_log_history, start_questionnaire, store_health_data, symptom_step, update_medication, update_onesignal_player_id, virtual_health_coach)
 from rest_framework_simplejwt.views import (TokenObtainPairView, TokenRefreshView)
 
 urlpatterns = [
@@ -39,14 +39,14 @@ urlpatterns = [
     # Virtual Health Coach
     path("virtual-health-coach/", virtual_health_coach, name="virtual_health_coach"),
     path("virtual-health-coach/recommendations/", get_past_recommendations, name="get_past_recommendations"),
-    # Google Fit Integration
-    path("google-fit/authorize/", authorize_google_fit, name="authorize_google_fit"),
-    path("google-fit/callback/", google_fit_callback, name="google_fit_callback"),
-    path("link-google-fit/", link_google_fit, name="link_google_fit"),
-    path("fetch-google-fit-data/", fetch_google_fit_data, name="fetch_google_fit_data"),
-    # Chat with Virtual Health Coach
     path("virtual-health-coach/chat/", chat_with_health_coach, name="chat_with_health_coach"),
     path("virtual-health-coach/chat/history/", get_chat_history, name="get_chat_history"),
+
+     # Daily Health Overview for Flutter Health Plugin
+    path("store-health-data/", store_health_data, name="store_health_data"),
+    path("health-connect/today/", get_today_health_data, name="get_today_health_data"),
+    path("health-connect/latest/", get_latest_fitness_data, name="get_latest_fitness_data"),
+
     # AI Health Trends
     path("health-trends/<str:period_type>/", get_health_trends, name="get_health_trends"),
     # Local Notifications

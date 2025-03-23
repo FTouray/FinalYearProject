@@ -284,21 +284,6 @@ class Insight(models.Model):
     def __str__(self):
         return f"Insight for {self.user.username} - {self.timestamp.strftime('%d/%m/%Y %H:%M:%S')}"
 
-class CustomUserToken(models.Model):
-    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name="google_fit_token")
-    token = models.CharField(max_length=255)
-    refresh_token = models.CharField(max_length=255)
-    token_uri = models.URLField(default='https://oauth2.googleapis.com/token')
-    client_id = models.CharField(max_length=255)
-    client_secret = models.CharField(max_length=255)
-    scopes = models.TextField()
-
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return f"{self.user.username} - Google Fit Token"
-
 # Virtual health coach model to provide personalised health guidance
 class VirtualHealthCoach(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='health_coach')  # Foreign key linking to user
@@ -318,7 +303,7 @@ class ChatMessage(models.Model):
     def __str__(self):
         return f"{self.user.username} - {self.sender} - {self.timestamp}"
 
-# Model to store user activity data from Google Fit 
+# Model to store user activity data from Health Connect
 class FitnessActivity(models.Model):
     ACTIVITY_SOURCES = [
         ("Smartwatch", "Smartwatch"),
@@ -345,9 +330,10 @@ class FitnessActivity(models.Model):
     total_sleep_hours = models.FloatField(null=True, blank=True)
     calories_burned = models.FloatField(null=True, blank=True)
     distance_meters = models.FloatField(null=True, blank=True)
+    is_manual_override = models.BooleanField(default=False)
 
     last_activity_time = models.DateTimeField(null=True, blank=True)  # Last recorded activity time
-    last_synced = models.DateTimeField(auto_now=True)  # Timestamp of last sync with Google Fit
+    last_synced = models.DateTimeField(auto_now=True)  # Timestamp of last sync with Health Connect
 
     
     class Meta:

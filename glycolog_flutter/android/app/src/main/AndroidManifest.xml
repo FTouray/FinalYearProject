@@ -1,4 +1,10 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"  package="com.example.glycolog_flutter">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+xmlns:tools="http://schemas.android.com/tools" package="com.example.glycolog_flutter">
+    
+
+    <queries>
+        <package android:name="com.google.android.apps.healthdata" />
+    </queries>
 
     <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
     <uses-permission android:name="android.permission.INTERNET" />
@@ -8,7 +14,14 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.CAMERA"/>
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
-    
+    <uses-permission android:name="android.permission.READ_HEALTH_DATA" />
+    <uses-permission android:name="android.permission.WRITE_HEALTH_DATA" />
+    <uses-permission android:name="android.permission.HEALTH_CONNECT_READ" />
+    <uses-permission android:name="android.permission.HEALTH_CONNECT_WRITE" />
+
+
+    <uses-feature android:name="android.hardware.health.connect" android:required="true" />
+
     <application
         android:label="glycolog_flutter"
         android:name="android.app.Application"
@@ -26,40 +39,26 @@
                  the Android process has started. This theme is visible to the user
                  while the Flutter UI initializes. After that, this theme continues
                  to determine the Window background behind the Flutter UI. -->
+             
+             <intent-filter>
+                <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" />
+            </intent-filter>
+            
             <meta-data
               android:name="io.flutter.embedding.android.NormalTheme"
               android:resource="@style/NormalTheme"
               />
 
-              <meta-data
-                android:name="com.google.android.gms.auth.api.signin.GoogleSignIn"
-                android:value="true"/>
-                <meta-data
-            android:name="com.google.android.gms.auth.api.signin.CLIENT_ID"
-            android:value="353377462193-1bda4ckk069360sdlb7qeude8u8o2kk2.apps.googleusercontent.com"/>
-
-             
-              
-              <meta-data android:name="com.onesignal.NotificationServiceExtension" android:value="true"/>
-                <meta-data android:name="com.onesignal.AppId" android:value="0f726e49-950b-4eea-a396-ab38785f8fc0"/>
+            <!-- OneSignal Notifications -->
+            <meta-data android:name="com.onesignal.NotificationServiceExtension" android:value="true"/>
+            <meta-data android:name="com.onesignal.AppId" android:value="0f726e49-950b-4eea-a396-ab38785f8fc0"/>
 
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
-        <activity
-            android:name="com.google.android.gms.auth.api.signin.internal.SignInHubActivity"
-            android:excludeFromRecents="true"
-            android:exported="false" />
-            
-             <meta-data
-                android:name="com.google.android.gms.auth.api.fitness"
-                android:value="true" />
-        
-        <meta-data
-            android:name="com.google.android.gms.auth.api.signin"
-            android:resource="@xml/auth" />
+
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data
@@ -78,6 +77,11 @@
         </intent>
     </queries>
 
-    <uses-permission android:name="android.permission.CAMERA"/>
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/> 
+    <queries>
+        <package android:name="com.google.android.apps.healthdata" />
+        <intent>
+            <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" />
+        </intent>
+    </queries>
+
 </manifest>

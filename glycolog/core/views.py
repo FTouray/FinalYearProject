@@ -1,10 +1,10 @@
 from datetime import datetime, time, timedelta, timezone
+from django.utils.timezone import now, timedelta
 import json
 from django.utils import timezone
 from django.http import JsonResponse
-from django.utils.dateparse import parse_time
+from django.utils.dateparse import parse_time, parse_datetime
 from django_q.tasks import async_task
-import firebase_admin
 import pandas as pd
 from django.db.models import Max
 import requests
@@ -17,13 +17,12 @@ from core.ai_services import generate_ai_recommendation, generate_health_trends
 from core.ai_model import feature_engineering
 from core.ai_model.data_processing import load_data_from_db
 from core.ai_model.recommendation_engine import generate_recommendations, load_models, predict_glucose, predict_wellness_risk
-from core.services.google_fit_service import fetch_all_users_fitness_data, fetch_fitness_data, fetch_sleep_data, fetch_step_count, get_google_fit_credentials
 from core.tasks import send_push_notification
 from core.services.ocr_service import extract_text_from_image
 from core.services.rxnorm_service import fetch_medication_details
 from core.services.reminder_service import schedule_medication_reminder
 from .serializers import ChatMessageSerializer, ExerciseCheckSerializer, FoodCategorySerializer, FoodItemSerializer, GlucoseCheckSerializer, GlucoseLogSerializer, MealCheckSerializer, MealSerializer, MedicationReminderSerializer, MedicationSerializer, QuestionnaireSessionSerializer, RegisterSerializer, LoginSerializer, SettingsSerializer, SymptomCheckSerializer
-from .models import AIHealthTrend, AIRecommendation, ChatMessage, CustomUser, CustomUserToken, ExerciseCheck, FeelingCheck, FitnessActivity, FoodCategory, FoodItem, GlucoseCheck, GlucoseLog, GlycaemicResponseTracker, LocalNotificationPrompt, Meal, MealCheck, Medication, MedicationReminder, OneSignalPlayerID, QuestionnaireSession, SymptomCheck  
+from .models import AIHealthTrend, AIRecommendation, ChatMessage, CustomUser, ExerciseCheck, FeelingCheck, FitnessActivity, FoodCategory, FoodItem, GlucoseCheck, GlucoseLog, GlycaemicResponseTracker, LocalNotificationPrompt, Meal, MealCheck, Medication, MedicationReminder, OneSignalPlayerID, QuestionnaireSession, SymptomCheck  
 from django.contrib.auth import get_user_model
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.permissions import AllowAny
@@ -39,8 +38,6 @@ from google_auth_oauthlib.flow import Flow
 import logging
 from googleapiclient.discovery import build
 from rest_framework.generics import ListAPIView
-import cv2
-import pytesseract
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -743,112 +740,114 @@ def convert_glucose_units(glucose_value, preferred_unit="mg/dL"):
         return round(glucose_value / 18, 2)  # Convert mg/dL to mmol/L
     return glucose_value  # Keep mg/dL as is
 
-def authorize_google_fit(request):
-    """Redirect user to Google Fit OAuth for authorization."""
-    try:
-        flow = Flow.from_client_secrets_file(
-            settings.GOOGLE_FIT_CLIENT_SECRET,  # Load from settings
-            scopes=['https://www.googleapis.com/auth/fitness.activity.read'],
-            redirect_uri=f"{settings.API_URL}/google-fit/callback/"
-        )
-        authorization_url, state = flow.authorization_url(
-            access_type='offline', 
-            include_granted_scopes='true'
-        )
-        request.session['oauth_state'] = state  # Store state in session
-        return redirect(authorization_url)
-    except Exception as e:
-        logger.error(f"Google Fit Authorization Error: {e}")
-        return JsonResponse({"error": "Failed to start Google Fit OAuth"}, status=500)
-
-@api_view(["GET"])
-@permission_classes([IsAuthenticated])
-def google_fit_callback(request):
-    """Handle OAuth callback and save Google Fit tokens."""
-    try:
-        state = request.session.get('oauth_state')
-        if not state:
-            return JsonResponse({"error": "Invalid OAuth state."}, status=400)
-
-        flow = Flow.from_client_secrets_file(
-            settings.GOOGLE_FIT_CLIENT_SECRET,
-            scopes=['https://www.googleapis.com/auth/fitness.activity.read'],
-            redirect_uri=f"{settings.API_URL}/google-fit/callback/"
-        )
-        flow.fetch_token(authorization_response=request.build_absolute_uri())
-
-        credentials = flow.credentials
-        user = request.user
-
-        # 🔹 **Save tokens securely in the database**
-        CustomUserToken.objects.update_or_create(
-            user=user,
-            defaults={
-                'token': credentials.token,
-                'refresh_token': credentials.refresh_token,
-                'token_uri': credentials.token_uri,
-                'client_id': credentials.client_id,
-                'client_secret': credentials.client_secret,
-                'scopes': ",".join(credentials.scopes),
-            }
-        )
-
-        return JsonResponse({"message": "Google Fit connected successfully!"})
-    
-    except Exception as e:
-        logger.error(f"Google Fit Callback Error: {e}")
-        return JsonResponse({"error": "Failed to connect Google Fit"}, status=500)
-
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def virtual_health_coach(request):
-    """Generate AI-driven personalized fitness recommendations based on user’s latest health data."""
     user = request.user
+    today = now()
+    start_date = today - timedelta(days=7)
 
-    # Fetch Google Fit Data before AI recommendation
-    fitness_data = fetch_fitness_data(user)
+    # --- Trend Summary (Past 7 days) ---
+    activities = (
+        FitnessActivity.objects
+        .filter(user=user, start_time__date__range=[start_date.date(), today.date()])
+        .order_by("start_time")
+    )
 
-    # Fetch latest glucose level
-    latest_glucose = (
-        FitnessActivity.objects.filter(user=user, activity_type="Glucose Measurement")
+    trend_summary = {}
+    for activity in activities:
+        date_str = activity.start_time.strftime("%Y-%m-%d")
+        trend = trend_summary.setdefault(date_str, {
+            "steps": 0, "heart_rate": [], "sleep_hours": 0.0, "calories": 0.0, "distance": 0.0
+        })
+        trend["steps"] += activity.steps or 0
+        trend["calories"] += activity.calories_burned or 0.0
+        trend["distance"] += activity.distance_meters or 0.0
+        if activity.heart_rate:
+            trend["heart_rate"].append(activity.heart_rate)
+        if activity.total_sleep_hours:
+            trend["sleep_hours"] += activity.total_sleep_hours
+
+    for day in trend_summary:
+        hr_list = trend_summary[day]["heart_rate"]
+        trend_summary[day]["heart_rate"] = sum(hr_list) / len(hr_list) if hr_list else None
+
+    # --- Latest Glucose Reading ---
+    latest_log = GlucoseLog.objects.filter(user=user).order_by("-timestamp").first()
+    latest_check = (
+        GlucoseCheck.objects
+        .filter(session__user=user)
+        .order_by("-timestamp")
+        .first()
+    )
+
+    # Pick the latest between both
+    if latest_log and (not latest_check or latest_log.timestamp > latest_check.timestamp):
+        latest_glucose_value = latest_log.glucose_level
+        latest_glucose_time = latest_log.timestamp
+    elif latest_check:
+        latest_glucose_value = latest_check.glucose_level
+        latest_glucose_time = latest_check.timestamp
+    else:
+        latest_glucose_value = None
+        latest_glucose_time = None
+
+    # --- Average Glucose Level (from both sources) ---
+    avg_log = GlucoseLog.objects.filter(user=user).aggregate(Avg("glucose_level"))["glucose_level__avg"] or 0
+    avg_check = (
+        GlucoseCheck.objects
+        .filter(session__user=user)
+        .aggregate(Avg("glucose_level"))["glucose_level__avg"] or 0
+    )
+
+    # Weighted average (can refine later)
+    avg_glucose_level = round((avg_log + avg_check) / 2, 2) if (avg_log or avg_check) else None
+
+    # --- AI Recommendation ---
+    recent_activities = (
+        FitnessActivity.objects
+        .filter(user=user)
+        .order_by("-start_time")[:5]
+    )
+    ai_response = generate_ai_recommendation(user, recent_activities)
+    ai_recommendation = AIRecommendation.objects.create(
+        user=user, recommendation_text=ai_response
+    )
+    ai_recommendation.fitness_activities.set(recent_activities)
+
+    # --- Summary & Return ---
+    latest_fitness = (
+        FitnessActivity.objects
+        .filter(user=user)
         .order_by("-start_time")
         .first()
     )
 
-    # Fetch last 5 fitness activities
-    recorded_fitness_activities = FitnessActivity.objects.filter(user=user).order_by("-start_time")[:5]
-
-    # Aggregate health stats
-    avg_glucose_level = (
-        FitnessActivity.objects.filter(user=user, activity_type="Glucose Measurement")
-        .aggregate(Avg("glucose_level"))
-        .get("glucose_level__avg")
+    total_exercise_sessions = (
+        FitnessActivity.objects
+        .filter(user=user, activity_type="Exercise")
+        .count()
     )
-
-    total_exercise_sessions = FitnessActivity.objects.filter(user=user, activity_type="Exercise").count()
-
-    # Format data summaries for AI
-    glucose_summary = (
-        f"{latest_glucose.start_time.strftime('%Y-%m-%d %H:%M')}: {latest_glucose.glucose_level} mg/dL"
-        if latest_glucose else "No recent glucose logs."
-    )
-
-    # Call AI function to generate recommendations
-    ai_response = generate_ai_recommendation(user, recorded_fitness_activities)
-
-    # Save AI-generated recommendation
-    ai_recommendation = AIRecommendation.objects.create(
-        user=user,
-        recommendation_text=ai_response,
-    )
-    ai_recommendation.fitness_activities.set(recorded_fitness_activities)
 
     return JsonResponse({
         "recommendation": ai_response,
-        "glucose_summary": glucose_summary,
+        "glucose_summary": (
+            f"{latest_glucose_time.strftime('%Y-%m-%d %H:%M')}: {latest_glucose_value} mg/dL"
+            if latest_glucose_value else "No recent glucose data."
+        ),
+        "average_glucose_level": avg_glucose_level or "N/A",
         "total_exercise_sessions": total_exercise_sessions,
-        "average_glucose_level": avg_glucose_level if avg_glucose_level else "N/A",
-        "latest_fitness_data": fitness_data
+        "latest_fitness_data": {
+            "activity_type": latest_fitness.activity_type if latest_fitness else None,
+            "steps": latest_fitness.steps if latest_fitness else None,
+            "heart_rate": latest_fitness.heart_rate if latest_fitness else None,
+            "sleep_hours": latest_fitness.total_sleep_hours if latest_fitness else None,
+            "distance_meters": latest_fitness.distance_meters if latest_fitness else None,
+            "calories_burned": latest_fitness.calories_burned if latest_fitness else None,
+            "start_time": latest_fitness.start_time.isoformat() if latest_fitness else None,
+            "end_time": latest_fitness.end_time.isoformat() if latest_fitness else None,
+        },
+        "trend_data": trend_summary
     })
 
 @api_view(["GET"])
@@ -900,51 +899,97 @@ def get_health_trends(request, period_type="weekly"):
 
     return JsonResponse({"trend": data})
 
+
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
-def fetch_all_users_google_fit(request):
-    """Manually fetch and update Google Fit data for all users (Admin Only)."""
-    if not request.user.is_staff:
-        return JsonResponse({"error": "Unauthorized access."}, status=403)
+def get_latest_fitness_data(request):
+    """Return latest fitness data stored in DB for this user."""
+    user = request.user
+    latest = FitnessActivity.objects.filter(user=user).order_by('-start_time').first()
 
-    fetch_all_users_fitness_data()
-    return JsonResponse({"message": "Google Fit data updated for all users."})
+    if not latest:
+        return JsonResponse({"message": "No fitness data found."}, status=404)
+
+    data = {
+        "activity_type": latest.activity_type,
+        "steps": latest.steps,
+        "heart_rate": latest.heart_rate,
+        "calories_burned": latest.calories_burned,
+        "distance_meters": latest.distance_meters,
+        "sleep_hours": latest.total_sleep_hours,
+        "start_time": latest.start_time,
+        "end_time": latest.end_time,
+    }
+    return JsonResponse(data)
+
+
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
-def link_google_fit(request):
-    """Link Google Fit account to the user's profile."""
+def store_health_data(request):
     user = request.user
-    google_fit_email = request.data.get("google_fit_email")
+    data = request.data
 
-    if not google_fit_email:
-        return JsonResponse({"error": "Google Fit email is required."}, status=400)
+    try:
+        start_time = parse_datetime(data.get("start_time"))
+        end_time = parse_datetime(data.get("end_time"))
+        activity_type = data.get("activity_type")
 
-    # Update user profile with Google Fit email
-    user.profile.google_fit_email = google_fit_email
-    user.profile.save()
+        existing = FitnessActivity.objects.filter(
+            user=user,
+            activity_type=activity_type,
+            start_time=start_time,
+            end_time=end_time
+        ).first()
 
-    return JsonResponse({"message": "Google Fit account linked successfully!"})
+        if existing and not existing.is_manual_override:
+            return Response({"message": "Record already exists."}, status=200)
+
+        FitnessActivity.objects.update_or_create(
+            user=user,
+            activity_type=activity_type,
+            start_time=start_time,
+            end_time=end_time,
+            defaults={
+                "duration_minutes": data.get("duration_minutes"),
+                "steps": data.get("steps"),
+                "heart_rate": data.get("heart_rate"),
+                "total_sleep_hours": data.get("sleep_hours"),
+                "calories_burned": data.get("calories_burned"),
+                "distance_meters": data.get("distance_meters"),
+                "source": "Phone",
+                "last_activity_time": end_time,
+                "is_manual_override": False,
+            }
+        )
+
+        return Response({"message": "Health data stored successfully."}, status=201)
+
+    except Exception as e:
+        return Response({"error": f"Failed to store health data: {str(e)}"}, status=400)
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
-def fetch_google_fit_data(request):
-    """Fetch fitness data from Google Fit for the authenticated user."""
+def get_today_health_data(request):
+    from datetime import datetime
     user = request.user
+    today = datetime.now().date()
 
-    # Check if user has linked Google Fit
-    user_token = CustomUserToken.objects.filter(user=user).first()
-    if not user_token:
-        return JsonResponse({"error": "Google Fit is not linked to your account. Please connect Google Fit first."}, status=400)
+    today_data = FitnessActivity.objects.filter(user=user, start_time__date=today).first()
 
-    # Fetch the fitness data
-    fitness_data = fetch_fitness_data(user)
+    if not today_data:
+        return Response({"message": "No data for today."}, status=404)
 
-    # Ensure fitness_data is a dictionary before returning it
-    if not isinstance(fitness_data, dict):
-        return JsonResponse({"error": "Unexpected response format from Google Fit"}, status=500)
-
-    return JsonResponse(fitness_data, safe=False)  # Ensure safe=False if it's not a dict
+    return Response({
+        "activity_type": today_data.activity_type,
+        "steps": today_data.steps,
+        "sleep_hours": today_data.total_sleep_hours,
+        "heart_rate": today_data.heart_rate,
+        "calories_burned": today_data.calories_burned,
+        "distance_meters": today_data.distance_meters,
+        "start_time": today_data.start_time,
+        "end_time": today_data.end_time
+    })
 
 
 @api_view(["POST"])
@@ -1013,9 +1058,15 @@ def chat_with_health_coach(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def get_chat_history(request):
-    """Retrieve user’s chat history with the AI coach."""
+    """Retrieve user’s chat history with the AI coach (Paginated)."""
     user = request.user
-    chat_history = ChatMessage.objects.filter(user=user).order_by("timestamp")[:50]
+    page = int(request.GET.get("page", 1))  # Default to page 1
+    per_page = 20  # Number of messages per page
+
+    chat_history = (
+        ChatMessage.objects.filter(user=user)
+        .order_by("-timestamp")[(page-1)*per_page : page*per_page]
+    )
 
     data = [
         {
@@ -1026,8 +1077,7 @@ def get_chat_history(request):
         for msg in chat_history
     ]
 
-    return JsonResponse({"chat_history": data})
-
+    return JsonResponse({"chat_history": data, "page": page, "per_page": per_page})
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
@@ -1080,24 +1130,45 @@ def send_notification(request):
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
-def get_today_fitness_data(request):
+def get_today_health_data(request):
     """Fetch today's fitness data for pre-filling the symptom report form."""
     user = request.user
-    creds = get_google_fit_credentials(user)
-    if not creds:
-        return JsonResponse({"error": "Google Fit is not connected"}, status=400)
+    token = get_health_connect_credentials(user)
+    
+    if not token:
+        return JsonResponse({"error": "Health Connect is not connected"}, status=400)
 
-    fitness_service = build("fitness", "v1", credentials=creds)
-    today_millis = int(time.time() * 1000) - (12 * 60 * 60 * 1000)  # Last 12 hours
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json"
+    }
 
-    # Fetch today's sleep & exercise data
-    steps = fetch_step_count(fitness_service, today_millis, int(time.time() * 1000))
-    total_sleep_hours = fetch_sleep_data(fitness_service, today_millis, int(time.time() * 1000))
+    now_millis = int(time.time() * 1000)
+    twelve_hours_ago = now_millis - (12 * 60 * 60 * 1000)
 
-    return JsonResponse({
-        "steps": steps,
-        "total_sleep_hours": total_sleep_hours,
-    })
+    body = {
+        "aggregateBy": [
+            {"dataTypeName": "com.google.step_count.delta"},
+            {"dataTypeName": "com.google.sleep.segment"},
+        ],
+        "bucketByTime": {"durationMillis": 43200000},  # 12 hours
+        "startTimeMillis": twelve_hours_ago,
+        "endTimeMillis": now_millis,
+    }
+
+    try:
+        response = requests.post(HEALTH_CONNECT_API_URL, headers=headers, json=body)
+        response_data = response.json()
+
+        return JsonResponse({
+            "steps": extract_step_count(response_data) or 0,
+            "total_sleep_hours": extract_sleep_data(response_data) or 0,
+        })
+
+    except Exception as e:
+        logger.error(f"Error fetching Health Connect data: {e}")
+        return JsonResponse({"error": "Failed to fetch today's fitness data."})
+
     
 RXNORM_API_URL = "https://rxnav.nlm.nih.gov/REST/drugs.json?name={}"
 

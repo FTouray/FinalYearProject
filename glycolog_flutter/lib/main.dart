@@ -1,4 +1,4 @@
-import 'package:Glycolog/glycaemicResponseTracker/gRT_history_detail_screen.dart';
+import 'glycaemicResponseTracker/gRT_history_detail_screen.dart';
 import 'package:Glycolog/glycaemicResponseTracker/gRT_meal_log_history_screen.dart';
 import 'package:Glycolog/glycaemicResponseTracker/gRT_meal_log_screen.dart';
 import 'package:Glycolog/medicationTracker/add_medication_screen.dart';

@@ -13,20 +13,27 @@ A few resources to get you started if this is your first Flutter project:
 
 For help getting started with Flutter development, view the
 [online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+samples, guidance on mobile development, and a full API reference. 
+
+& c:/FYP/glycologapp/.venv/Scripts/Activate.ps1
 
 ## SERVER
 cd "C:\Users\ftour\OneDrive - Technological University Dublin\4th Year\FYP\glycologapp\glycolog"
+cd "C:\FYP\glycologapp\glycolog"
 python manage.py runserver 
 python manage.py runserver 0.0.0.0:8000
 
+python manage.py qcluster
+
 ngrok http 8000
+adb reverse tcp:8000 tcp:8000
 
 python manage.py makemigrations
 python manage.py migrate
 
 ## FRONTEND
 cd "C:\Users\ftour\OneDrive - Technological University Dublin\4th Year\FYP\glycologapp\glycolog_flutter"
+cd "C:\FYP\glycologapp\glycolog_flutter"
 flutter run
 
 ## RETRAIN MODEL
@@ -47,7 +54,7 @@ python model_training.py
 
 ## Login
 - Forgot Password
-- Password Validation
+- Password Validation to show up
 
 ## Register
 - Email and Password Validation

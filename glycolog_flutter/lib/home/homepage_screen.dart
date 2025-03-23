@@ -272,7 +272,7 @@ final String? apiUrl = dotenv.env['API_URL'];
                     icon: Icons.medication,
                     label: 'Medication Tracker',
                     onTap: () {
-                      Navigator.pushNamed(context, '/medication-tracker');
+                      Navigator.pushNamed(context, '/medications');
                     },
                   ),
                 ],
