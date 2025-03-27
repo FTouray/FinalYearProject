@@ -45,12 +45,14 @@ dependencies:
   health: ^12.0.1
   googleapis: any
   googleapis_auth: any
-  flutter_health_connect: ^1.2.3
+  # flutter_health_connect: ^1.2.3
   flutter_dotenv: ^5.2.1
   device_info_plus: ^11.3.0 
-  win32: ^5.10.1 
-  flutter_local_notifications: any
+  win32: ^5.10.1
+  # flutter_local_notifications: ^16.2.0
   font_awesome_flutter: ^9.2.0
+  # flutter_background_service: ^5.0.5
+  # awesome_notifications: ^0.10.1
   
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.

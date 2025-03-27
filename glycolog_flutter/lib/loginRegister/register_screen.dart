@@ -25,8 +25,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
       true; // Password visibility for confirm password field
   String? errorMessage;
   final String? apiUrl = dotenv.env['API_URL']; 
-  final String? oneSignalAppId = dotenv.env['ONESIGNAL_APP_ID'];
-  final String? oneSignalApiKey = dotenv.env['ONESIGNAL_API_KEY'];
 
   Future<void> register() async {
     // Gather data from form fields
@@ -81,19 +79,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
         SharedPreferences prefs = await SharedPreferences.getInstance();
         await prefs.setString('access_token', accessToken);
 
-        // Fetch and store OneSignal Player ID
-        bool onesignalSuccess = await fetchOneSignalPlayerId(accessToken);
-
-        if (onesignalSuccess) {
-          // Navigate to login & clear navigation stack
-          Navigator.pushNamedAndRemoveUntil(
-              context, '/login', (route) => false);
-        } else {
-          setState(() {
-            errorMessage =
-                "Registration successful, but failed to register OneSignal.";
-          });
-        }
       } else {
         final data = json.decode(response.body);
         setState(() {
@@ -106,47 +91,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
       });
     }
   }
-
-   Future<bool> fetchOneSignalPlayerId(String accessToken) async {
-  final response = await http.get(
-    Uri.parse("https://onesignal.com/api/v1/players?app_id=$oneSignalAppId"),
-    headers: {
-      "Authorization": "Basic $oneSignalApiKey",
-      "Content-Type": "application/json"
-    },
-  );
-
-  if (response.statusCode == 200) {
-    final List<dynamic> players = json.decode(response.body)['players'];
-
-    if (players.isNotEmpty) {
-      String playerId = players.first['id'];
-      return await sendPlayerIdToBackend(accessToken, playerId);
-    }
-  }
-
-  print("Failed to fetch OneSignal Player ID: ${response.body}");
-  return false;
-}
-
-Future<bool> sendPlayerIdToBackend(String accessToken, String playerId) async {
-  final response = await http.post(
-    Uri.parse('$apiUrl/update-onesignal-player-id/'),
-    headers: {
-      'Authorization': 'Bearer $accessToken',
-      'Content-Type': 'application/json',
-    },
-    body: jsonEncode({"player_id": playerId}),
-  );
-
-  if (response.statusCode == 200) {
-    print("OneSignal Player ID registered successfully.");
-    return true;
-  } else {
-    print("Failed to register OneSignal Player ID: ${response.body}");
-    return false;
-  }
-}
 
   @override
   Widget build(BuildContext context) {

@@ -4,6 +4,9 @@ from django.db.models import Avg, Sum, Count
 import openai
 from core.models import AIHealthTrend, FitnessActivity, CustomUser
 
+
+client = openai.OpenAI()
+
 def generate_ai_recommendation(user, fitness_activities):
     """
     Generates AI-based health recommendations using OpenAI GPT.
@@ -31,8 +34,8 @@ def generate_ai_recommendation(user, fitness_activities):
     Return in bullet-point format.
     """
 
-    response = openai.ChatCompletion.create(
-        model="gpt-4",
+    response = client.chat.completions.create(
+        model="gpt-3.5-turbo",
         messages=[
             {"role": "system", "content": "You are an AI fitness coach specializing in diabetic health advice."},
             {"role": "user", "content": prompt},

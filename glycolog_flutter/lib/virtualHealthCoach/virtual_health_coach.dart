@@ -1,11 +1,15 @@
 // ignore_for_file: avoid_print
 
+import 'package:Glycolog/utils.dart';
 import 'package:flutter/material.dart';
 import 'package:Glycolog/services/auth_service.dart';
 import 'package:Glycolog/services/health_connect_service.dart';
+import 'package:health/health.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+
+final health = Health();
 
 class VirtualHealthCoachScreen extends StatefulWidget {
   const VirtualHealthCoachScreen({super.key});
@@ -25,7 +29,8 @@ class _VirtualHealthCoachScreenState extends State<VirtualHealthCoachScreen> {
     "latest_glucose_level": "N/A",
     "glucose_unit": "mg/dL",
   };
-
+  Map<String, dynamic>? _todayHealthData;
+  Map<String, dynamic>? _trendData;
   List<Map<String, String>> _recommendations = [];
   bool isHealthConnectConnected = false;
   bool isLoading = true;
@@ -33,24 +38,116 @@ class _VirtualHealthCoachScreenState extends State<VirtualHealthCoachScreen> {
 
   @override
   void initState() {
+    health.configure();
+    health.getHealthConnectSdkStatus();
     super.initState();
-    _initializeData();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeData();
+    });
   }
-
-  Future<void> _initializeData() async {
+  
+Future<void> _initializeData() async {
     setState(() => isLoading = true);
 
     final healthService = HealthConnectService();
     final token = await AuthService().getAccessToken();
+    if (token == null) {
+      _showErrorMessage("Authentication failed.");
+      setState(() => isLoading = false);
+      return;
+    }
 
-    await healthService.requestPermissions();
-    await healthService.sendToBackend(token!); // ✅ Sends data if available
+    try {
+      final health = Health();
+      await health.configure(); // Ensure Health is configured before any calls
 
-    await _fetchVirtualHealthCoachSummary(token);
+      // Check if permissions are already granted
+      final hasPermissions = await health.hasPermissions(
+        healthService.requiredTypes,
+        permissions: healthService.requiredTypes
+            .map((_) => HealthDataAccess.READ)
+            .toList(),
+      );
+
+      bool permissionGranted = hasPermissions == true;
+
+      if (!permissionGranted) {
+        permissionGranted = await healthService.requestPermissions();
+      }
+
+      if (!permissionGranted) {
+        _showErrorMessage("Permission to access health data was denied.");
+      } else {
+        final success = await healthService.sendToBackend(token);
+        if (success) {
+          print("✅ Health data successfully sent to backend");
+        } else {
+          print("⚠️ Failed to send health data to backend");
+        }
+      }
+
+      // Fetch backend summaries and trends regardless of permission result
+      await Future.wait([
+        _fetchVirtualHealthCoachSummary(token),
+        _fetchRecommendations(),
+        _fetchTodayHealthData(token),
+        _fetchHealthTrends(token),
+      ]);
+    } catch (e) {
+      print("❌ Initialization error: $e");
+      _showErrorMessage("Failed to initialize health data.");
+    }
+
     setState(() => isLoading = false);
   }
 
-  Future<void> _fetchVirtualHealthCoachSummary(String token) async {
+
+
+Future<void> _fetchTodayHealthData(String token) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$apiUrl/get_today_health_data/'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json'
+        },
+      );
+
+      if (response.statusCode == 200) {
+        setState(() {
+          _todayHealthData = jsonDecode(response.body);
+        });
+      } else {
+        print("No data for today: ${response.body}");
+      }
+    } catch (e) {
+      print("Error fetching today's health data: $e");
+    }
+  }
+
+  Future<void> _fetchHealthTrends(String token) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$apiUrl/get_health_trends/?period_type=weekly'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json'
+        },
+      );
+
+      if (response.statusCode == 200) {
+        setState(() {
+          _trendData = jsonDecode(response.body)['trend'];
+        });
+      } else {
+        print("Trend fetch error: ${response.body}");
+      }
+    } catch (e) {
+      print("Error fetching health trends: $e");
+    }
+  }
+
+Future<void> _fetchVirtualHealthCoachSummary(String token) async {
     try {
       final response = await http.get(
         Uri.parse('$apiUrl/virtual-health-coach/'),
@@ -62,6 +159,9 @@ class _VirtualHealthCoachScreenState extends State<VirtualHealthCoachScreen> {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+        final formattedGlucose =
+            await formatGlucoseDynamic(data["glucose_summary"]);
+
         setState(() {
           _fitnessData = {
             "steps": data["latest_fitness_data"]["steps"],
@@ -69,9 +169,9 @@ class _VirtualHealthCoachScreenState extends State<VirtualHealthCoachScreen> {
             "distance_meters": data["latest_fitness_data"]["distance_meters"],
             "sleep_hours": data["latest_fitness_data"]["sleep_hours"],
             "average_heart_rate": data["latest_fitness_data"]["heart_rate"],
-            "latest_glucose_level": data["glucose_summary"],
-            "glucose_unit": "mg/dL",
+            "latest_glucose_level": formattedGlucose,
           };
+
           _recommendations = [
             {
               "timestamp": DateTime.now().toIso8601String(),
@@ -83,10 +183,9 @@ class _VirtualHealthCoachScreenState extends State<VirtualHealthCoachScreen> {
         print("Error fetching virtual coach: ${response.body}");
       }
     } catch (e) {
-      print("Error: $e");
+      print("Error fetching coach summary: $e");
     }
   }
-
 
   // Fetch Fitness Data & Send to Backend
   Future<void> _fetchFitnessData() async {
@@ -180,6 +279,14 @@ class _VirtualHealthCoachScreenState extends State<VirtualHealthCoachScreen> {
     );
   }
 
+void _showSuccess(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.green,
+      ),
+    );
+  }
 
   void _showErrorMessage(String message) {
     ScaffoldMessenger.of(context)
@@ -200,12 +307,16 @@ class _VirtualHealthCoachScreenState extends State<VirtualHealthCoachScreen> {
               child: ListView(
                 children: [
                   ElevatedButton(
-                    onPressed: _connectHealthConnect,
+                    onPressed: () async {
+                      final granted =
+                          await HealthConnectService().requestPermissions();
+                      if (granted) {
+                        _showSuccess("Health permissions granted!");
+                      } else {
+                        _showErrorMessage("Health permissions denied.");
+                      }
+                    },
                     child: const Text("Connect to Health Connect"),
-                  ),
-                  ElevatedButton(
-                    onPressed: _fetchFitnessData,
-                    child: const Text("Sync Fitness Data"),
                   ),
                   const SizedBox(height: 20),
                   _buildSectionTitle("Your Fitness Data"),

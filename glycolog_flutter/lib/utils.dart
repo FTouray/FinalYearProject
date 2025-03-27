@@ -1,5 +1,6 @@
 import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 // Function to format the timestamp
 String formatTimestamp(String timestamp) {
@@ -47,6 +48,24 @@ String formatGlucoseValue(double? value, String measurementUnit) {
   } else {
     return value.round().toString(); // Nearest whole number for mg/dL
   }
+}
+
+/// Dynamically fetch unit from SharedPreferences and format value accordingly
+Future<String> formatGlucoseDynamic(double? mgValue) async {
+  if (mgValue == null) return '-';
+  final prefs = await SharedPreferences.getInstance();
+  final unit = prefs.getString('selectedUnit') ?? 'mg/dL';
+
+  return unit == 'mmol/L'
+      ? convertToMmolL(mgValue).toStringAsFixed(1)
+      : mgValue.round().toString();
+}
+
+/// Utility to convert raw mg/dL value to preferred unit numerically
+Future<double> convertToPreferredUnit(double mgValue) async {
+  final prefs = await SharedPreferences.getInstance();
+  final unit = prefs.getString('selectedUnit') ?? 'mg/dL';
+  return unit == 'mmol/L' ? convertToMmolL(mgValue) : mgValue;
 }
 
 // Function to pick the date

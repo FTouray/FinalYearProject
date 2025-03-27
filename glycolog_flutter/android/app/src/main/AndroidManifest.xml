@@ -1,30 +1,48 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-xmlns:tools="http://schemas.android.com/tools" package="com.example.glycolog_flutter">
-    
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <queries>
         <package android:name="com.google.android.apps.healthdata" />
+    <intent>
+        <action android:name="android.intent.action.PROCESS_TEXT"/>
+        <data android:mimeType="text/plain"/>
+    </intent>
+    <intent>
+            <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" />
+        </intent>
     </queries>
 
-    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
+     <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.BODY_SENSORS" />
-    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.CAMERA"/>
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
-    <uses-permission android:name="android.permission.READ_HEALTH_DATA" />
-    <uses-permission android:name="android.permission.WRITE_HEALTH_DATA" />
-    <uses-permission android:name="android.permission.HEALTH_CONNECT_READ" />
-    <uses-permission android:name="android.permission.HEALTH_CONNECT_WRITE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.health.READ_DISTANCE" />
+    <uses-permission android:name="android.permission.health.READ_STEP_COUNT_DELTA" />
+    <uses-permission android:name="android.permission.health.WRITE_STEP_COUNT_DELTA" />
+    <uses-permission android:name="android.permission.health.READ_STEPS" />
+    <uses-permission android:name="android.permission.health.READ_TOTAL_CALORIES_BURNED" />
+    <uses-permission android:name="android.permission.health.READ_HEART_RATE" />
+    <uses-permission android:name="android.permission.health.WRITE_HEART_RATE" />
+    <uses-permission android:name="android.permission.health.READ_TOTAL_CALORIES_BURNED" />
+    <uses-permission android:name="android.permission.health.READ_ACTIVE_CALORIES_BURNED" />
+    <uses-permission android:name="android.permission.health.WRITE_ACTIVE_CALORIES_BURNED" />
+    <uses-permission android:name="android.permission.health.READ_SLEEP" />
+    <uses-permission android:name="android.permission.health.WRITE_SLEEP" />
+
+    <uses-permission android:name="android.permission.health.READ_EXERCISE" />
+    <uses-permission android:name="android.permission.health.WRITE_EXERCISE" />
 
 
-    <uses-feature android:name="android.hardware.health.connect" android:required="true" />
+
 
     <application
         android:label="glycolog_flutter"
-        android:name="android.app.Application"
+        android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
             android:name=".MainActivity"
@@ -39,26 +57,18 @@ xmlns:tools="http://schemas.android.com/tools" package="com.example.glycolog_flu
                  the Android process has started. This theme is visible to the user
                  while the Flutter UI initializes. After that, this theme continues
                  to determine the Window background behind the Flutter UI. -->
-             
-             <intent-filter>
-                <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" />
-            </intent-filter>
-            
             <meta-data
               android:name="io.flutter.embedding.android.NormalTheme"
               android:resource="@style/NormalTheme"
               />
-
-            <!-- OneSignal Notifications -->
-            <meta-data android:name="com.onesignal.NotificationServiceExtension" android:value="true"/>
-            <meta-data android:name="com.onesignal.AppId" android:value="0f726e49-950b-4eea-a396-ab38785f8fc0"/>
-
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <intent-filter>
+                <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" />
+            </intent-filter>
         </activity>
-
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data
@@ -70,18 +80,5 @@ xmlns:tools="http://schemas.android.com/tools" package="com.example.glycolog_flu
          https://developer.android.com/reference/android/content/Intent#ACTION_PROCESS_TEXT.
 
          In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
-    <queries>
-        <intent>
-            <action android:name="android.intent.action.PROCESS_TEXT"/>
-            <data android:mimeType="text/plain"/>
-        </intent>
-    </queries>
-
-    <queries>
-        <package android:name="com.google.android.apps.healthdata" />
-        <intent>
-            <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" />
-        </intent>
-    </queries>
-
+    
 </manifest>

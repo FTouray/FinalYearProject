@@ -28,8 +28,6 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 
 SECRET_ENCRYPTION_KEY = os.getenv("SECRET_ENCRYPTION_KEY")
 
-ONESIGNAL_APP_ID = os.getenv("ONESIGNAL_APP_ID")
-ONESIGNAL_API_KEY = os.getenv("ONESIGNAL_API_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -39,9 +37,9 @@ ALLOWED_HOSTS = ['*']
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://192.168.1.12",
-    "http://192.168.1.14",
-    "http://147.252.144.128"
-    
+    "http://192.168.1.5",
+    "http://147.252.144.128",
+    "http://172.20.10.6",
 ]
 
 

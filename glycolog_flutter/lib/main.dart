@@ -1,3 +1,5 @@
+import 'package:Glycolog/services/health_connect_service.dart';
+
 import 'glycaemicResponseTracker/gRT_history_detail_screen.dart';
 import 'package:Glycolog/glycaemicResponseTracker/gRT_meal_log_history_screen.dart';
 import 'package:Glycolog/glycaemicResponseTracker/gRT_meal_log_screen.dart';
@@ -5,7 +7,6 @@ import 'package:Glycolog/medicationTracker/add_medication_screen.dart';
 import 'package:Glycolog/medicationTracker/medication_reminder_screen.dart';
 import 'package:Glycolog/medicationTracker/edit_medication_screen.dart';
 import 'package:Glycolog/medicationTracker/medications_screen.dart';
-import 'package:Glycolog/notification_screen.dart';
 import 'package:Glycolog/questionnaire/data_visualization.dart';
 import 'package:Glycolog/questionnaire/exercise_step.dart';
 import 'package:Glycolog/questionnaire/meal_step.dart';
@@ -31,42 +32,121 @@ import 'dart:convert';
 import 'package:flutter_dotenv/flutter_dotenv.dart';  
 import 'questionnaire/glucose_step.dart';
 import 'questionnaire/review.dart';
+//import 'package:awesome_notifications/awesome_notifications.dart';
+//import 'package:flutter_background_service/flutter_background_service.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+//final AwesomeNotifications awesomeNotifications = AwesomeNotifications();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: "assets/.env");
 
+ // await _initNotifications();
+ // await _initBackgroundService();
+
   final darkMode = await _loadDarkModePreference();
   final token = await _loadToken();
 
+  // if (token != null) {
+  //   final healthService = HealthConnectService();
+  //   final granted = await healthService.requestPermissions();
+
+  //   if (granted) {
+  //     await healthService.sendToBackend(token);
+  //   } else {
+  //     print("Health Connect permission was not granted at startup.");
+  //   }
+  // }
+
   runApp(MyApp(darkModeEnabled: darkMode, token: token));
+
+  //await _syncHealthData();
 }
 
-// Function to send OneSignal Player ID to backend
-Future<void> sendPlayerIdToBackend(String? playerId) async {
-  if (playerId == null) return;
+// Future<void> _initNotifications() async {
+//   await awesomeNotifications.initialize(
+//     null,
+//     [
+//       NotificationChannel(
+//         channelKey: 'daily_health_summary',
+//         channelName: 'Daily Health Summary',
+//         channelDescription: 'Notifications for daily health sync results',
+//         defaultColor: const Color(0xFF9D50DD),
+//         importance: NotificationImportance.High,
+//         channelShowBadge: true,
+//       )
+//     ],
+//     debug: true,
+//   );
+// }
 
-  final String? apiUrl = dotenv.env['API_URL'];
-  SharedPreferences prefs = await SharedPreferences.getInstance();
-  String? token = prefs.getString('access_token');
+// Future<void> _initBackgroundService() async {
+//   final service = FlutterBackgroundService();
 
-  final response = await http.post(
-    Uri.parse('$apiUrl/update-onesignal-player-id/'),
-    headers: {
-      'Authorization': 'Bearer $token',
-      'Content-Type': 'application/json',
-    },
-    body: jsonEncode({"player_id": playerId}),
-  );
+//   await service.configure(
+//     androidConfiguration: AndroidConfiguration(
+//       onStart: _onBackgroundTask,
+//       isForegroundMode: true,
+//       autoStart: true,
+//       initialNotificationTitle: 'Glycolog Running',
+//       initialNotificationContent: 'Background sync active.',
+//       notificationChannelId: 'daily_health_summary',
+//     ),
+//     iosConfiguration: IosConfiguration(),
+//   );
 
-  if (response.statusCode == 200) {
-    print("OneSignal Player ID registered successfully");
-  } else {
-    print("Failed to register OneSignal Player ID: ${response.body}");
-  }
-}
+//   await service.startService();
+// }
+
+// @pragma('vm:entry-point')
+// Future<void> _onBackgroundTask(ServiceInstance service) async {
+//   if (service is AndroidServiceInstance) {
+//     service.on('stopService').listen((event) {
+//       service.stopSelf();
+//     });
+//   }
+
+//   final token = await AuthService().getAccessToken();
+//   if (token != null) {
+//     final healthService = HealthConnectService();
+//     final synced = await healthService.sendToBackend(token);
+
+//     if (synced) {
+//       await AwesomeNotifications().createNotification(
+//         content: NotificationContent(
+//           id: 2,
+//           channelKey: 'daily_health_summary',
+//           title: '✅ Background Health Sync',
+//           body: 'Health data was synced in the background.',
+//           notificationLayout: NotificationLayout.Default,
+//         ),
+//       );
+//     }
+//   }
+
+//   service.stopSelf();
+// }
+
+// Future<void> _syncHealthData() async {
+//   final token = await AuthService().getAccessToken();
+//   if (token != null) {
+//     final healthService = HealthConnectService();
+//     final synced = await healthService.sendToBackend(token);
+
+//     if (synced) {
+//       await AwesomeNotifications().createNotification(
+//         content: NotificationContent(
+//           id: 1,
+//           channelKey: 'daily_health_summary',
+//           title: '✅ Health Summary Synced',
+//           body: 'Your health data has been successfully synced.',
+//           notificationLayout: NotificationLayout.Default,
+//         ),
+//       );
+//     }
+//   }
+// }
 
 // Function to load dark mode preference
 Future<bool> _loadDarkModePreference() async {
@@ -79,7 +159,6 @@ Future<String?> _loadToken() async {
   final prefs = await SharedPreferences.getInstance();
   return prefs.getString('access_token');
 }
-
 class MyApp extends StatefulWidget {
   final bool darkModeEnabled;
   final String? token;
@@ -199,7 +278,6 @@ class _MyAppState extends State<MyApp> {
         '/insights': (context) => const InsightsScreen(),
         '/virtual-health-coach': (context) => const VirtualHealthCoachScreen(),
         '/chatbot': (context) => const ChatbotScreen(),
-        '/notifications': (context) => const NotificationsScreen(),
         '/add-medication': (context) => const AddMedicationScreen(),
         '/medications': (context) => const MedicationsScreen(),
       },

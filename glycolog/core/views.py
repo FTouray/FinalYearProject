@@ -17,12 +17,11 @@ from core.ai_services import generate_ai_recommendation, generate_health_trends
 from core.ai_model import feature_engineering
 from core.ai_model.data_processing import load_data_from_db
 from core.ai_model.recommendation_engine import generate_recommendations, load_models, predict_glucose, predict_wellness_risk
-from core.tasks import send_push_notification
 from core.services.ocr_service import extract_text_from_image
 from core.services.rxnorm_service import fetch_medication_details
 from core.services.reminder_service import schedule_medication_reminder
 from .serializers import ChatMessageSerializer, ExerciseCheckSerializer, FoodCategorySerializer, FoodItemSerializer, GlucoseCheckSerializer, GlucoseLogSerializer, MealCheckSerializer, MealSerializer, MedicationReminderSerializer, MedicationSerializer, QuestionnaireSessionSerializer, RegisterSerializer, LoginSerializer, SettingsSerializer, SymptomCheckSerializer
-from .models import AIHealthTrend, AIRecommendation, ChatMessage, CustomUser, ExerciseCheck, FeelingCheck, FitnessActivity, FoodCategory, FoodItem, GlucoseCheck, GlucoseLog, GlycaemicResponseTracker, LocalNotificationPrompt, Meal, MealCheck, Medication, MedicationReminder, OneSignalPlayerID, QuestionnaireSession, SymptomCheck  
+from .models import AIHealthTrend, AIRecommendation, ChatMessage, CustomUser, ExerciseCheck, FeelingCheck, FitnessActivity, FoodCategory, FoodItem, GlucoseCheck, GlucoseLog, GlycaemicResponseTracker, LocalNotificationPrompt, Meal, MealCheck, Medication, MedicationReminder, QuestionnaireSession, SymptomCheck  
 from django.contrib.auth import get_user_model
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.permissions import AllowAny
@@ -1096,78 +1095,21 @@ def get_local_notifications(request):
 
     return JsonResponse({"notifications": data})
 
-
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
-def update_onesignal_player_id(request):
-    """Store OneSignal Player ID for a logged-in user."""
-    user = request.user
-    player_id = request.data.get("player_id")
-
-    if not player_id:
-        return JsonResponse({"error": "OneSignal Player ID is required."}, status=400)
-
-    OneSignalPlayerID.objects.update_or_create(user=user, defaults={"player_id": player_id})
-
-    return JsonResponse({"message": "OneSignal Player ID updated successfully."})
-
-@api_view(["POST"])
-@permission_classes([IsAuthenticated])
-def send_notification(request):
-    """Send a push notification to a specific user via OneSignal."""
+def queue_local_notification(request):
+    """Queue a local notification to be shown in the app."""
     user_id = request.data.get("user_id")
-    title = request.data.get("title")
-    body = request.data.get("body")
+    message = request.data.get("message")
 
-    if not user_id or not title or not body:
-        return JsonResponse({"error": "User ID, title, and body are required."}, status=400)
+    if not user_id or not message:
+        return JsonResponse({"error": "User ID and message are required."}, status=400)
 
     user = get_object_or_404(CustomUser, id=user_id)
 
-    send_push_notification(user, title, body)
+    LocalNotificationPrompt.objects.create(user=user, message=message)
 
-    return JsonResponse({"message": "Notification sent successfully."})
-
-@api_view(["GET"])
-@permission_classes([IsAuthenticated])
-def get_today_health_data(request):
-    """Fetch today's fitness data for pre-filling the symptom report form."""
-    user = request.user
-    token = get_health_connect_credentials(user)
-    
-    if not token:
-        return JsonResponse({"error": "Health Connect is not connected"}, status=400)
-
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Content-Type": "application/json"
-    }
-
-    now_millis = int(time.time() * 1000)
-    twelve_hours_ago = now_millis - (12 * 60 * 60 * 1000)
-
-    body = {
-        "aggregateBy": [
-            {"dataTypeName": "com.google.step_count.delta"},
-            {"dataTypeName": "com.google.sleep.segment"},
-        ],
-        "bucketByTime": {"durationMillis": 43200000},  # 12 hours
-        "startTimeMillis": twelve_hours_ago,
-        "endTimeMillis": now_millis,
-    }
-
-    try:
-        response = requests.post(HEALTH_CONNECT_API_URL, headers=headers, json=body)
-        response_data = response.json()
-
-        return JsonResponse({
-            "steps": extract_step_count(response_data) or 0,
-            "total_sleep_hours": extract_sleep_data(response_data) or 0,
-        })
-
-    except Exception as e:
-        logger.error(f"Error fetching Health Connect data: {e}")
-        return JsonResponse({"error": "Failed to fetch today's fitness data."})
+    return JsonResponse({"message": "Local notification queued successfully."})
 
     
 RXNORM_API_URL = "https://rxnav.nlm.nih.gov/REST/drugs.json?name={}"

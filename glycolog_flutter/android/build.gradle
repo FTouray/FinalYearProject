@@ -1,10 +1,12 @@
 buildscript {
-    ext.kotlin_version = "1.8.10" 
+    ext.kotlin_version = '1.8.22'
     repositories {
         google()
         mavenCentral()
     }
+
     dependencies {
+        classpath 'com.android.tools.build:gradle:8.7.0'
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
     }
 }
@@ -18,23 +20,12 @@ allprojects {
 
 rootProject.buildDir = "../build"
 subprojects {
-    afterEvaluate { project ->
-        if (project.hasProperty('android')) {
-            project.android {
-                if (!project.hasProperty('namespace') || namespace == null) {
-                    namespace = "${project.group}.${project.name}".replace('-', '_')
-                }
-            }
-        }
-    }
-}
- 
-subprojects {
     project.buildDir = "${rootProject.buildDir}/${project.name}"
 }
 subprojects {
-    project.evaluationDependsOn(':app')
+    project.evaluationDependsOn(":app")
 }
+
 
 tasks.register("clean", Delete) {
     delete rootProject.buildDir
