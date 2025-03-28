@@ -37,11 +37,13 @@ from google_auth_oauthlib.flow import Flow
 import logging
 from googleapiclient.discovery import build
 from rest_framework.generics import ListAPIView
+from openai import OpenAI
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
-ONESIGNAL_APP_ID = os.getenv("ONESIGNAL_APP_ID")
-ONESIGNAL_API_KEY = os.getenv("ONESIGNAL_API_KEY")
+client = OpenAI()
+# Load OpenAI API Key
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
 
 def parse_date(date_str):
@@ -59,47 +61,14 @@ def register_user(request):
 
     if serializer.is_valid():
         user = serializer.save()
-        player_id = create_onesignal_player_id(user)
 
         return Response({
-            "message": "User registered successfully", "onesignal_player_id": player_id}, status=status.HTTP_201_CREATED)
+            "message": "User registered successfully"}, status=status.HTTP_201_CREATED)
     else:
         # Print validation errors for debugging
         print("Validation errors:", serializer.errors)
         # Return validation errors from the serializer
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-def create_onesignal_player_id(user):
-    """
-    Creates a OneSignal Player ID for the new user.
-    """
-    if not user.email:
-        print("User has no email, skipping OneSignal registration.")
-        return None  
-
-    url = "https://onesignal.com/api/v1/players"
-    headers = {
-        "Authorization": f"Basic {ONESIGNAL_API_KEY}",
-        "Content-Type": "application/json"
-    }
-    payload = {
-        "app_id": ONESIGNAL_APP_ID,
-        "identifier": user.email, 
-        "language": "en",
-        "timezone": 0,
-        "device_type": 0  
-    }
-
-    response = requests.post(url, headers=headers, json=payload)
-
-    if response.status_code == 200:
-        player_id = response.json().get("id")
-        print(f"OneSignal Player ID created: {player_id}")
-        return player_id
-    else:
-        print(f"Failed to create OneSignal Player ID: {response.json()}")
-        return None  # ✅ Returns None instead of causing an error
-
 
 @api_view(['POST'])
 @permission_classes([AllowAny])  
@@ -117,7 +86,6 @@ def login_user(request):
             # Generate access token
             refresh = RefreshToken.for_user(user)
             access = AccessToken.for_user(user)
-            player_id = fetch_onesignal_player_id(user)
 
             print(f"Login successful for user: {username}")
             return Response({
@@ -125,7 +93,6 @@ def login_user(request):
                 "refresh": str(refresh),  # Refresh token
                 "first_name": user.first_name,  # Include the first name in the response
                 "username": user.username,
-                "onesignal_player_id": player_id
             }, status=status.HTTP_200_OK)
         else:
             print(f"Login failed for user: {username}")
@@ -134,41 +101,6 @@ def login_user(request):
         print("Serializer validation failed:", serializer.errors)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-def fetch_onesignal_player_id(user):
-    """
-    Fetches OneSignal Player ID from OneSignal API.
-    """
-    url = f"https://onesignal.com/api/v1/players?app_id={ONESIGNAL_APP_ID}"
-    headers = {
-        "Authorization": f"Basic {ONESIGNAL_API_KEY}",
-        "Content-Type": "application/json"
-    }
-
-    response = requests.get(url, headers=headers)
-
-    if response.status_code == 200:
-        players = response.json().get("players", [])
-        for player in players:
-            if player.get("identifier") == user.email:  # Check if email matches
-                return player.get("id")
-
-    return None
-
-@api_view(["POST"])
-@permission_classes([IsAuthenticated])
-def update_onesignal_player_id(request):
-    """
-    Allows authenticated users to update their OneSignal Player ID.
-    """
-    user = request.user
-    player_id = request.data.get("player_id")
-
-    if not player_id:
-        return Response({"error": "OneSignal Player ID is required."}, status=status.HTTP_400_BAD_REQUEST)
-
-    OneSignalPlayerID.objects.update_or_create(user=user, defaults={"player_id": player_id})
-
-    return Response({"message": "OneSignal Player ID updated successfully."}, status=status.HTTP_200_OK)
 
 @api_view(['GET','POST'])
 @permission_classes([IsAuthenticated])  # Ensure the user is authenticated
@@ -729,10 +661,6 @@ def get_ai_insights(request):
 
     return Response(response_data, status=200)
 
-
-# Load OpenAI API Key
-openai.api_key = os.getenv("OPENAI_API_KEY")
-
 def convert_glucose_units(glucose_value, preferred_unit="mg/dL"):
     """Convert glucose levels based on user preference (mg/dL or mmol/L)."""
     if preferred_unit == "mmol/L":
@@ -741,17 +669,14 @@ def convert_glucose_units(glucose_value, preferred_unit="mg/dL"):
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
-def virtual_health_coach(request):
+def get_dashboard_summary(request):
     user = request.user
     today = now()
     start_date = today - timedelta(days=7)
 
-    # --- Trend Summary (Past 7 days) ---
-    activities = (
-        FitnessActivity.objects
-        .filter(user=user, start_time__date__range=[start_date.date(), today.date()])
-        .order_by("start_time")
-    )
+    activities = FitnessActivity.objects.filter(
+        user=user, start_time__date__range=[start_date.date(), today.date()]
+    ).order_by("start_time")
 
     trend_summary = {}
     for activity in activities:
@@ -771,16 +696,9 @@ def virtual_health_coach(request):
         hr_list = trend_summary[day]["heart_rate"]
         trend_summary[day]["heart_rate"] = sum(hr_list) / len(hr_list) if hr_list else None
 
-    # --- Latest Glucose Reading ---
     latest_log = GlucoseLog.objects.filter(user=user).order_by("-timestamp").first()
-    latest_check = (
-        GlucoseCheck.objects
-        .filter(session__user=user)
-        .order_by("-timestamp")
-        .first()
-    )
+    latest_check = GlucoseCheck.objects.filter(session__user=user).order_by("-timestamp").first()
 
-    # Pick the latest between both
     if latest_log and (not latest_check or latest_log.timestamp > latest_check.timestamp):
         latest_glucose_value = latest_log.glucose_level
         latest_glucose_time = latest_log.timestamp
@@ -791,42 +709,20 @@ def virtual_health_coach(request):
         latest_glucose_value = None
         latest_glucose_time = None
 
-    # --- Average Glucose Level (from both sources) ---
     avg_log = GlucoseLog.objects.filter(user=user).aggregate(Avg("glucose_level"))["glucose_level__avg"] or 0
-    avg_check = (
-        GlucoseCheck.objects
-        .filter(session__user=user)
-        .aggregate(Avg("glucose_level"))["glucose_level__avg"] or 0
-    )
+    avg_check = GlucoseCheck.objects.filter(session__user=user).aggregate(Avg("glucose_level"))["glucose_level__avg"] or 0
 
-    # Weighted average (can refine later)
     avg_glucose_level = round((avg_log + avg_check) / 2, 2) if (avg_log or avg_check) else None
 
-    # --- AI Recommendation ---
-    recent_activities = (
-        FitnessActivity.objects
-        .filter(user=user)
-        .order_by("-start_time")[:5]
-    )
+    recent_activities = FitnessActivity.objects.filter(user=user).order_by("-start_time")[:5]
     ai_response = generate_ai_recommendation(user, recent_activities)
     ai_recommendation = AIRecommendation.objects.create(
         user=user, recommendation_text=ai_response
     )
     ai_recommendation.fitness_activities.set(recent_activities)
 
-    # --- Summary & Return ---
-    latest_fitness = (
-        FitnessActivity.objects
-        .filter(user=user)
-        .order_by("-start_time")
-        .first()
-    )
-
-    total_exercise_sessions = (
-        FitnessActivity.objects
-        .filter(user=user, activity_type="Exercise")
-        .count()
-    )
+    latest_fitness = FitnessActivity.objects.filter(user=user).order_by("-start_time").first()
+    total_exercise_sessions = FitnessActivity.objects.filter(user=user, activity_type="Exercise").count()
 
     return JsonResponse({
         "recommendation": ai_response,
@@ -849,10 +745,10 @@ def virtual_health_coach(request):
         "trend_data": trend_summary
     })
 
+
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
-def get_past_recommendations(request):
-    """Retrieve past AI-generated recommendations."""
+def list_ai_recommendations(request):
     user = request.user
     recommendations = AIRecommendation.objects.filter(user=user).order_by("-generated_at")[:10]
 
@@ -867,17 +763,15 @@ def get_past_recommendations(request):
         }
         for rec in recommendations
     ]
-
     return JsonResponse({"past_recommendations": data})
+
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
-def get_health_trends(request, period_type="weekly"):
-    """Fetch AI-generated health trends for the user."""
+def get_ai_health_trends(request, period_type="weekly"):
     user = request.user
     latest_trend = AIHealthTrend.objects.filter(user=user, period_type=period_type).order_by("-start_date").first()
 
-    # If no trends exist, generate new ones
     if not latest_trend:
         generate_health_trends(user, period_type)
         latest_trend = AIHealthTrend.objects.filter(user=user, period_type=period_type).order_by("-start_date").first()
@@ -895,14 +789,12 @@ def get_health_trends(request, period_type="weekly"):
         "total_exercise_sessions": latest_trend.total_exercise_sessions,
         "ai_summary": latest_trend.ai_summary,
     }
-
     return JsonResponse({"trend": data})
 
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
-def get_latest_fitness_data(request):
-    """Return latest fitness data stored in DB for this user."""
+def latest_fitness_entry(request):
     user = request.user
     latest = FitnessActivity.objects.filter(user=user).order_by('-start_time').first()
 
@@ -922,10 +814,36 @@ def get_latest_fitness_data(request):
     return JsonResponse(data)
 
 
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def today_fitness_summary(request):
+    user = request.user
+    today = now().date()
+
+    data = FitnessActivity.objects.filter(user=user, start_time__date=today).first()
+
+    if not data:
+        # Try fallback to yesterday
+        yesterday = today - timedelta(days=1)
+        data = FitnessActivity.objects.filter(user=user, start_time__date=yesterday).first()
+        if not data:
+            return Response({"message": "No data for today."}, status=404)
+
+    return Response({
+        "activity_type": data.activity_type,
+        "steps": data.steps,
+        "sleep_hours": data.total_sleep_hours,
+        "heart_rate": data.heart_rate,
+        "calories_burned": data.calories_burned,
+        "distance_meters": data.distance_meters,
+        "start_time": data.start_time,
+        "end_time": data.end_time
+    })
+
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
-def store_health_data(request):
+def log_health_entry(request):
     user = request.user
     data = request.data
 
@@ -967,71 +885,56 @@ def store_health_data(request):
     except Exception as e:
         return Response({"error": f"Failed to store health data: {str(e)}"}, status=400)
 
-@api_view(["GET"])
-@permission_classes([IsAuthenticated])
-def get_today_health_data(request):
-    from datetime import datetime
-    user = request.user
-    today = datetime.now().date()
-
-    today_data = FitnessActivity.objects.filter(user=user, start_time__date=today).first()
-
-    if not today_data:
-        return Response({"message": "No data for today."}, status=404)
-
-    return Response({
-        "activity_type": today_data.activity_type,
-        "steps": today_data.steps,
-        "sleep_hours": today_data.total_sleep_hours,
-        "heart_rate": today_data.heart_rate,
-        "calories_burned": today_data.calories_burned,
-        "distance_meters": today_data.distance_meters,
-        "start_time": today_data.start_time,
-        "end_time": today_data.end_time
-    })
-
+client = OpenAI()
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
-def chat_with_health_coach(request):
-    """Allow users to chat with the AI-driven health coach, considering recent glucose levels and unit preference."""
+def chat_with_virtual_coach(request):
     user = request.user
     user_message = request.data.get("message")
 
     if not user_message:
         return JsonResponse({"error": "Message cannot be empty"}, status=400)
 
-    # Save user message in chat history
     ChatMessage.objects.create(user=user, sender="user", message=user_message)
+    
+    # recent_data = FitnessActivity.objects.filter(
+    # user=user,
+    # start_time__gte=now() - timedelta(days=3)
+    # )
 
-    # Fetch past AI recommendations
+    # if not recent_data.exists():
+    #     fallback = (
+    #         "I wasn’t able to find any recent health data to analyze. "
+    #         "But I can still offer general wellness tips or answer your questions!"
+    #     )
+
+    #     ChatMessage.objects.create(user=user, sender="assistant", message=fallback)
+    #     return JsonResponse({"response": fallback}, status=200)
+
     past_recommendations = AIRecommendation.objects.filter(user=user).order_by("-generated_at")[:5]
     recommendations_summary = "\n".join(
         [f"{rec.recommendation_text} (given on {rec.generated_at.strftime('%Y-%m-%d')})" for rec in past_recommendations]
     ) if past_recommendations else "No past recommendations available."
 
-    # Fetch past chat history (last 50 messages)
     past_messages = ChatMessage.objects.filter(user=user).order_by("-timestamp")[:50]
     conversation_history = [
         {"role": msg.sender, "content": msg.message} for msg in past_messages
     ]
 
-    # 🔹 Fetch the user's preferred glucose unit
     user_settings = getattr(user, "settings", None)
     preferred_unit = user_settings.glucose_unit if user_settings else "mg/dL"
 
-    # 🔹 Fetch the most recent glucose reading
     latest_glucose_log = GlucoseLog.objects.filter(user=user).order_by("-timestamp").first()
-    
+
     if latest_glucose_log:
         glucose_value = latest_glucose_log.glucose_level
         if preferred_unit == "mmol/L":
-            glucose_value = round(glucose_value / 18, 2)  # Convert mg/dL to mmol/L
+            glucose_value = round(glucose_value / 18, 2)
         glucose_summary = f"Latest glucose reading: {glucose_value} {preferred_unit}"
     else:
         glucose_summary = "No recent glucose readings available."
 
-    # Construct AI prompt
     system_message = (
         "You are a virtual fitness coach providing expert diabetic health recommendations. "
         "You analyze glucose levels, fitness data, and past recommendations to provide guidance."
@@ -1039,33 +942,28 @@ def chat_with_health_coach(request):
 
     conversation_history.append({"role": "system", "content": system_message})
     conversation_history.append({"role": "system", "content": f"Previously given recommendations:\n{recommendations_summary}"})
-    conversation_history.append({"role": "system", "content": f"{glucose_summary}"})
+    conversation_history.append({"role": "system", "content": glucose_summary})
     conversation_history.append({"role": "user", "content": user_message})
 
-    # Send to AI
-    response = openai.ChatCompletion.create(
+    response = client.chat.completions.create(
         model="gpt-4",
         messages=conversation_history,
     )
-    ai_response = response["choices"][0]["message"]["content"]
+    ai_response = response.choices[0].message.content
 
-    # Save AI response in chat history
     ChatMessage.objects.create(user=user, sender="assistant", message=ai_response)
 
     return JsonResponse({"response": ai_response})
 
+
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
-def get_chat_history(request):
-    """Retrieve user’s chat history with the AI coach (Paginated)."""
+def chat_history(request):
     user = request.user
-    page = int(request.GET.get("page", 1))  # Default to page 1
-    per_page = 20  # Number of messages per page
+    page = int(request.GET.get("page", 1))
+    per_page = 20
 
-    chat_history = (
-        ChatMessage.objects.filter(user=user)
-        .order_by("-timestamp")[(page-1)*per_page : page*per_page]
-    )
+    chat_history = ChatMessage.objects.filter(user=user).order_by("-timestamp")[(page - 1) * per_page: page * per_page]
 
     data = [
         {
@@ -1075,7 +973,6 @@ def get_chat_history(request):
         }
         for msg in chat_history
     ]
-
     return JsonResponse({"chat_history": data, "page": page, "per_page": per_page})
 
 @api_view(["GET"])

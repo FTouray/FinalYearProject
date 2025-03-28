@@ -68,7 +68,7 @@ class _LoginScreenState extends State<LoginScreen> {
           errorMessage = null; // Clear error if login is successful
         });
 
-        // **Navigate First, Then Handle OneSignal** (Ensures UI updates)
+    
         Future.microtask(() {
           bool onboardingCompleted =
               prefs.getBool('onboardingCompleted') ?? false;

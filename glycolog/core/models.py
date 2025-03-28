@@ -331,6 +331,7 @@ class FitnessActivity(models.Model):
     calories_burned = models.FloatField(null=True, blank=True)
     distance_meters = models.FloatField(null=True, blank=True)
     is_manual_override = models.BooleanField(default=False)
+    is_fallback = models.BooleanField(default=False)
 
     last_activity_time = models.DateTimeField(null=True, blank=True)  # Last recorded activity time
     last_synced = models.DateTimeField(auto_now=True)  # Timestamp of last sync with Health Connect

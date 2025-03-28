@@ -3,110 +3,78 @@ from django.utils.timezone import now
 from django_q.tasks import schedule
 from celery import shared_task
 from django.db import models
-from core.models import CustomUser, FitnessActivity, AIRecommendation, LocalNotificationPrompt, UserNotification
+from core.models import CustomUser, FitnessActivity, AIRecommendation, UserNotification
 from core.ai_services import generate_ai_recommendation, generate_health_trends
 
 
-def update_fitness_data(user_id=None):
+def check_and_notify_missing_data(user_id=None):
     users = [CustomUser.objects.get(id=user_id)] if user_id else CustomUser.objects.all()
-
     for user in users:
         yesterday = now().date() - timedelta(days=1)
-        exists = FitnessActivity.objects.filter(user=user, start_time__date=yesterday).exists()
-
-        if not exists:
-            LocalNotificationPrompt.objects.create(
+        has_data = FitnessActivity.objects.filter(user=user, start_time__date=yesterday).exists()
+        if not has_data:
+            UserNotification.objects.create(
                 user=user,
-                message="Open Glycolog to sync your health data for yesterday."
+                message="You haven't synced your health data for yesterday. Please open the app to update.",
+                notification_type="reminder",
             )
 
 
-def detect_bad_day_risk(user):
-    past_activities = FitnessActivity.objects.filter(
-        user=user,
-        start_time__gte=now() - timedelta(days=7)
-    )
-
-    poor_sleep_days = [a for a in past_activities if (a.total_sleep_hours or 0) < 5]
-    no_exercise_days = [a for a in past_activities if (a.steps or 0) < 2000]
-
-    if len(poor_sleep_days) >= 2 and len(no_exercise_days) >= 2:
-        LocalNotificationPrompt.objects.create(
-            user=user,
-            message="Poor sleep and no activity detected recently. Try walking or hydrating."
-        )
-
-
-def check_inactivity(user):
-    latest_activity = FitnessActivity.objects.filter(user=user).order_by("-start_time").first()
-    if not latest_activity:
-        return 999
-    inactivity_duration = (now() - latest_activity.end_time).total_seconds() / 3600
-    return inactivity_duration
-
-
-def send_smart_prompt(user_id=None):
+def generate_health_insight_prompts(user_id=None):
     users = [CustomUser.objects.get(id=user_id)] if user_id else CustomUser.objects.all()
     for user in users:
-        detect_bad_day_risk(user)
-        inactivity_hours = check_inactivity(user)
         prompts = []
+        recent_activities = FitnessActivity.objects.filter(user=user, start_time__gte=now() - timedelta(days=7))
 
-        if inactivity_hours >= 6:
-            msg = "You haven't exercised in 6+ hours. A short walk can help stabilize glucose levels."
-            prompts.append(msg)
+        poor_sleep_days = [a for a in recent_activities if (a.total_sleep_hours or 0) < 5]
+        low_activity_days = [a for a in recent_activities if (a.steps or 0) < 2000]
+
+        if len(poor_sleep_days) >= 2 and len(low_activity_days) >= 2:
+            prompts.append("We've noticed multiple days with poor sleep and low activity. Try light walking and hydrating.")
 
         today = now().date()
         today_activities = FitnessActivity.objects.filter(user=user, start_time__date=today)
+
         total_steps = today_activities.aggregate(models.Sum("steps"))['steps__sum'] or 0
         if total_steps < 3000:
-            msg = "You've been inactive today. A quick 10-minute walk can boost your energy."
-            prompts.append(msg)
+            prompts.append("Your step count is low today. Take a quick 10-minute walk to stay active.")
 
         avg_sleep = today_activities.aggregate(models.Avg("total_sleep_hours"))['total_sleep_hours__avg'] or 0
         if avg_sleep < 6:
-            msg = "You've been getting less than 6 hours of sleep on average. Try sleeping earlier tonight."
-            prompts.append(msg)
-
-        msg = "Have you had enough water today? Staying hydrated supports metabolism and energy levels."
-        prompts.append(msg)
+            prompts.append("You're averaging less than 6 hours of sleep. Aim for better rest tonight.")
 
         avg_heart_rate = today_activities.aggregate(models.Avg("heart_rate"))['heart_rate__avg']
         if avg_heart_rate and avg_heart_rate > 100:
-            msg = "Your heart rate has been high today. Consider taking a short break or deep breathing exercises."
-            prompts.append(msg)
+            prompts.append("Your heart rate is elevated today. Consider deep breathing or a short rest.")
 
-        exercise_streak = FitnessActivity.objects.filter(user=user, duration_minutes__gte=30).count()
-        if exercise_streak >= 5:
-            msg = f"You're on a {exercise_streak}-day streak of exercise. Keep it up!"
-            prompts.append(msg)
+        activity_streak = FitnessActivity.objects.filter(user=user, duration_minutes__gte=30).count()
+        if activity_streak >= 5:
+            prompts.append(f"You're on a {activity_streak}-day streak! Keep up the great work.")
 
-        for prompt in prompts:
-            LocalNotificationPrompt.objects.create(user=user, message=prompt)
-            UserNotification.objects.create(user=user, message=prompt, notification_type="health_alert")
+        for msg in prompts:
+            UserNotification.objects.create(user=user, message=msg, notification_type="health_alert")
 
-    return prompts if prompts else None
+    return prompts
 
 
-def generate_health_recommendation(user_id=None):
+def generate_ai_recommendations(user_id=None):
     users = [CustomUser.objects.get(id=user_id)] if user_id else CustomUser.objects.all()
     for user in users:
-        recent_data = FitnessActivity.objects.filter(user=user).order_by("-start_time")[:10]
-        if not recent_data.exists():
-            continue
-        ai_recommendation = generate_ai_recommendation(user, recent_data)
-        AIRecommendation.objects.create(user=user, recommendation_text=ai_recommendation)
+        latest_activities = FitnessActivity.objects.filter(user=user).order_by("-start_time")[:10]
+        if latest_activities.exists():
+            recommendation = generate_ai_recommendation(user, latest_activities)
+            AIRecommendation.objects.create(user=user, recommendation_text=recommendation)
 
 
-def schedule_tasks():
-    schedule("core.tasks.send_smart_prompt", schedule_type="H", repeats=-1)
-    schedule("core.tasks.generate_health_recommendation", schedule_type="D", repeats=-1)
+def schedule_health_tasks():
+    schedule("core.tasks.generate_health_insight_prompts", schedule_type="H", repeats=-1)
+    schedule("core.tasks.generate_ai_recommendations", schedule_type="D", repeats=-1)
     for user in CustomUser.objects.all():
-        schedule("core.tasks.send_smart_prompt", user.id, schedule_type="H", repeats=-1)
-        schedule("core.tasks.generate_health_recommendation", user.id, schedule_type="D", repeats=-1)
+        schedule("core.tasks.generate_health_insight_prompts", user.id, schedule_type="H", repeats=-1)
+        schedule("core.tasks.generate_ai_recommendations", user.id, schedule_type="D", repeats=-1)
 
 
-def schedule_trend_analysis():
+def schedule_health_trend_updates():
     schedule("core.ai_services.generate_health_trends", None, period_type="weekly", schedule_type="W", repeats=-1)
     schedule("core.ai_services.generate_health_trends", None, period_type="monthly", schedule_type="M", repeats=-1)
     for user in CustomUser.objects.all():

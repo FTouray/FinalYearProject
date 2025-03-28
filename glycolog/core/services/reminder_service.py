@@ -2,7 +2,6 @@ from core.models import MedicationReminder
 from django_q.tasks import async_task
 
 def send_reminder(user_id, medication_name):
-    """Function to send reminders (integrated with OneSignal API)."""
     print(f"Reminder: Time to take {medication_name}!")
     async_task("core.tasks.send_push_notification", user_id, "Medication Reminder", f"Time to take {medication_name}")
 

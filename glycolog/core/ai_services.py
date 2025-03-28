@@ -1,17 +1,20 @@
 from datetime import timedelta
 from django.utils.timezone import now
 from django.db.models import Avg, Sum, Count
-import openai
+from openai import OpenAI
 from core.models import AIHealthTrend, FitnessActivity, CustomUser
 
 
-client = openai.OpenAI()
+client = OpenAI()
 
 def generate_ai_recommendation(user, fitness_activities):
     """
     Generates AI-based health recommendations using OpenAI GPT.
     Supports **individual** user insights based on recent workouts.
     """
+    fitness_activities = [
+        a for a in fitness_activities if not getattr(a, "is_fallback", False)
+    ]
 
     if not fitness_activities:
         fitness_summary = "No recent fitness data available."
@@ -20,7 +23,6 @@ def generate_ai_recommendation(user, fitness_activities):
             f"- {activity.activity_type} for {activity.duration_minutes:.0f} mins on {activity.start_time.strftime('%Y-%m-%d')}"
             for activity in fitness_activities
         )
-
     prompt = f"""
     The user has diabetes and their recent health activities are:
 
@@ -42,7 +44,7 @@ def generate_ai_recommendation(user, fitness_activities):
         ],
     )
 
-    return response["choices"][0]["message"]["content"]
+    return response.choices[0].message.content
 
 
 def generate_health_trends(user=None, period_type="weekly"):
@@ -54,8 +56,7 @@ def generate_health_trends(user=None, period_type="weekly"):
     user_filter = {"user": user} if user else {}
 
     # Pull data from FitnessActivity model
-    activities = FitnessActivity.objects.filter(start_time__date__range=[start_date, end_date], **user_filter)
-
+    activities = FitnessActivity.objects.filter(start_time__date__range=[start_date, end_date], **user_filter).filter(is_fallback=False)
     avg_steps = activities.aggregate(Sum("steps"))["steps__sum"]
     avg_sleep = activities.aggregate(Avg("total_sleep_hours"))["total_sleep_hours__avg"]
     avg_hr = activities.aggregate(Avg("heart_rate"))["heart_rate__avg"]
@@ -77,7 +78,7 @@ def generate_health_trends(user=None, period_type="weekly"):
     Use bullet points.
     """
 
-    response = openai.ChatCompletion.create(
+    response = client.chat.completions.create(
         model="gpt-4",
         messages=[
             {"role": "system", "content": "You are an AI health coach."},
@@ -85,7 +86,7 @@ def generate_health_trends(user=None, period_type="weekly"):
         ],
     )
 
-    summary = response["choices"][0]["message"]["content"]
+    summary = response.choices[0].message.content
 
     AIHealthTrend.objects.update_or_create(
         user=user,

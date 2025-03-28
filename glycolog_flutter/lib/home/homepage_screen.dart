@@ -265,7 +265,7 @@ final String? apiUrl = dotenv.env['API_URL'];
                     icon: Icons.fitness_center,
                     label: 'Virtual Health Coach',
                     onTap: () {
-                      Navigator.pushNamed(context, '/virtual-health-coach');
+                      Navigator.pushNamed(context, '/virtual-health-dashboard');
                     },
                   ),
                   FeatureIcon(

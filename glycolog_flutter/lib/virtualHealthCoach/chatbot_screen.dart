@@ -13,15 +13,29 @@ class ChatbotScreen extends StatefulWidget {
 
 class _ChatbotScreenState extends State<ChatbotScreen> {
   final TextEditingController _controller = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   List<Map<String, String>> _messages = [];
   String? _preferredGlucoseUnit = "mg/dL"; // Default unit
   final String? apiUrl = dotenv.env['API_URL'];
 
+  int _currentPage = 1;
+  bool _isFetchingMore = false;
+  bool _hasMorePages = true;
+
   @override
   void initState() {
     super.initState();
-    _loadChatHistory();
     _fetchPreferredGlucoseUnit();
+    _loadInitialMessages();
+
+    _scrollController.addListener(() {
+      if (_scrollController.position.pixels ==
+              _scrollController.position.minScrollExtent &&
+          !_isFetchingMore &&
+          _hasMorePages) {
+        _loadMoreMessages();
+      }
+    });
   }
 
   Future<void> _fetchPreferredGlucoseUnit() async {
@@ -44,6 +58,47 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
     } else {
       print('Failed to fetch glucose unit');
     }
+  }
+
+  Future<void> _loadInitialMessages() async {
+    _messages.clear();
+    _currentPage = 1;
+    await _loadMoreMessages();
+  }
+
+   Future<void> _loadMoreMessages() async {
+    _isFetchingMore = true;
+    String? token = await _getAccessToken();
+    if (token == null) return;
+
+    final response = await http.get(
+      Uri.parse('$apiUrl/chat-history/?page=$_currentPage'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final List<dynamic> messages = data['chat_history'];
+
+      if (messages.isEmpty) {
+        setState(() => _hasMorePages = false);
+      } else {
+        setState(() {
+          _messages.insertAll(
+            0,
+            messages.reversed.map<Map<String, String>>(
+              (m) => {'role': m['sender'], 'content': m['message']},
+            ),
+          );
+          _currentPage++;
+        });
+      }
+    }
+
+    _isFetchingMore = false;
   }
 
   Future<void> _sendMessage(String message) async {
@@ -75,16 +130,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
     }
   }
 
-  Future<void> _loadChatHistory() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? chatHistory = prefs.getString('chat_history');
-    if (chatHistory != null) {
-      setState(() {
-        _messages = List<Map<String, String>>.from(jsonDecode(chatHistory));
-      });
-    }
-  }
-
+  
   Future<void> _saveChatHistory() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setString('chat_history', jsonEncode(_messages));
@@ -95,25 +141,31 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
     return prefs.getString('access_token');
   }
 
+  
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Chat with AI Coach'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            Navigator.pop(context); // Navigate back to the previous screen
-          },
-        ),
       ),
       body: Column(
         children: [
           Expanded(
             child: ListView.builder(
-              itemCount: _messages.length,
+              reverse: true, // Show newest messages at bottom
+              controller: _scrollController,
+              itemCount: _messages.length + 1,
               itemBuilder: (context, index) {
-                final message = _messages[index];
+                if (index == _messages.length) {
+                  return _hasMorePages
+                      ? const Padding(
+                          padding: EdgeInsets.all(10),
+                          child: Center(child: CircularProgressIndicator()),
+                        )
+                      : const SizedBox.shrink();
+                }
+
+                final message = _messages[_messages.length - index - 1];
                 return Align(
                   alignment: message['role'] == 'user'
                       ? Alignment.centerRight

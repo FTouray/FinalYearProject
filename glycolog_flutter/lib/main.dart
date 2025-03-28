@@ -1,5 +1,4 @@
-import 'package:Glycolog/services/health_connect_service.dart';
-
+import 'package:Glycolog/services/health_sync_service.dart';
 import 'glycaemicResponseTracker/gRT_history_detail_screen.dart';
 import 'package:Glycolog/glycaemicResponseTracker/gRT_meal_log_history_screen.dart';
 import 'package:Glycolog/glycaemicResponseTracker/gRT_meal_log_screen.dart';
@@ -13,7 +12,7 @@ import 'package:Glycolog/questionnaire/meal_step.dart';
 import 'package:Glycolog/questionnaire/symptom_step.dart';
 import 'package:Glycolog/services/auth_service.dart';
 import 'package:Glycolog/virtualHealthCoach/chatbot_screen.dart';
-import 'package:Glycolog/virtualHealthCoach/virtual_health_coach.dart';
+import 'package:Glycolog/virtualHealthCoach/virtual_health_dashboard.dart';
 import 'package:flutter/material.dart';
 import 'glucoseLog/gL_add_level_screen.dart';
 import 'glucoseLog/gL_history_screen.dart';
@@ -48,20 +47,12 @@ void main() async {
   final darkMode = await _loadDarkModePreference();
   final token = await _loadToken();
 
-  // if (token != null) {
-  //   final healthService = HealthConnectService();
-  //   final granted = await healthService.requestPermissions();
-
-  //   if (granted) {
-  //     await healthService.sendToBackend(token);
-  //   } else {
-  //     print("Health Connect permission was not granted at startup.");
-  //   }
-  // }
 
   runApp(MyApp(darkModeEnabled: darkMode, token: token));
 
-  //await _syncHealthData();
+  if (token != null) {
+    await _syncHealthData(token);
+  }
 }
 
 // Future<void> _initNotifications() async {
@@ -128,25 +119,29 @@ void main() async {
 //   service.stopSelf();
 // }
 
-// Future<void> _syncHealthData() async {
-//   final token = await AuthService().getAccessToken();
-//   if (token != null) {
-//     final healthService = HealthConnectService();
-//     final synced = await healthService.sendToBackend(token);
+Future<void> _syncHealthData(String token) async {
+  final healthService = HealthSyncService();
 
-//     if (synced) {
-//       await AwesomeNotifications().createNotification(
-//         content: NotificationContent(
-//           id: 1,
-//           channelKey: 'daily_health_summary',
-//           title: '✅ Health Summary Synced',
-//           body: 'Your health data has been successfully synced.',
-//           notificationLayout: NotificationLayout.Default,
-//         ),
-//       );
-//     }
-//   }
-// }
+  try {
+    final hasPermission = await healthService.requestPermissions();
+
+    if (!hasPermission) {
+      print("Health permissions not granted, skipping sync.");
+      return;
+    }
+
+    final success = await healthService.syncToBackend();
+
+    if (success) {
+      print("Health data synced on app startup.");
+    } else {
+      print("Failed to sync health data on startup.");
+    }
+  } catch (e) {
+    print("Exception during health data sync: $e");
+  }
+}
+
 
 // Function to load dark mode preference
 Future<bool> _loadDarkModePreference() async {
@@ -276,7 +271,7 @@ class _MyAppState extends State<MyApp> {
         '/review': (context) => const ReviewScreen(),
         '/data-visualization': (context) => const QuestionnaireVisualizationScreen(),
         '/insights': (context) => const InsightsScreen(),
-        '/virtual-health-coach': (context) => const VirtualHealthCoachScreen(),
+        '/virtual-health-dashboard': (context) => const VirtualHealthDashboard(),
         '/chatbot': (context) => const ChatbotScreen(),
         '/add-medication': (context) => const AddMedicationScreen(),
         '/medications': (context) => const MedicationsScreen(),
