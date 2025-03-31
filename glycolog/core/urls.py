@@ -2,9 +2,9 @@ from django.urls import path
 from .views import (
     MedicationListView, MedicationReminderListView,
     chat_with_virtual_coach, delete_medication, exercise_step, fetch_medications_from_rxnorm,
-    get_ai_insights, chat_history, get_ai_health_trends, get_insights, latest_fitness_entry,
+    chat_history, get_ai_health_trends, get_all_ai_health_trends, latest_fitness_entry,
     get_local_notifications, get_medication_reminders, list_ai_recommendations,
-    get_saved_medications, today_fitness_summary, meal_step, glucose_step, glycaemic_response_main,
+    get_saved_medications, questionnaire_get_ai_insights, questionnaire_get_insights, today_fitness_summary, meal_step, glucose_step, glycaemic_response_main,
     list_categories, list_food_items_by_category, log_glucose, log_meal, meal_log_detail,
     meal_log_history, questionnaire_data_visualization, queue_local_notification, register_user,
     login_user, review_answers, save_medication, scan_medication, set_reminder, settings_view,
@@ -50,8 +50,8 @@ urlpatterns = [
     path("questionnaire/visualize/", questionnaire_data_visualization, name="data-visualization"),
 
     # Insights
-    path("insights/", get_insights, name="insights"),
-    path("insights/ai/", get_ai_insights, name="ai-insights"),
+    path("insights/", questionnaire_get_insights, name="insights"),
+    path("insights/ai/", questionnaire_get_ai_insights, name="ai-insights"),
 
     # Health Coach Dashboard
     path("dashboard/summary/", get_dashboard_summary, name="get_dashboard_summary"),
@@ -66,6 +66,7 @@ urlpatterns = [
 
     # Health Trends
     path("health/trends/<str:period_type>/", get_ai_health_trends, name="get_ai_health_trends"),
+    path("health/trends/", get_all_ai_health_trends, name="get_all_trend_summaries"),
 
     # Notifications
     path("notifications/", get_local_notifications, name="get_local_notifications"),

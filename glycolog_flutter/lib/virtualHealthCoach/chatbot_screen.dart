@@ -38,27 +38,15 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
     });
   }
 
-  Future<void> _fetchPreferredGlucoseUnit() async {
-    String? token = await _getAccessToken();
-    if (token == null) return;
+Future<void> _fetchPreferredGlucoseUnit() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedUnit = prefs.getString('selectedUnit');
 
-    final response = await http.get(
-      Uri.parse('$apiUrl/user/settings/'),
-      headers: {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
-      },
-    );
-
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      setState(() {
-        _preferredGlucoseUnit = data['glucose_unit'] ?? "mg/dL";
-      });
-    } else {
-      print('Failed to fetch glucose unit');
-    }
+    setState(() {
+      _preferredGlucoseUnit = savedUnit ?? 'mg/dL';
+    });
   }
+
 
   Future<void> _loadInitialMessages() async {
     _messages.clear();
@@ -72,7 +60,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
     if (token == null) return;
 
     final response = await http.get(
-      Uri.parse('$apiUrl/chat-history/?page=$_currentPage'),
+      Uri.parse('$apiUrl/dashboard/chat/history/?page=$_currentPage'),
       headers: {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
@@ -111,7 +99,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
     if (token == null) return;
 
     final response = await http.post(
-      Uri.parse('$apiUrl/chat-with-health-coach/'),
+      Uri.parse('$apiUrl/dashboard/chat/'),
       headers: {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',

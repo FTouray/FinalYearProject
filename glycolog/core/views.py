@@ -13,7 +13,7 @@ from rest_framework.response import Response
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
 from django.conf import settings
-from core.ai_services import generate_ai_recommendation, generate_health_trends
+from core.fitness_ai import generate_ai_recommendation, generate_health_trends
 from core.ai_model import feature_engineering
 from core.ai_model.data_processing import load_data_from_db
 from core.ai_model.recommendation_engine import generate_recommendations, load_models, predict_glucose, predict_wellness_risk
@@ -564,7 +564,7 @@ def questionnaire_data_visualization(request):
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
-def get_insights(request):
+def questionnaire_get_insights(request):
     user = request.user
 
     # Fetch the user's completed questionnaire sessions
@@ -598,7 +598,7 @@ def get_insights(request):
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
-def get_ai_insights(request):
+def questionnaire_get_ai_insights(request):
     """
     Fetch AI-generated insights and recommendations based on all logged data.
     """
@@ -679,23 +679,65 @@ def get_dashboard_summary(request):
     ).order_by("start_time")
 
     trend_summary = {}
+
     for activity in activities:
         date_str = activity.start_time.strftime("%Y-%m-%d")
-        trend = trend_summary.setdefault(date_str, {
-            "steps": 0, "heart_rate": [], "sleep_hours": 0.0, "calories": 0.0, "distance": 0.0
-        })
-        trend["steps"] += activity.steps or 0
-        trend["calories"] += activity.calories_burned or 0.0
-        trend["distance"] += activity.distance_meters or 0.0
-        if activity.heart_rate:
-            trend["heart_rate"].append(activity.heart_rate)
-        if activity.total_sleep_hours:
-            trend["sleep_hours"] += activity.total_sleep_hours
 
-    for day in trend_summary:
-        hr_list = trend_summary[day]["heart_rate"]
-        trend_summary[day]["heart_rate"] = sum(hr_list) / len(hr_list) if hr_list else None
+        # Initialize per-date list
+        if date_str not in trend_summary:
+            trend_summary[date_str] = {
+                "steps": 0,
+                "heart_rate": [],
+                "sleep_hours": None,
+                "calories_burned": 0,
+                "distance_meters": 0,
+                "activities": [],
+            }
 
+        entry = {
+            "activity_type": activity.activity_type,
+            "start_time": activity.start_time.isoformat(),
+            "end_time": activity.end_time.isoformat(),
+            "is_fallback": activity.is_fallback,
+        }
+
+        # Only update these fields if it's not a fallback
+        if not activity.is_fallback:
+            trend_summary[date_str]["steps"] += activity.steps or 0
+            trend_summary[date_str]["calories_burned"] += activity.calories_burned or 0
+            trend_summary[date_str]["distance_meters"] += activity.distance_meters or 0
+
+            if activity.heart_rate is not None:
+                trend_summary[date_str]["heart_rate"].append(activity.heart_rate)
+
+            entry.update({
+                "steps": activity.steps or 0,
+                "calories_burned": activity.calories_burned or 0,
+                "distance_meters": activity.distance_meters or 0,
+                "heart_rate": activity.heart_rate,
+            })
+
+        # If no sleep yet, and this is a sleep fallback, set it
+        if trend_summary[date_str]["sleep_hours"] is None and activity.is_fallback:
+            if "sleep" in activity.activity_type.lower():
+                trend_summary[date_str]["sleep_hours"] = activity.total_sleep_hours or 0.0
+
+        # Also allow sleep from non-fallback if available (preferred)
+        elif trend_summary[date_str]["sleep_hours"] is None and not activity.is_fallback:
+            if "sleep" in activity.activity_type.lower():
+                trend_summary[date_str]["sleep_hours"] = activity.total_sleep_hours or 0.0
+
+        trend_summary[date_str]["activities"].append(entry)
+
+    # Add average heart rate per day
+    for day, data in trend_summary.items():
+        rates = data["heart_rate"]
+        data["avg_heart_rate_for_day"] = (
+            sum(rates) / len(rates) if rates else None
+        )
+        del data["heart_rate"]
+
+    # Glucose & AI stuff
     latest_log = GlucoseLog.objects.filter(user=user).order_by("-timestamp").first()
     latest_check = GlucoseCheck.objects.filter(session__user=user).order_by("-timestamp").first()
 
@@ -711,17 +753,14 @@ def get_dashboard_summary(request):
 
     avg_log = GlucoseLog.objects.filter(user=user).aggregate(Avg("glucose_level"))["glucose_level__avg"] or 0
     avg_check = GlucoseCheck.objects.filter(session__user=user).aggregate(Avg("glucose_level"))["glucose_level__avg"] or 0
-
     avg_glucose_level = round((avg_log + avg_check) / 2, 2) if (avg_log or avg_check) else None
 
     recent_activities = FitnessActivity.objects.filter(user=user).order_by("-start_time")[:5]
     ai_response = generate_ai_recommendation(user, recent_activities)
-    ai_recommendation = AIRecommendation.objects.create(
-        user=user, recommendation_text=ai_response
-    )
+    ai_recommendation = AIRecommendation.objects.create(user=user, recommendation_text=ai_response)
     ai_recommendation.fitness_activities.set(recent_activities)
 
-    latest_fitness = FitnessActivity.objects.filter(user=user).order_by("-start_time").first()
+    latest_fitness = FitnessActivity.objects.filter(user=user, is_fallback=False).order_by("-start_time").first()
     total_exercise_sessions = FitnessActivity.objects.filter(user=user, activity_type="Exercise").count()
 
     return JsonResponse({
@@ -744,6 +783,7 @@ def get_dashboard_summary(request):
         },
         "trend_data": trend_summary
     })
+
 
 
 @api_view(["GET"])
@@ -770,11 +810,11 @@ def list_ai_recommendations(request):
 @permission_classes([IsAuthenticated])
 def get_ai_health_trends(request, period_type="weekly"):
     user = request.user
-    latest_trend = AIHealthTrend.objects.filter(user=user, period_type=period_type).order_by("-start_date").first()
 
-    if not latest_trend:
+    if request.query_params.get("refresh") == "true":
         generate_health_trends(user, period_type)
-        latest_trend = AIHealthTrend.objects.filter(user=user, period_type=period_type).order_by("-start_date").first()
+
+    latest_trend = AIHealthTrend.objects.filter(user=user, period_type=period_type).order_by("-start_date").first()
 
     if not latest_trend:
         return JsonResponse({"message": f"No {period_type} trends available."}, status=404)
@@ -790,6 +830,29 @@ def get_ai_health_trends(request, period_type="weekly"):
         "ai_summary": latest_trend.ai_summary,
     }
     return JsonResponse({"trend": data})
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def get_all_ai_health_trends(request):
+    user = request.user
+    period_type = request.query_params.get("period_type", "weekly")
+
+    trends = AIHealthTrend.objects.filter(user=user, period_type=period_type).order_by("-start_date")
+
+    trend_list = []
+    for trend in trends:
+        trend_list.append({
+            "start_date": trend.start_date.strftime("%Y-%m-%d"),
+            "end_date": trend.end_date.strftime("%Y-%m-%d"),
+            "avg_glucose_level": trend.avg_glucose_level,
+            "avg_steps": trend.avg_steps,
+            "avg_sleep_hours": trend.avg_sleep_hours,
+            "avg_heart_rate": trend.avg_heart_rate,
+            "total_exercise_sessions": trend.total_exercise_sessions,
+            "ai_summary": trend.ai_summary,
+        })
+
+    return JsonResponse({"trends": trend_list})
 
 
 @api_view(["GET"])
@@ -813,31 +876,58 @@ def latest_fitness_entry(request):
     }
     return JsonResponse(data)
 
-
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def today_fitness_summary(request):
     user = request.user
     today = now().date()
 
-    data = FitnessActivity.objects.filter(user=user, start_time__date=today).first()
+    # Step 1: Get latest non-fallback activity for today
+    activity = (
+        FitnessActivity.objects
+        .filter(user=user, start_time__date=today, is_fallback=False)
+        .order_by("-start_time")
+        .first()
+    )
 
-    if not data:
-        # Try fallback to yesterday
+    # Step 2: If no activity found today, check yesterday
+    if not activity:
         yesterday = today - timedelta(days=1)
-        data = FitnessActivity.objects.filter(user=user, start_time__date=yesterday).first()
-        if not data:
-            return Response({"message": "No data for today."}, status=404)
+        activity = (
+            FitnessActivity.objects
+            .filter(user=user, start_time__date=yesterday, is_fallback=False)
+            .order_by("-start_time")
+            .first()
+        )
+
+    if not activity:
+        return Response({"message": "No valid fitness data found."}, status=404)
+
+    # Step 3: If activity has no sleep_hours, look for fallback sleep data
+    if not activity.total_sleep_hours:
+        sleep_fallback = (
+            FitnessActivity.objects
+            .filter(
+                user=user,
+                start_time__date=activity.start_time.date(),
+                is_fallback=True,
+                activity_type__icontains="sleep"
+            )
+            .order_by("-start_time")
+            .first()
+        )
+        if sleep_fallback:
+            activity.total_sleep_hours = sleep_fallback.total_sleep_hours
 
     return Response({
-        "activity_type": data.activity_type,
-        "steps": data.steps,
-        "sleep_hours": data.total_sleep_hours,
-        "heart_rate": data.heart_rate,
-        "calories_burned": data.calories_burned,
-        "distance_meters": data.distance_meters,
-        "start_time": data.start_time,
-        "end_time": data.end_time
+        "activity_type": activity.activity_type,
+        "steps": activity.steps,
+        "sleep_hours": activity.total_sleep_hours,
+        "heart_rate": activity.heart_rate,
+        "calories_burned": activity.calories_burned,
+        "distance_meters": activity.distance_meters,
+        "start_time": activity.start_time,
+        "end_time": activity.end_time,
     })
 
 
@@ -1008,36 +1098,15 @@ def queue_local_notification(request):
 
     return JsonResponse({"message": "Local notification queued successfully."})
 
-    
-RXNORM_API_URL = "https://rxnav.nlm.nih.gov/REST/drugs.json?name={}"
-
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def fetch_medications_from_rxnorm(request):
-    """Fetches medication list from RxNorm API"""
-    search_query = request.GET.get("query", "")
-
-    if not search_query:
+    query = request.GET.get("query", "")
+    if not query:
         return JsonResponse({"error": "Search query required"}, status=400)
 
-    response = requests.get(RXNORM_API_URL.format(search_query))
-
-    if response.status_code == 200:
-        data = response.json()
-        medications = []
-
-        if "drugGroup" in data and "conceptGroup" in data["drugGroup"]:
-            for group in data["drugGroup"]["conceptGroup"]:
-                if "conceptProperties" in group:
-                    for med in group["conceptProperties"]:
-                        medications.append({
-                            "name": med["name"],
-                            "rxnorm_id": med["rxcui"]
-                        })
-
-        return JsonResponse({"medications": medications})
-
-    return JsonResponse({"error": "Failed to fetch medications"}, status=500)
+    results = fetch_medication_details(query)
+    return JsonResponse({"medications": results})
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])

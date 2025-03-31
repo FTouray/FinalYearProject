@@ -183,8 +183,27 @@ List<Map<String, dynamic>> _transformGroupedData(
         [];
 
     final avgHR = hrValues.isNotEmpty
-        ? hrValues.reduce((a, b) => a + b) / hrValues.length
-        : 0.0;
+      ? (hrValues.reduce((a, b) => a + b) / hrValues.length).round()
+      : 0;
+
+
+     // Calories burned (rounded to nearest int)
+      final calories = grouped[HealthDataType.ACTIVE_ENERGY_BURNED]
+              ?.where(
+                  (p) => p.dateFrom.isAfter(start) && p.dateTo.isBefore(end))
+              .fold(0.0, (sum, p) => sum + _extractNumericValue(p.value)) ??
+          0.0;
+
+// Distance (converted to kilometers and rounded to 2 decimals)
+      final distanceMeters = grouped[HealthDataType.DISTANCE_DELTA]
+              ?.where(
+                  (p) => p.dateFrom.isAfter(start) && p.dateTo.isBefore(end))
+              .fold(0.0, (sum, p) => sum + _extractNumericValue(p.value)) ??
+          0.0;
+
+      final distanceKm =
+          double.parse((distanceMeters / 1000).toStringAsFixed(2));
+
     
     final workoutSummary = w.workoutSummary;
 
@@ -195,8 +214,8 @@ List<Map<String, dynamic>> _transformGroupedData(
       "duration_minutes": duration,
       "steps": steps,
       "heart_rate": avgHR,
-      "calories_burned": workoutSummary?.totalEnergyBurned?.toDouble() ?? 0.0,
-      "distance_meters": workoutSummary?.totalDistance?.toDouble() ?? 0.0,
+      "calories_burned": calories.round(),
+      "distance_meters": distanceKm,
     };
 
     if (w == workouts.last) {
@@ -208,7 +227,7 @@ List<Map<String, dynamic>> _transformGroupedData(
 }
 
 
-  Future<bool> syncToBackend({bool force = false}) async {
+Future<bool> syncToBackend({bool force = false}) async {
     final token = await AuthService().getAccessToken();
     if (token == null || apiUrl == null) {
       print("❌ Missing token or API URL");
@@ -217,17 +236,19 @@ List<Map<String, dynamic>> _transformGroupedData(
 
     try {
       final alreadySynced = await hasAlreadySyncedToday();
-      print("🔄 Already synced today? $alreadySynced");
+      final firstTime = await isFirstTimeSync();
+      print("🔄 Already synced today? $alreadySynced | First time: $firstTime");
 
-      // 🚨 Skip check if force = true
-      final shouldSync = force ? true : !alreadySynced;
+      final shouldSync = force || firstTime || !alreadySynced;
       if (!shouldSync) {
         print("⏭️ Skipping sync (already synced today)");
         return true;
       }
 
-      final dataPoints = await _getHistoricalData(); // or _getLast24HoursData()
-      print("📦 Fetched: ${dataPoints.length}");
+      // ⏳ Use a longer range if it's first time
+      final dataPoints = await _getHistoricalData(
+        range: firstTime ? const Duration(days: 60) : const Duration(days: 30),
+      );
 
       final grouped = _groupDataPoints(dataPoints);
       final payloads = _transformGroupedData(grouped);
@@ -250,6 +271,7 @@ List<Map<String, dynamic>> _transformGroupedData(
 
       print("✅ Sync complete.");
       await markSyncCompleteToday();
+      if (firstTime) await markFirstSyncDone();
       return true;
     } catch (e) {
       print("❌ Sync error: $e");
@@ -270,5 +292,16 @@ Future<void> markSyncCompleteToday() async {
   final today = DateTime.now().toIso8601String().split('T').first;
   await prefs.setString('last_sync_date', today);
 }
+
+Future<bool> isFirstTimeSync() async {
+    final prefs = await SharedPreferences.getInstance();
+    return !prefs.containsKey('has_ever_synced');
+  }
+
+  Future<void> markFirstSyncDone() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('has_ever_synced', true);
+  }
+
 
 }
