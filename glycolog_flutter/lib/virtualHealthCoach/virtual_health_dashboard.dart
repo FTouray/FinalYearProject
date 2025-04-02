@@ -126,8 +126,11 @@ Future<void> _refreshTrendSummary() async {
       );
 
       final fullHistory = _mapTrend(jsonDecode(histRes.body)["trend_data"],
-          excludeFallback: false);
-      final filteredHistory = _mapTrend(jsonDecode(histRes.body)["trend_data"]);
+          excludeFallback: false)
+        ..sort((a, b) => b['date'].compareTo(a['date']));
+      final filteredHistory = _mapTrend(jsonDecode(histRes.body)["trend_data"])
+        ..sort((a, b) => b['date'].compareTo(a['date']));
+
 
       setState(() {
         todayData = jsonDecode(todayRes.body);
@@ -661,7 +664,7 @@ Widget _buildGraph(String title, String metric, Color color) {
 
 
 
-  Widget _buildTodaySummary() {
+Widget _buildTodaySummary() {
     if (todayData == null || todayData!.isEmpty) {
       final yesterday = history.isNotEmpty ? history.last : null;
       return Card(
@@ -679,8 +682,8 @@ Widget _buildGraph(String title, String metric, Color color) {
                     style: TextStyle(fontStyle: FontStyle.italic)),
                 const SizedBox(height: 6),
                 ...yesterday.entries
-                    .where((e) => e.key != 'date')
-                    .map((e) => _buildDataRow(e.key, e.value.toString()))
+                    .where((e) => e.key != 'date' && e.key != 'activity_type')
+                    .map((e) => _buildFormattedEntry(e.key, e.value))
               ] else
                 const Text("No data found from previous days either."),
             ],
@@ -700,12 +703,14 @@ Widget _buildGraph(String title, String metric, Color color) {
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             ...todayData!.entries
-                .map((e) => _buildDataRow(e.key, e.value.toString()))
+                .where((e) => e.key != 'is_fallback')
+                .map((e) => _buildFormattedEntry(e.key, e.value)),
           ],
         ),
       ),
     );
   }
+
 
 String _formatValue(String label, dynamic value) {
     if (label.toLowerCase().contains("heart_rate") && value is num) {
@@ -714,10 +719,10 @@ String _formatValue(String label, dynamic value) {
     return value.toString();
   }
 
-  String _formatDistance(dynamic meters) {
-    if (meters == null) return "0 km";
+  String _formatDistance(dynamic value) {
+    if (value == null) return "0 km";
     try {
-      final km = (meters as num) / 1000;
+      final km = value as num;
       return "${km.toStringAsFixed(2)} km";
     } catch (e) {
       return "0 km";
@@ -771,7 +776,7 @@ String _formatValue(String label, dynamic value) {
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
                 subtitle: Text(
-                    "Steps: ${entry['steps'] ?? 0} • Distance: ${_formatDistance(entry['distance_meters'])} • Calories: ${entry['calories_burned']?.toStringAsFixed(1) ?? '0'} kcal"),
+                    "Steps: ${entry['steps'] ?? 0} • Distance: ${_formatDistance(entry['distance_km'])} • Calories: ${entry['calories_burned']?.toStringAsFixed(1) ?? '0'} kcal"),
                 onTap: () {
                   showDialog(
                     context: context,
@@ -800,7 +805,7 @@ String _formatValue(String label, dynamic value) {
     String formattedValue;
 
     switch (key) {
-      case 'distance_meters':
+      case 'distance_km':
         formattedValue = _formatDistance(value);
         break;
       case 'calories_burned':

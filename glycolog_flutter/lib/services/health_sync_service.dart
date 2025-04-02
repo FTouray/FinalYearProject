@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/material.dart';
 import 'package:health/health.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -150,7 +151,7 @@ List<Map<String, dynamic>> _transformGroupedData(
         "steps": totalSteps,
         "heart_rate": avgHeartRate ?? 0,
         "calories_burned": 0,
-        "distance_meters": 0,
+        "distance_km": 0,
         "sleep_hours": sleepHours,
         "is_fallback": true,
       }
@@ -215,7 +216,7 @@ List<Map<String, dynamic>> _transformGroupedData(
       "steps": steps,
       "heart_rate": avgHR,
       "calories_burned": calories.round(),
-      "distance_meters": distanceKm,
+      "distance_km": distanceKm,
     };
 
     if (w == workouts.last) {
@@ -226,8 +227,32 @@ List<Map<String, dynamic>> _transformGroupedData(
   }).toList();
 }
 
+Future<DateTime?> _getLastSyncedTime() async {
+    final token = await AuthService().getAccessToken();
+    if (token == null || apiUrl == null) return null;
 
-Future<bool> syncToBackend({bool force = false}) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$apiUrl/health/last-synced/'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['last_synced'] != null) {
+          return DateTime.parse(data['last_synced']);
+        }
+      } else {
+        print("⚠️ Failed to fetch last synced time: ${response.body}");
+      }
+    } catch (e) {
+      print("❌ Error fetching last synced time: $e");
+    }
+
+    return null;
+  }
+
+  Future<bool> syncToBackend({bool force = false}) async {
     final token = await AuthService().getAccessToken();
     if (token == null || apiUrl == null) {
       print("❌ Missing token or API URL");
@@ -245,7 +270,6 @@ Future<bool> syncToBackend({bool force = false}) async {
         return true;
       }
 
-      // ⏳ Use a longer range if it's first time
       final dataPoints = await _getHistoricalData(
         range: firstTime ? const Duration(days: 60) : const Duration(days: 30),
       );
@@ -253,7 +277,20 @@ Future<bool> syncToBackend({bool force = false}) async {
       final grouped = _groupDataPoints(dataPoints);
       final payloads = _transformGroupedData(grouped);
 
-      for (final data in payloads) {
+      // 🕒 Ask backend for last synced time
+      final lastSyncedTime = await _getLastSyncedTime();
+      print("⏰ Last synced end_time from backend: $lastSyncedTime");
+
+      final filteredPayloads = lastSyncedTime != null
+          ? payloads
+              .where(
+                  (p) => DateTime.parse(p['end_time']).isAfter(lastSyncedTime))
+              .toList()
+          : payloads;
+
+      print("📥 Syncing ${filteredPayloads.length} workouts (after filtering)");
+
+      for (final data in filteredPayloads) {
         final response = await http.post(
           Uri.parse('$apiUrl/health/log/'),
           headers: {
@@ -263,22 +300,28 @@ Future<bool> syncToBackend({bool force = false}) async {
           body: jsonEncode(data),
         );
 
-        if (response.statusCode != 201) {
+        if (response.statusCode == 201) {
+          print(
+              "✅ Synced workout: ${data['start_time']} → ${data['end_time']}");
+        } else if (response.statusCode == 400 &&
+            response.body.contains("Record already exists")) {
+          print(
+              "⚠️ Skipped duplicate workout by backend: ${data['start_time']}");
+        } else {
           print("❌ Failed to sync: ${response.body}");
           return false;
         }
       }
 
-      print("✅ Sync complete.");
       await markSyncCompleteToday();
       if (firstTime) await markFirstSyncDone();
+
       return true;
     } catch (e) {
       print("❌ Sync error: $e");
       return false;
     }
   }
-
 
  Future<bool> hasAlreadySyncedToday() async {
   final prefs = await SharedPreferences.getInstance();

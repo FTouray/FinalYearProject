@@ -329,7 +329,7 @@ class FitnessActivity(models.Model):
     sleep_stage = models.CharField(max_length=50, choices=SLEEP_STAGES, null=True, blank=True)
     total_sleep_hours = models.FloatField(null=True, blank=True)
     calories_burned = models.FloatField(null=True, blank=True)
-    distance_meters = models.FloatField(null=True, blank=True)
+    distance_km = models.FloatField(null=True, blank=True)
     is_manual_override = models.BooleanField(default=False)
     is_fallback = models.BooleanField(default=False)
 

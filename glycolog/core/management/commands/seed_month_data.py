@@ -42,7 +42,7 @@ class Command(BaseCommand):
             activity_duration = random.randint(20, 75)
             activity_end_time = activity_start_time + timedelta(minutes=activity_duration)
             steps = random.randint(1000, 15000) if activity_type in ["Walking", "Running", "Hiking"] else None
-            distance = steps * 0.7 if steps else random.uniform(500, 3000)  # meters
+            distance = (steps * 0.7 / 1000) if steps else random.uniform(0.5, 3.0)  # kilometers
 
             FitnessActivity.objects.create(
                 user=user,
@@ -54,7 +54,7 @@ class Command(BaseCommand):
                 duration_minutes=activity_duration,
                 calories_burned=round(random.uniform(100, 600), 2),
                 heart_rate=random.uniform(75, 140),
-                distance_meters=distance
+                distance_km=distance
             )
 
             # Meal + Glucose Logs
