@@ -17,8 +17,8 @@ from core.fitness_ai import generate_ai_recommendation, generate_health_trends
 from core.ai_model import feature_engineering
 from core.ai_model.data_processing import load_data_from_db
 from core.ai_model.recommendation_engine import generate_recommendations, load_models, predict_glucose, predict_wellness_risk
-from core.services.ocr_service import extract_text_from_image
-from core.services.rxnorm_service import fetch_medication_details
+from core.services.ocr_service import extract_text_from_image, parse_dosage_info
+from core.services.rxnorm_service import fetch_dosage_forms_from_rxnorm, fetch_rxnorm_details, guess_default_frequency, search_rxnorm, search_rxnorm_approx, search_rxnorm_partial
 from core.services.reminder_service import schedule_medication_reminder
 from .serializers import ChatMessageSerializer, ExerciseCheckSerializer, FoodCategorySerializer, FoodItemSerializer, GlucoseCheckSerializer, GlucoseLogSerializer, MealCheckSerializer, MealSerializer, MedicationReminderSerializer, MedicationSerializer, QuestionnaireSessionSerializer, RegisterSerializer, LoginSerializer, SettingsSerializer, SymptomCheckSerializer
 from .models import AIHealthTrend, AIRecommendation, ChatMessage, CustomUser, ExerciseCheck, FeelingCheck, FitnessActivity, FoodCategory, FoodItem, GlucoseCheck, GlucoseLog, GlycaemicResponseTracker, LocalNotificationPrompt, Meal, MealCheck, Medication, MedicationReminder, QuestionnaireSession, SymptomCheck  
@@ -690,7 +690,7 @@ def get_dashboard_summary(request):
                 "heart_rate": [],
                 "sleep_hours": None,
                 "calories_burned": 0,
-                "distance_meters": 0,
+                "distance_km": 0,
                 "activities": [],
             }
 
@@ -705,7 +705,7 @@ def get_dashboard_summary(request):
         if not activity.is_fallback:
             trend_summary[date_str]["steps"] += activity.steps or 0
             trend_summary[date_str]["calories_burned"] += activity.calories_burned or 0
-            trend_summary[date_str]["distance_meters"] += activity.distance_meters or 0
+            trend_summary[date_str]["distance_km"] += activity.distance_km or 0
 
             if activity.heart_rate is not None:
                 trend_summary[date_str]["heart_rate"].append(activity.heart_rate)
@@ -713,7 +713,7 @@ def get_dashboard_summary(request):
             entry.update({
                 "steps": activity.steps or 0,
                 "calories_burned": activity.calories_burned or 0,
-                "distance_meters": activity.distance_meters or 0,
+                "distance_km": activity.distance_km or 0,
                 "heart_rate": activity.heart_rate,
             })
 
@@ -776,7 +776,7 @@ def get_dashboard_summary(request):
             "steps": latest_fitness.steps if latest_fitness else None,
             "heart_rate": latest_fitness.heart_rate if latest_fitness else None,
             "sleep_hours": latest_fitness.total_sleep_hours if latest_fitness else None,
-            "distance_meters": latest_fitness.distance_meters if latest_fitness else None,
+            "distance_km": latest_fitness.distance_km if latest_fitness else None,
             "calories_burned": latest_fitness.calories_burned if latest_fitness else None,
             "start_time": latest_fitness.start_time.isoformat() if latest_fitness else None,
             "end_time": latest_fitness.end_time.isoformat() if latest_fitness else None,
@@ -869,7 +869,7 @@ def latest_fitness_entry(request):
         "steps": latest.steps,
         "heart_rate": latest.heart_rate,
         "calories_burned": latest.calories_burned,
-        "distance_meters": latest.distance_meters,
+        "distance_km": latest.distance_km,
         "sleep_hours": latest.total_sleep_hours,
         "start_time": latest.start_time,
         "end_time": latest.end_time,
@@ -925,7 +925,7 @@ def today_fitness_summary(request):
         "sleep_hours": activity.total_sleep_hours,
         "heart_rate": activity.heart_rate,
         "calories_burned": activity.calories_burned,
-        "distance_meters": activity.distance_meters,
+        "distance_km": activity.distance_km,
         "start_time": activity.start_time,
         "end_time": activity.end_time,
     })
@@ -963,7 +963,7 @@ def log_health_entry(request):
                 "heart_rate": data.get("heart_rate"),
                 "total_sleep_hours": data.get("sleep_hours"),
                 "calories_burned": data.get("calories_burned"),
-                "distance_meters": data.get("distance_meters"),
+                "distance_km": data.get("distance_km"),
                 "source": "Phone",
                 "last_activity_time": end_time,
                 "is_manual_override": False,
@@ -974,6 +974,20 @@ def log_health_entry(request):
 
     except Exception as e:
         return Response({"error": f"Failed to store health data: {str(e)}"}, status=400)
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def get_last_synced_workout(request):
+    last = FitnessActivity.objects.filter(
+        user=request.user,
+        is_manual_override=False
+    ).order_by("-end_time").first()
+
+    if not last:
+        return Response({"last_synced": None})
+
+    return Response({"last_synced": last.end_time.isoformat()})
+
 
 client = OpenAI()
 
@@ -1105,8 +1119,37 @@ def fetch_medications_from_rxnorm(request):
     if not query:
         return JsonResponse({"error": "Search query required"}, status=400)
 
-    results = fetch_medication_details(query)
+    results = search_rxnorm_approx(query)
+
     return JsonResponse({"medications": results})
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def get_medication_details(request):
+    rxcui = request.GET.get("rxcui")
+    if not rxcui:
+        return JsonResponse({"error": "Missing rxcui"}, status=400)
+
+
+    # 1) Basic info about the medication
+    rx_info = fetch_rxnorm_details(rxcui)  # returns { "name": "metformin", "dosage_forms": [], "default_frequency": ... }
+
+    # 2) Extended dosage forms
+    dosage_data = fetch_dosage_forms_from_rxnorm(rxcui)  # returns { "rxcui": rxcui, "dosage_forms": [...] }
+
+    # 3) Merge them
+    med_name = rx_info.get("name", "")
+    dosage_forms = dosage_data.get("dosage_forms", [])
+
+    details = {
+        "rxcui": rxcui,
+        "name": med_name,
+        "dosage_forms": dosage_forms,
+        "default_frequency": guess_default_frequency(med_name, dosage_forms)
+    }
+
+    return JsonResponse(details)
+
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
@@ -1205,10 +1248,13 @@ def update_medication(request, medication_id):
     medication.name = data.get("name", medication.name)
     medication.dosage = data.get("dosage", medication.dosage)
     medication.frequency = data.get("frequency", medication.frequency)
+
+    if 'last_taken' in data:
+        medication.last_taken = data['last_taken']  # parse if needed
+
     medication.save()
 
     return JsonResponse({"message": "Medication updated successfully!"})
-
 
 @api_view(["DELETE"])
 @permission_classes([IsAuthenticated])
@@ -1226,26 +1272,55 @@ from core.services.ocr_service import extract_text_from_image
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def scan_medication(request):
-    """Extracts text from an image and fetches medication details."""
     if 'image' not in request.FILES:
         return JsonResponse({"error": "No image provided"}, status=400)
 
     file = request.FILES['image']
     file_path = "temp.jpg"
-
     try:
+        # Save uploaded image
         with open(file_path, 'wb+') as destination:
             for chunk in file.chunks():
                 destination.write(chunk)
 
+        # Step 1: OCR
         extracted_text = extract_text_from_image(file_path)
-        medication_details = fetch_medication_details(extracted_text)
 
-        return JsonResponse(medication_details)
+        # Step 2: Parse dosage/frequency from the text
+        parsed_info = parse_dosage_info(extracted_text)
+        
+        # Step 3: Try to find a matching medication in RxNorm by search
+        rxn_results = search_rxnorm(extracted_text)
+        if rxn_results:
+            # Just pick the first result, or show them to user in a list
+            first_match = rxn_results[0]
+            rxcui = first_match["rxcui"]
+            name = first_match["name"]
 
+            # Step 4: Get dosage forms
+            dosage_data = fetch_dosage_forms_from_rxnorm(rxcui)
+            # Step 5: Guess frequency
+            default_freq = guess_default_frequency(name, dosage_data["dosage_forms"])
+
+            # Combine everything
+            return JsonResponse({
+                "name": name,
+                "rxcui": rxcui,
+                "dosage_forms": dosage_data["dosage_forms"],
+                "dosage": parsed_info.get("dosage"),  # e.g. "500mg"
+                "frequency": parsed_info.get("frequency") or default_freq,
+            })
+        else:
+            # If no RxNorm match, just return the OCR text
+            return JsonResponse({
+                "name": extracted_text,
+                "dosage": parsed_info.get("dosage"),
+                "frequency": parsed_info.get("frequency"),
+                "dosage_forms": [],
+                "rxcui": None,
+            })
     except Exception as e:
         return JsonResponse({"error": f"Failed to process image: {e}"}, status=500)
-
     
 class MedicationListView(ListAPIView):
     queryset = Medication.objects.all().order_by("id")

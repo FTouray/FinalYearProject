@@ -2,7 +2,7 @@ from django.urls import path
 from .views import (
     MedicationListView, MedicationReminderListView,
     chat_with_virtual_coach, delete_medication, exercise_step, fetch_medications_from_rxnorm,
-    chat_history, get_ai_health_trends, get_all_ai_health_trends, latest_fitness_entry,
+    chat_history, get_ai_health_trends, get_all_ai_health_trends, get_last_synced_workout, latest_fitness_entry,
     get_local_notifications, get_medication_reminders, list_ai_recommendations,
     get_saved_medications, questionnaire_get_ai_insights, questionnaire_get_insights, today_fitness_summary, meal_step, glucose_step, glycaemic_response_main,
     list_categories, list_food_items_by_category, log_glucose, log_meal, meal_log_detail,
@@ -63,6 +63,7 @@ urlpatterns = [
     path("health/log/", log_health_entry, name="log_health_entry"),
     path("health/today/", today_fitness_summary, name="today_fitness_summary"),
     path("health/latest/", latest_fitness_entry, name="latest_fitness_entry"),
+    path("health/last-synced/", get_last_synced_workout, name="get_last_synced_workout"),
 
     # Health Trends
     path("health/trends/<str:period_type>/", get_ai_health_trends, name="get_ai_health_trends"),
