@@ -19,7 +19,6 @@ class _AddMedicationScreenState extends State<AddMedicationScreen> {
   final TextEditingController frequencyController = TextEditingController();
 
   DateTime? lastTaken;
-  List<Map<String, dynamic>> medicationList = [];
   List<Map<String, dynamic>> filteredList = [];
   bool isLoading = false;
   bool isManualEntry = false;
@@ -28,36 +27,30 @@ class _AddMedicationScreenState extends State<AddMedicationScreen> {
   @override
   void initState() {
     super.initState();
-    loadDefaultMedications();
-    // You can show suggestions or start blank until user types
+    fetchMedications("");
   }
-
 Future<void> fetchMedications(String query) async {
-    setState(() => isLoading = true);
-
-    if (query.trim().isEmpty) {
-      setState(() {
-        filteredList = List.from(medicationList);
-        isLoading = false;
-      });
-      return;
-    }
+    setState(() {
+      isLoading = true;
+    });
 
     try {
       final token = await AuthService().getAccessToken();
       if (token == null) return;
 
+      final encodedQuery = Uri.encodeComponent(query.trim());
+      final url = query.trim().isEmpty
+          ? '$apiUrl/medications/search/' // no query param = random meds from OpenFDA
+          : '$apiUrl/medications/search/?query=$encodedQuery';
+
       final response = await http.get(
-        Uri.parse('$apiUrl/medications/search/?query=$query'),
-        headers: {
-          'Authorization': 'Bearer $token',
-        },
+        Uri.parse(url),
+        headers: {'Authorization': 'Bearer $token'},
       );
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = json.decode(response.body);
         final List<dynamic> meds = data['medications'];
-
         setState(() {
           filteredList = List<Map<String, dynamic>>.from(meds);
         });
@@ -72,8 +65,61 @@ Future<void> fetchMedications(String query) async {
   }
 
 
+  Future<Map<String, dynamic>> fetchMedicationDetails(String fdaId) async {
+    final token = await AuthService().getAccessToken();
+    if (token == null) return {};
+
+    try {
+      final response = await http.get(
+        Uri.parse('$apiUrl/medications/details/?fda_id=$fdaId'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data;
+      }
+    } catch (e) {
+      print("Error fetching med details: $e");
+    }
+
+    return {};
+  }
+
+  Future<void> saveMedication(
+      String name, String dosage, String frequency, String? fdaId) async {
+    final token = await AuthService().getAccessToken();
+    if (token == null) return;
+
+    try {
+      final response = await http.post(
+        Uri.parse('$apiUrl/medications/save/'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: json.encode({
+          'name': name,
+          'fda_id': fdaId,
+          'dosage': dosage,
+          'frequency': frequency,
+          'last_taken': lastTaken?.toIso8601String(),
+        }),
+      );
+
+      if (response.statusCode == 201) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Medication saved successfully!")),
+        );
+        Navigator.pop(context, true);
+      }
+    } catch (e) {
+      print("Error saving medication: $e");
+    }
+  }
+
 void showMedicationInputDialog(String name,
-      {String? rxnormId, List<String>? dosageForms, String? defaultFrequency}) {
+      {String? fdaId, List<String>? dosageForms, String? defaultFrequency}) {
     // Auto-fill dosage if available
     if (dosageForms != null && dosageForms.isNotEmpty) {
       dosageController.text = dosageForms.first;
@@ -146,7 +192,7 @@ void showMedicationInputDialog(String name,
             ElevatedButton(
               onPressed: () {
                 saveMedication(name, dosageController.text,
-                    frequencyController.text, rxnormId);
+                    frequencyController.text, fdaId);
                 Navigator.pop(context);
               },
               child: const Text("Save"),
@@ -155,38 +201,6 @@ void showMedicationInputDialog(String name,
         );
       },
     );
-  }
-
-
-  Future<void> saveMedication(
-      String name, String dosage, String frequency, String? rxnormId) async {
-    final token = await AuthService().getAccessToken();
-    if (token == null) return;
-
-    try {
-      final response = await http.post(
-        Uri.parse('$apiUrl/medications/save/'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-        body: json.encode({
-          'name': name,
-          'rxnorm_id': rxnormId,
-          'dosage': dosage,
-          'frequency': frequency,
-          'last_taken': lastTaken?.toIso8601String(),
-        }),
-      );
-
-      if (response.statusCode == 201) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Medication saved successfully!")),
-        );
-      }
-    } catch (e) {
-      print("Error saving medication: $e");
-    }
   }
 
 Future<void> scanMedicationLabel() async {
@@ -211,8 +225,8 @@ Future<void> scanMedicationLabel() async {
 
     if (response.statusCode == 200) {
       final scannedName = jsonData['name'] ?? '';
-      final scannedDosage = jsonData['dosage'] ?? '';
-      final scannedFrequency = jsonData['frequency'] ?? '';
+      final scannedDosage = jsonData['dosage_and_administration'] ?? '';
+      final scannedFrequency = jsonData['frequency'] ?? 'Once daily';
 
       setState(() {
         searchController.text = scannedName;
@@ -228,86 +242,6 @@ Future<void> scanMedicationLabel() async {
         const SnackBar(content: Text("Error scanning medication.")),
       );
     }
-  }
-
-  void loadDefaultMedications() {
-  // Top 50 or so common medications (you can replace these later)
-  medicationList = [
-    {"name": "Paracetamol", "rxnorm_id": null},
-    {"name": "Ibuprofen", "rxnorm_id": null},
-    {"name": "Amoxicillin", "rxnorm_id": null},
-    {"name": "Aspirin", "rxnorm_id": null},
-    {"name": "Omeprazole", "rxnorm_id": null},
-    {"name": "Metformin", "rxnorm_id": null},
-    {"name": "Simvastatin", "rxnorm_id": null},
-    {"name": "Atorvastatin", "rxnorm_id": null},
-    {"name": "Cetirizine", "rxnorm_id": null},
-    {"name": "Loratadine", "rxnorm_id": null},
-    {"name": "Prednisone", "rxnorm_id": null},
-    {"name": "Azithromycin", "rxnorm_id": null},
-    {"name": "Salbutamol", "rxnorm_id": null},
-    {"name": "Levothyroxine", "rxnorm_id": null},
-    {"name": "Naproxen", "rxnorm_id": null},
-    {"name": "Furosemide", "rxnorm_id": null},
-    {"name": "Hydrochlorothiazide", "rxnorm_id": null},
-    {"name": "Losartan", "rxnorm_id": null},
-    {"name": "Gabapentin", "rxnorm_id": null},
-    {"name": "Tramadol", "rxnorm_id": null},
-    {"name": "Codeine", "rxnorm_id": null},
-    {"name": "Doxycycline", "rxnorm_id": null},
-    {"name": "Ciprofloxacin", "rxnorm_id": null},
-    {"name": "Fluoxetine", "rxnorm_id": null},
-    {"name": "Sertraline", "rxnorm_id": null},
-    {"name": "Diazepam", "rxnorm_id": null},
-    {"name": "Alprazolam", "rxnorm_id": null},
-    {"name": "Zolpidem", "rxnorm_id": null},
-    {"name": "Insulin", "rxnorm_id": null},
-    {"name": "Ranitidine", "rxnorm_id": null},
-    {"name": "Pantoprazole", "rxnorm_id": null},
-    {"name": "Clindamycin", "rxnorm_id": null},
-    {"name": "Lisinopril", "rxnorm_id": null},
-    {"name": "Citalopram", "rxnorm_id": null},
-    {"name": "Bupropion", "rxnorm_id": null},
-    {"name": "Trazodone", "rxnorm_id": null},
-    {"name": "Venlafaxine", "rxnorm_id": null},
-    {"name": "Buspirone", "rxnorm_id": null},
-    {"name": "Propranolol", "rxnorm_id": null},
-    {"name": "Clonazepam", "rxnorm_id": null},
-    {"name": "Esomeprazole", "rxnorm_id": null},
-    {"name": "Warfarin", "rxnorm_id": null},
-    {"name": "Clopidogrel", "rxnorm_id": null},
-    {"name": "Montelukast", "rxnorm_id": null},
-    {"name": "Meloxicam", "rxnorm_id": null},
-    {"name": "Tamsulosin", "rxnorm_id": null},
-    {"name": "Finasteride", "rxnorm_id": null},
-    {"name": "Nitrofurantoin", "rxnorm_id": null},
-    {"name": "Methotrexate", "rxnorm_id": null},
-  ];
-
-  setState(() {
-    filteredList = List.from(medicationList);
-  });
-}
-
-Future<Map<String, dynamic>> fetchMedicationDetails(String rxnormId) async {
-    final token = await AuthService().getAccessToken();
-    if (token == null) return {};
-
-    try {
-      final response = await http.get(
-        Uri.parse('$apiUrl/medications/details/?rxcui=$rxnormId'),
-        headers: {'Authorization': 'Bearer $token'},
-      );
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        return data;
-      }
-    } catch (e) {
-      print("Error fetching med details: $e");
-    }
-
-    return {};
   }
 
   @override
@@ -354,14 +288,15 @@ Future<Map<String, dynamic>> fetchMedicationDetails(String rxnormId) async {
                               child: ListTile(
                                 title: Text(med['name']),
                                 onTap: () async {
-                                  final details = await fetchMedicationDetails(
-                                      med['rxcui']);
+                                  final details =
+                                      await fetchMedicationDetails(med['id']);
 
                                   showMedicationInputDialog(
                                     med['name'],
-                                    rxnormId: med['rxcui'],
-                                    dosageForms:
-                                        details['dosage_forms']?.cast<String>(),
+                                    fdaId: med['id'], 
+                                    dosageForms: [
+                                      details['dosage_and_administration'] ?? ""
+                                    ],
                                     defaultFrequency:
                                         details['default_frequency'],
                                   );

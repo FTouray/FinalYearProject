@@ -44,7 +44,7 @@ class _MealStepScreenState extends State<MealStepScreen> {
   List<FoodItem> selectedItems = [];
   List<String> skippedMeals = ['Breakfast', 'Lunch', 'Dinner'];
   List<String> selectedSkippedMeals = [];
-  bool wellnessImpact = false; // Track wellness impact
+  bool wellnessImpact = false;
   bool _isLoading = false;
   String? _error;
   TextEditingController _notesController = TextEditingController();
@@ -54,7 +54,7 @@ class _MealStepScreenState extends State<MealStepScreen> {
   List<FoodItem> _filteredFoodItems = [];
   TextEditingController _searchController = TextEditingController();
   bool _isSearching = false;
-  final String? apiUrl = dotenv.env['API_URL']; 
+  final String? apiUrl = dotenv.env['API_URL'];
 
   @override
   void initState() {
@@ -74,13 +74,15 @@ class _MealStepScreenState extends State<MealStepScreen> {
       );
 
       if (response.statusCode == 200) {
-        setState(() {
-          _categories = (json.decode(response.body) as List)
-              .map((data) => FoodCategory(id: data['id'], name: data['name']))
-              .toList();
-        });
-      } else {
-        print('Failed to load categories. Status code: ${response.statusCode}');
+        final fetched = (json.decode(response.body) as List)
+            .map((data) => FoodCategory(id: data['id'], name: data['name']))
+            .toList();
+
+        setState(() => _categories = fetched);
+
+        for (var category in fetched) {
+          await _fetchFoodItems(category.id);
+        }
       }
     } catch (e) {
       print('Error fetching categories: $e');
@@ -105,14 +107,12 @@ class _MealStepScreenState extends State<MealStepScreen> {
               .map((data) => FoodItem(
                     foodId: data['foodId'],
                     name: data['name'],
-                    gi: data['glycaemic_index'],
-                    carbs: data['carbs'],
+                    gi: (data['glycaemic_index'] ?? 0.0).toDouble(),
+                    carbs: (data['carbs'] ?? 0.0).toDouble(),
                   ))
               .toList();
           _allFoodItems.addAll(_cachedFoodItems[categoryId]!);
         });
-      } else {
-        print('Failed to load food items. Status code: ${response.statusCode}');
       }
     } catch (e) {
       print('Error fetching food items: $e');
@@ -122,35 +122,29 @@ class _MealStepScreenState extends State<MealStepScreen> {
   void _filterFoodItems() {
     setState(() {
       _isSearching = _searchController.text.isNotEmpty;
-      if (_isSearching) {
-        _filteredFoodItems = _allFoodItems
-            .where((item) => item.name
-                .toLowerCase()
-                .contains(_searchController.text.toLowerCase()))
-            .toList();
-      } else {
-        _filteredFoodItems = [];
-      }
+      _filteredFoodItems = _isSearching
+          ? _allFoodItems
+              .where((item) => item.name
+                  .toLowerCase()
+                  .contains(_searchController.text.toLowerCase()))
+              .toList()
+          : [];
     });
   }
 
   void _toggleSelection(FoodItem item) {
     setState(() {
-      if (selectedItems.contains(item)) {
-        selectedItems.remove(item);
-      } else {
-        selectedItems.add(item);
-      }
+      selectedItems.contains(item)
+          ? selectedItems.remove(item)
+          : selectedItems.add(item);
     });
   }
 
   void _toggleSkippedMeal(String meal) {
     setState(() {
-      if (selectedSkippedMeals.contains(meal)) {
-        selectedSkippedMeals.remove(meal);
-      } else {
-        selectedSkippedMeals.add(meal);
-      }
+      selectedSkippedMeals.contains(meal)
+          ? selectedSkippedMeals.remove(meal)
+          : selectedSkippedMeals.add(meal);
     });
   }
 
@@ -167,7 +161,7 @@ class _MealStepScreenState extends State<MealStepScreen> {
       final data = {
         'high_gi_food_ids': selectedItems.map((item) => item.foodId).toList(),
         'skipped_meals': selectedSkippedMeals,
-        'wellness_impact': wellnessImpact, // Send wellness impact value
+        'wellness_impact': wellnessImpact,
         'notes': _notesController.text,
       };
 
@@ -217,24 +211,16 @@ class _MealStepScreenState extends State<MealStepScreen> {
                 valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
               ),
               const SizedBox(height: 20),
-              const Text(
-                'Did you skip any meals today?',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              ...skippedMeals.map((meal) {
-                return CheckboxListTile(
-                  title: Text(meal),
-                  value: selectedSkippedMeals.contains(meal),
-                  onChanged: (value) {
-                    _toggleSkippedMeal(meal);
-                  },
-                );
-              }).toList(),
+              const Text('Did you skip any meals today?',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              ...skippedMeals.map((meal) => CheckboxListTile(
+                    title: Text(meal),
+                    value: selectedSkippedMeals.contains(meal),
+                    onChanged: (_) => _toggleSkippedMeal(meal),
+                  )),
               const SizedBox(height: 20),
-              const Text(
-                'Select foods you’ve eaten recently:',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
+              const Text('Select foods you’ve eaten recently:',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               TextField(
                 controller: _searchController,
                 decoration: InputDecoration(
@@ -248,10 +234,8 @@ class _MealStepScreenState extends State<MealStepScreen> {
               const SizedBox(height: 10),
               _isSearching ? _buildSearchResults() : _buildCategoryList(),
               const SizedBox(height: 20),
-              const Text(
-                'Did your diet affect your wellness today?',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
+              const Text('Did your diet affect your wellness today?',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               SwitchListTile(
                 title: const Text('Wellness Impact'),
                 subtitle: const Text(
@@ -264,10 +248,8 @@ class _MealStepScreenState extends State<MealStepScreen> {
                 },
               ),
               const SizedBox(height: 20),
-              const Text(
-                'Additional Notes (e.g., portion size, any sauces, etc.):',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
+              const Text('Additional Notes:',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 10),
               TextField(
                 controller: _notesController,
@@ -284,33 +266,22 @@ class _MealStepScreenState extends State<MealStepScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   TextButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                    },
-                    child: const Text(
-                      'Back',
-                      style: TextStyle(fontSize: 16),
-                    ),
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Back', style: TextStyle(fontSize: 16)),
                   ),
                   ElevatedButton(
                     onPressed: _isLoading ? null : _submitMealCheck,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue,
-                    ),
-                    child: const Text(
-                      'Next',
-                      style: TextStyle(fontSize: 16),
-                    ),
+                    style:
+                        ElevatedButton.styleFrom(backgroundColor: Colors.blue),
+                    child: const Text('Next', style: TextStyle(fontSize: 16)),
                   ),
                 ],
               ),
               if (_error != null)
                 Padding(
                   padding: const EdgeInsets.all(8.0),
-                  child: Text(
-                    _error!,
-                    style: const TextStyle(color: Colors.red),
-                  ),
+                  child:
+                      Text(_error!, style: const TextStyle(color: Colors.red)),
                 ),
               if (_isLoading) const CircularProgressIndicator(),
             ],
@@ -332,9 +303,7 @@ class _MealStepScreenState extends State<MealStepScreen> {
           subtitle: Text('GI: ${foodItem.gi}, Carbs: ${foodItem.carbs}g'),
           trailing: Checkbox(
             value: selectedItems.contains(foodItem),
-            onChanged: (bool? value) {
-              _toggleSelection(foodItem);
-            },
+            onChanged: (_) => _toggleSelection(foodItem),
           ),
         );
       },
@@ -369,9 +338,7 @@ class _MealStepScreenState extends State<MealStepScreen> {
                 subtitle: Text('GI: ${foodItem.gi}, Carbs: ${foodItem.carbs}g'),
                 trailing: Checkbox(
                   value: selectedItems.contains(foodItem),
-                  onChanged: (bool? value) {
-                    _toggleSelection(foodItem);
-                  },
+                  onChanged: (_) => _toggleSelection(foodItem),
                 ),
               );
             }).toList(),

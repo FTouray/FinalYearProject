@@ -63,6 +63,7 @@ class _LoginScreenState extends State<LoginScreen> {
         SharedPreferences prefs = await SharedPreferences.getInstance();
         await prefs.setString('access_token', accessToken);
         await prefs.setString('refresh_token', refreshToken);
+        await prefs.setString('first_name', firstName);
 
         setState(() {
           errorMessage = null; // Clear error if login is successful

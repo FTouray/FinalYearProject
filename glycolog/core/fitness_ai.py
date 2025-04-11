@@ -1,5 +1,5 @@
-from datetime import timedelta
-from django.utils.timezone import now
+from datetime import datetime, timedelta, timezone
+from django.utils.timezone import now, localtime
 from django.db.models import Avg, Sum, Count
 from openai import OpenAI
 from core.models import AIHealthTrend, FitnessActivity, CustomUser, GlucoseCheck, GlucoseLog
@@ -91,16 +91,22 @@ def generate_health_trends(user, period_type="weekly"):
 
     # 🩸 Glucose
     log_glucose = GlucoseLog.objects.filter(
-        user=user,
-        timestamp__date__range=[start_date, end_date]
+    user=user,
+    timestamp__range=[
+        datetime.combine(start_date, datetime.min.time(), tzinfo=timezone.utc),
+        datetime.combine(end_date, datetime.max.time(), tzinfo=timezone.utc)
+    ]
     ).values_list("glucose_level", flat=True)
 
     check_glucose = GlucoseCheck.objects.filter(
         session__user=user,
-        timestamp__date__range=[start_date, end_date]
+        timestamp__range=[
+            datetime.combine(start_date, datetime.min.time(), tzinfo=timezone.utc),
+            datetime.combine(end_date, datetime.max.time(), tzinfo=timezone.utc)
+        ]
     ).values_list("glucose_level", flat=True)
 
-    all_glucose = list(log_glucose) + list(check_glucose)
+    all_glucose = [g for g in (list(log_glucose) + list(check_glucose)) if g is not None]
     avg_glucose = (
         sum(all_glucose) / len(all_glucose)
         if all_glucose else None

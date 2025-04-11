@@ -1,3 +1,5 @@
+import 'package:Glycolog/home/base_screen.dart';
+import 'package:Glycolog/services/reminder_service.dart';
 import 'package:flutter/material.dart';
 import 'package:Glycolog/services/auth_service.dart';
 import 'package:http/http.dart' as http;
@@ -140,6 +142,8 @@ class _MedicationsScreenState extends State<MedicationsScreen> {
   }
 
   Widget _buildMedicationCard(Map<String, dynamic> med, int index) {
+    final String generic = med['generic_name'] ?? "";
+
     return Dismissible(
       key: Key(med['id'].toString()),
       direction: DismissDirection.endToStart,
@@ -182,16 +186,14 @@ class _MedicationsScreenState extends State<MedicationsScreen> {
           subtitle: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (generic.isNotEmpty &&
+                  generic.toLowerCase() != med['name'].toLowerCase())
+                Text("Generic: $generic"),
               Text("Dosage: ${med['dosage']}"),
               Text("Frequency: ${med['frequency']}"),
-              // Show "Last Taken" plus the icon side by side in a row
               Row(
                 children: [
-                  Expanded(
-                    child: Text(
-                      "Last Taken: ${formatLastTaken(med)}",
-                    ),
-                  ),
+                  Expanded(child: Text("Last Taken: ${formatLastTaken(med)}")),
                   IconButton(
                     icon: const Icon(Icons.access_time),
                     tooltip: 'Mark as just taken',
@@ -210,8 +212,8 @@ class _MedicationsScreenState extends State<MedicationsScreen> {
               ),
               IconButton(
                 icon: const Icon(Icons.alarm, color: Colors.green),
-                onPressed: () {
-                  Navigator.pushNamed(
+                onPressed: () async {
+                  final result = await Navigator.pushNamed(
                     context,
                     '/medication-reminder',
                     arguments: med,
@@ -225,25 +227,43 @@ class _MedicationsScreenState extends State<MedicationsScreen> {
     );
   }
 
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('My Medications')),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : medications.isEmpty
-              ? const Center(child: Text("No medications saved yet."))
-              : ListView.builder(
-                  itemCount: medications.length,
-                  itemBuilder: (context, index) {
-                    return _buildMedicationCard(medications[index], index);
-                  },
-                ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => Navigator.pushNamed(context, '/add-medication'),
-        label: const Text("Add Medication"),
-        icon: const Icon(Icons.add),
+    return BaseScaffoldScreen(
+      selectedIndex: 0,
+      onItemTapped: (index) {
+        final routes = ['/home', '/forum', '/settings'];
+        if (index >= 0 && index < routes.length) {
+          Navigator.pushNamed(context, routes[index]);
+        }
+      },
+      body: Stack(
+        children: [
+          if (isLoading)
+            const Center(child: CircularProgressIndicator())
+          else if (medications.isEmpty)
+            const Center(child: Text("No medications saved yet."))
+          else
+            ListView.builder(
+              padding: const EdgeInsets.only(bottom: 80),
+              itemCount: medications.length,
+              itemBuilder: (context, index) =>
+                  _buildMedicationCard(medications[index], index),
+            ),
+          Positioned(
+            bottom: 16,
+            right: 16,
+            child: FloatingActionButton.extended(
+              onPressed: () => Navigator.pushNamed(context, '/add-medication'),
+              label: const Text("Add Medication"),
+              icon: const Icon(Icons.add),
+              backgroundColor: Colors.blue[800],
+            ),
+          ),
+        ],
       ),
     );
   }
+
 }

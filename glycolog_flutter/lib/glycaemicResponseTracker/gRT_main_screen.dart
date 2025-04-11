@@ -139,267 +139,189 @@ class _GRTMainScreenState extends State<GRTMainScreen> {
 
 
   @override
-  Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
+Widget build(BuildContext context) {
+  final screenWidth = MediaQuery.of(context).size.width;
 
-    return BaseScreen(
-      selectedIndex: 1,
-      onItemTapped: (index) {},
-      body: isLoading
-          ? Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                children: [
-                  if (errorMessage != null)
-                    Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Text(
-                        errorMessage!,
-                        style: TextStyle(color: Colors.red),
+  return BaseScaffoldScreen(
+    selectedIndex: 0,
+    onItemTapped: (index) {
+      final routes = ['/home', '/forum', '/settings'];
+      if (index >= 0 && index < routes.length) {
+          Navigator.pushNamed(context, routes[index]);
+        }
+    },
+    body: isLoading
+        ? const Center(child: CircularProgressIndicator())
+        : SingleChildScrollView(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              children: [
+                if (errorMessage != null)
+                  Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Text(
+                      errorMessage!,
+                      style: const TextStyle(color: Colors.red),
+                    ),
+                  ),
+
+                // Overview
+                Container(
+                  padding: const EdgeInsets.all(16.0),
+                  width: screenWidth,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16.0),
+                    boxShadow: [
+                      BoxShadow(
+                        blurRadius: 8,
+                        color: Colors.grey.shade300,
+                        spreadRadius: 3,
+                        offset: const Offset(0, 4),
                       ),
-                    ),
-                  // GRT Overview container
-                  Container(
-                    padding: const EdgeInsets.all(16.0),
-                    width: screenWidth,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16.0),
-                      boxShadow: [
-                        BoxShadow(
-                          blurRadius: 8,
-                          color: Colors.grey.shade300,
-                          spreadRadius: 3,
-                          offset: Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      children: [
-                        Text(
-                          "Glycaemic Response Overview",
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.blue[800],
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: [
-                            // Last Response Circle
-                            CircleDisplay(
-                              value: lastResponse ?? 0,
-                              label: "Last Meal GI",
-                              color: Colors.blue[300]!,
-                            ),
-                            // Add New Log Circle
-                            CircleDisplay(
-                              label: "Add Meal",
-                              color: Colors.blue[300]!,
-                              icon: Icons.add,
-                              onTap: () {
-                                Navigator.pushNamed(context, '/log-meal');
-                              },
-                            ),
-                            // Average Response Circle
-                            CircleDisplay(
-                              value: avgResponse ?? 0,
-                              label: "Average GI",
-                              color: Colors.blue[300]!,
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
+                    ],
                   ),
-                  const SizedBox(height: 30),
-
-                  // Recent Meal Log History Section
-                  Container(
-                    width: screenWidth,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16.0),
-                      boxShadow: [
-                        BoxShadow(
-                          blurRadius: 8,
-                          color: Colors.grey.shade300,
-                          spreadRadius: 3,
-                          offset: Offset(0, 4),
+                  child: Column(
+                    children: [
+                      Text(
+                        "Glycaemic Response Overview",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue[800],
                         ),
-                      ],
-                    ),
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      children: [
-                        Text(
-                          "Recent Meal Logs",
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.blue[800],
+                      ),
+                      const SizedBox(height: 20),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          CircleDisplay(
+                            value: lastResponse ?? 0,
+                            label: "Last Meal GI",
+                            color: Colors.blue[300]!,
                           ),
-                        ),
-                        const SizedBox(height: 10),
-                        SizedBox(
-                          height: 250,
-                          child: allMealLogs.isNotEmpty
-                              ? ListView.builder(
-                                  itemCount: allMealLogs.length > 5
-                                      ? 5
-                                      : allMealLogs.length,
-                                  itemBuilder: (context, index) {
-                                    final meal = allMealLogs[index];
-                                    return ListTile(
-                                      title: Text('Meal ID: ${meal['user_meal_id']}${meal['name'] != null ? ' - ${meal['name']}' : ''}'),
-                                      subtitle: Text('Timestamp: ${formatTimestamp(meal['timestamp'])}'),
-                                    );
-                                  },
-                                )
-                              : Center(
-                                  child: Text('No recent meal logs available')),
-                        ),
-                        ElevatedButton(
-                          onPressed: () {
-                            Navigator.pushNamed(context, '/meal-log-history');
-                          },
-                          child: const Text("See All Logs"),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 30),
-
-                  // Analysis Insights Section
-                  // Container(
-                  //   width: screenWidth,
-                  //   decoration: BoxDecoration(
-                  //     color: Colors.white,
-                  //     borderRadius: BorderRadius.circular(16.0),
-                  //     boxShadow: [
-                  //       BoxShadow(
-                  //         blurRadius: 8,
-                  //         color: Colors.grey.shade300,
-                  //         spreadRadius: 3,
-                  //         offset: Offset(0, 4),
-                  //       ),
-                  //     ],
-                  //   ),
-                  //   padding: const EdgeInsets.all(16.0),
-                  //   child: Column(
-                  //     children: [
-                  //       Text(
-                  //         "Glycaemic Response Analysis",
-                  //         style: TextStyle(
-                  //           fontSize: 18,
-                  //           fontWeight: FontWeight.bold,
-                  //           color: Colors.blue[800],
-                  //         ),
-                  //       ),
-                  //       const SizedBox(height: 10),
-                  //       insights.isNotEmpty
-                  //           ? Column(
-                  //               children: insights.map((insight) {
-                  //                 return Card(
-                  //                   margin: const EdgeInsets.symmetric(
-                  //                       vertical: 10),
-                  //                   child: Padding(
-                  //                     padding: const EdgeInsets.all(16.0),
-                  //                     child: Column(
-                  //                       crossAxisAlignment:
-                  //                           CrossAxisAlignment.start,
-                  //                       children: [
-                  //                         Text(
-                  //                           "Meal ID: ${insight['meal_id']}",
-                  //                           style: TextStyle(
-                  //                               fontSize: 18,
-                  //                               fontWeight: FontWeight.bold),
-                  //                         ),
-                  //                         const SizedBox(height: 10),
-                  //                         Text(
-                  //                             "Timestamp: ${insight['meal_timestamp']}"),
-                  //                         const SizedBox(height: 10),
-                  //                         Text(
-                  //                             "Average Glucose Level: ${insight['avg_glucose_level']}"),
-                  //                         const SizedBox(height: 10),
-                  //                         Text(
-                  //                             "Total Glycaemic Index: ${insight['total_glycaemic_index']}"),
-                  //                         const SizedBox(height: 10),
-                  //                         Text(
-                  //                             "Total Carbs: ${insight['total_carbs']}"),
-                  //                         const SizedBox(height: 10),
-                  //                         Text("Food Items:"),
-                  //                         ...insight['food_items']
-                  //                             .map<Widget>((item) {
-                  //                           return Text(
-                  //                             "- ${item['name']}: GI ${item['glycaemic_index']}, Carbs ${item['carbs']}g",
-                  //                           );
-                  //                         }).toList(),
-                  //                         const SizedBox(height: 10),
-                  //                         Text(
-                  //                           "Recommendation: ${insight['recommendation']}",
-                  //                           style: TextStyle(
-                  //                               fontSize: 16,
-                  //                               fontWeight: FontWeight.bold,
-                  //                               color: Colors.green),
-                  //                         ),
-                  //                       ],
-                  //                     ),
-                  //                   ),
-                  //                 );
-                  //               }).toList(),
-                  //             )
-                  //           : Center(child: Text("No insights available")),
-                  //     ],
-                  //   ),
-                  // ),
-                  // const SizedBox(height: 30),
-
-                  // Feedback Section
-                  Container(
-                    padding: const EdgeInsets.all(16.0),
-                    width: screenWidth,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16.0),
-                      boxShadow: [
-                        BoxShadow(
-                          blurRadius: 8,
-                          color: Colors.grey.shade300,
-                          spreadRadius: 3,
-                          offset: Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      children: [
-                        Text(
-                          "Post-Meal Feedback",
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.blue[800],
+                          CircleDisplay(
+                            label: "Add Meal",
+                            color: Colors.blue[300]!,
+                            icon: Icons.add,
+                            onTap: () {
+                              Navigator.pushNamed(context, '/log-meal');
+                            },
                           ),
-                        ),
-                        const SizedBox(height: 10),
-                        ElevatedButton(
-                          onPressed: () {
-                            Navigator.pushNamed(context, '/grt-feedback');
-                          },
-                          child: const Text("Log Feedback"),
-                        ),
-                      ],
-                    ),
+                          CircleDisplay(
+                            value: avgResponse ?? 0,
+                            label: "Average GI",
+                            color: Colors.blue[300]!,
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+
+                const SizedBox(height: 30),
+
+                // Recent Meal Logs
+                Container(
+                  width: screenWidth,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16.0),
+                    boxShadow: [
+                      BoxShadow(
+                        blurRadius: 8,
+                        color: Colors.grey.shade300,
+                        spreadRadius: 3,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    children: [
+                      Text(
+                        "Recent Meal Logs",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue[800],
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        height: 250,
+                        child: allMealLogs.isNotEmpty
+                            ? ListView.builder(
+                                itemCount: allMealLogs.length > 5
+                                    ? 5
+                                    : allMealLogs.length,
+                                itemBuilder: (context, index) {
+                                  final meal = allMealLogs[index];
+                                  return ListTile(
+                                    title: Text(
+                                        'Meal ID: ${meal['user_meal_id']}${meal['name'] != null ? ' - ${meal['name']}' : ''}'),
+                                    subtitle: Text(
+                                        'Timestamp: ${formatTimestamp(meal['timestamp'])}'),
+                                  );
+                                },
+                              )
+                            : const Center(
+                                child: Text('No recent meal logs available'),
+                              ),
+                      ),
+                      ElevatedButton(
+                        onPressed: () {
+                          Navigator.pushNamed(context, '/meal-log-history');
+                        },
+                        child: const Text("See All Logs"),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 30),
+
+                // Feedback Section
+                Container(
+                  padding: const EdgeInsets.all(16.0),
+                  width: screenWidth,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16.0),
+                    boxShadow: [
+                      BoxShadow(
+                        blurRadius: 8,
+                        color: Colors.grey.shade300,
+                        spreadRadius: 3,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        "Post-Meal Feedback",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue[800],
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      ElevatedButton(
+                        onPressed: () {
+                          Navigator.pushNamed(context, '/grt-feedback');
+                        },
+                        child: const Text("Log Feedback"),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-    );
-
-  }
+          ),
+  );
+}
 }
 
 

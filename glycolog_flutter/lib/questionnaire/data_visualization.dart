@@ -64,10 +64,18 @@ class _QuestionnaireVisualizationScreenState
       );
 
       if (response.statusCode == 200) {
-        final List<dynamic> data = jsonDecode(response.body);
-        setState(() {
-          _questionnaireData = _normalizeAndFilterData(data);
-        });
+        try {
+          final List<dynamic> data = jsonDecode(response.body);
+          setState(() {
+            _questionnaireData = _normalizeAndFilterData(data);
+          });
+        } catch (e, stack) {
+          print('❌ Parsing error: $e');
+          print(stack);
+          setState(() {
+            _hasError = true;
+          });
+        }
       } else {
         setState(() {
           _hasError = true;
@@ -116,25 +124,26 @@ class _QuestionnaireVisualizationScreenState
                 ?.map((e) => e['exercise_intensity'])
                 ?.toList() ??
             [],
-        'exercise_duration': item['exercise_check']
+        'exercise_duration': (item['exercise_check'] as List?)
                 ?.map((e) => e['exercise_duration'] ?? 0)
-                .reduce((a, b) => a + b) ??
+                .fold<int>(0, (a, b) => a + (b as int)) ??
             0,
         'meal_data': {
-          'skipped': item['meal_check']?.fold(0,
-                  (sum, meal) => sum + (meal['skipped_meals']?.length ?? 0)) ??
+          'skipped': (item['meal_check'] as List?)?.fold(0,
+                  (sum, meal) => sum + ((meal['skipped_meals']?.length ?? 0) as int)) ??
               0,
-          'weighted_gi': item['meal_check']?.fold(
+          'weighted_gi': (item['meal_check'] as List?)?.fold(
                   0.0, (sum, meal) => sum + (meal['weighted_gi'] ?? 0.0)) ??
               0.0,
         },
         'symptoms': (item['symptom_check'] as List<dynamic>?)
-                ?.expand((symptomCheck) => symptomCheck['symptoms'] ?? [])
+                ?.expand((symptomCheck) =>
+                    (symptomCheck['symptoms'] as List<dynamic>? ?? []))
                 .toList() ??
             [],
-        'sleep_hours': item['symptom_check']
-                ?.map((symptom) => symptom['sleep_hours'] ?? 0.0)
-                .reduce((a, b) => a + b) ??
+        'sleep_hours': (item['symptom_check'] as List?)
+                ?.map((e) => e['sleep_hours'] ?? 0.0)
+                .fold(0.0, (a, b) => a + b) ??
             0.0,
       };
     }).toList();
@@ -450,11 +459,15 @@ class _QuestionnaireVisualizationScreenState
 
   LineChartData _buildLineChartData() {
     // Calculate the maximum Y values dynamically with padding
-    final maxGlucoseLevel = _questionnaireData.map((data) {
-      final glucoseValue =
-          data['glucose_check'][0] ?? 0.0; // Ensure there's a value
-      return glucoseValue.toDouble(); // Convert to double
-    }).reduce((a, b) => a > b ? a : b); // Find the maximum value
+    final glucoseValues = _questionnaireData
+        .where((data) =>
+            data['glucose_check'] != null && data['glucose_check'].isNotEmpty)
+        .map((data) => (data['glucose_check'][0] ?? 0.0).toDouble())
+        .toList();
+
+    final maxGlucoseLevel = glucoseValues.isNotEmpty
+        ? glucoseValues.reduce((a, b) => a > b ? a : b)
+        : 0.0;
 
     final maxY = (maxGlucoseLevel * 1.2).ceil(); // Add 20% padding
     final interval = (maxY / 5).ceil(); // Divide Y-axis into 5 even intervals
@@ -525,8 +538,10 @@ class _QuestionnaireVisualizationScreenState
           spots:
               _questionnaireData.reversed.toList().asMap().entries.map((entry) {
             final index = entry.key.toDouble();
-            final data = entry.value;
-            return FlSpot(index, data['glucose_check'][0].toDouble());
+             final glucoseList = entry.value['glucose_check'] ?? [];
+            final value =
+                glucoseList.isNotEmpty ? glucoseList[0].toDouble() : 0.0;
+            return FlSpot(index, value);
           }).toList(),
           isCurved: true,
           color: Colors.blue,

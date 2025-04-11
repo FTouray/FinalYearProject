@@ -425,7 +425,8 @@ class UserNotification(models.Model):
 class Medication(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="medication")
     name = models.CharField(max_length=255)
-    rxnorm_id = models.CharField(max_length=50, blank=True, null=True)
+    fda_id = models.CharField(max_length=100, blank=True, null=True) 
+    generic_name = models.CharField(max_length=255, blank=True, null=True)
     dosage = models.CharField(max_length=100, blank=True, null=True)
     frequency = models.CharField(max_length=100, blank=True, null=True)
     last_taken = models.DateTimeField(blank=True, null=True)
@@ -434,23 +435,55 @@ class Medication(models.Model):
         return f"{self.name} ({self.dosage})"
 
 class MedicationReminder(models.Model):
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="medication_reminders")
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     medication = models.ForeignKey(Medication, on_delete=models.CASCADE)
-    reminder_time = models.TimeField()
-    status = models.BooleanField(default=True)
+    day_of_week = models.IntegerField()  # Monday=1, Tuesday=2, ...
+    hour = models.IntegerField(default=0)
+    minute = models.IntegerField(default=0)
+    repeat_weeks = models.IntegerField(default=4)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"Reminder for {self.medication.name} at {self.reminder_time}"
+        return f"Reminder for {self.medication.name} on day={self.day_of_week} at {self.hour}:{self.minute}"
 
-# Model to log hypo/hyperglycaemia alerts for users
-class HypoHyperGlycaemiaAlert(models.Model):
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='alerts')  # Foreign key linking to user
-    glucose_level = models.FloatField()  # Glucose level at the time of alert
-    timestamp = models.DateTimeField(auto_now_add=True)  # Automatically set timestamp when alert is logged
-    alert_type = models.CharField(max_length=20)  # Type of alert (e.g., 'hypo', 'hyper')
+class ForumCategory(models.Model):
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True)
 
-# Model to store community support interactions
-class CommunitySupport(models.Model):
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='community_posts')  # Foreign key linking to user
-    post_content = models.TextField()  # Content of the community post
-    sentiment_score = models.FloatField(blank=True, null=True)  # Field to store sentiment analysis score of the post
+    def __str__(self):
+        return self.name
+
+class ForumThread(models.Model):
+    category = models.ForeignKey(ForumCategory, on_delete=models.CASCADE, related_name='threads')
+    title = models.CharField(max_length=200)
+    created_by = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def latest_reply(self):
+        return self.comments.order_by("-created_at").first()
+
+    def comment_count(self):
+        return self.comments.count()
+
+    def __str__(self):
+        return self.title
+
+class Comment(models.Model):
+    thread = models.ForeignKey(ForumThread, on_delete=models.CASCADE, related_name='comments')
+    author = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    content = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.author.username}: {self.content[:30]}"
+
+class PersonalInsight(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="personal_insights")
+    summary_text = models.TextField()  # Full AI summary (formatted)
+    raw_data = models.JSONField(blank=True, null=True)  # Raw values used to generate the summary
+    generated_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user.username} - {self.generated_at.strftime('%Y-%m-%d %H:%M:%S')}"

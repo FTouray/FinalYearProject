@@ -1,3 +1,4 @@
+import 'package:Glycolog/home/base_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -74,7 +75,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     // Show confirmation message
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Settings saved successfully!'),
+        content: Text('Profile Settings saved successfully!'),
         duration: Duration(seconds: 2),
       ),
     );
@@ -119,182 +120,92 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Settings'),
-        backgroundColor: Colors.blue[800],
-      ),
+    return BaseScaffoldScreen(
+      selectedIndex: 2, 
+      onItemTapped: (index) {
+        final routes = ['/home', '/forum', '/settings'];
+        Navigator.pushNamed(context, routes[index]);
+      },
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Measurement Unit',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            _buildSectionTitle('Measurement Unit'),
+            _buildRadioTile(
+              title: 'mg/dL',
+              value: 'mg/dL',
+              groupValue: _selectedUnit,
+              onChanged: (value) => setState(() => _selectedUnit = value!),
             ),
-            ListTile(
-              leading: Icon(Icons.scale, color: Colors.blue[800]),
-              title: const Text('mg/dL'),
-              trailing: Radio<String>(
-                value: 'mg/dL',
-                groupValue: _selectedUnit,
-                onChanged: (value) {
-                  setState(() {
-                    _selectedUnit = value!;
-                  });
-                },
-                activeColor: Colors.blue[800],
-              ),
-            ),
-            ListTile(
-              leading: Icon(Icons.scale_outlined, color: Colors.blue[800]),
-              title: const Text('mmol/L'),
-              trailing: Radio<String>(
-                value: 'mmol/L',
-                groupValue: _selectedUnit,
-                onChanged: (value) {
-                  setState(() {
-                    _selectedUnit = value!;
-                  });
-                },
-                activeColor: Colors.blue[800],
-              ),
+            _buildRadioTile(
+              title: 'mmol/L',
+              value: 'mmol/L',
+              groupValue: _selectedUnit,
+              onChanged: (value) => setState(() => _selectedUnit = value!),
             ),
             const Divider(),
-
-            // Type of Diabetes
-            const Text(
-              'Type of Diabetes',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            _buildSectionTitle('Type of Diabetes'),
+            _buildRadioTile(
+              title: 'Type 1',
+              value: 'Type 1',
+              groupValue: _diabetesType,
+              icon: Icons.bloodtype,
+              iconColor: Colors.red,
+              onChanged: (value) => setState(() => _diabetesType = value!),
             ),
-            ListTile(
-              leading: Icon(Icons.bloodtype, color: Colors.red),
-              title: const Text('Type 1'),
-              trailing: Radio<String>(
-                value: 'Type 1',
-                groupValue: _diabetesType,
-                onChanged: (value) {
-                  setState(() {
-                    _diabetesType = value!;
-                  });
-                },
-                activeColor: Colors.blue[800],
-              ),
-            ),
-            ListTile(
-              leading: Icon(Icons.local_hospital, color: Colors.green),
-              title: const Text('Type 2'),
-              trailing: Radio<String>(
-                value: 'Type 2',
-                groupValue: _diabetesType,
-                onChanged: (value) {
-                  setState(() {
-                    _diabetesType = value!;
-                  });
-                },
-                activeColor: Colors.blue[800],
-              ),
+            _buildRadioTile(
+              title: 'Type 2',
+              value: 'Type 2',
+              groupValue: _diabetesType,
+              icon: Icons.local_hospital,
+              iconColor: Colors.green,
+              onChanged: (value) => setState(() => _diabetesType = value!),
             ),
             const Divider(),
-
-            // Insulin Dependency
-            const Text(
-              'Insulin Dependency',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
+            _buildSectionTitle('Insulin Dependency'),
             SwitchListTile(
-              secondary: Icon(Icons.medication, color: Colors.orange),
+              secondary: const Icon(Icons.medication, color: Colors.orange),
               title: const Text('Yes'),
               value: _isInsulinDependent,
-              onChanged: (value) {
-                setState(() {
-                  _isInsulinDependent = value;
-                });
-              },
+              onChanged: (value) => setState(() => _isInsulinDependent = value),
               activeColor: Colors.blue[800],
             ),
             const Divider(),
-
-            // Target Range
-            const Text(
-              'Target Glucose Range',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            TextField(
-              controller: _targetMinController,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(
-                labelText: 'Minimum ($_selectedUnit)',
-                errorText: _targetRangeError,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12.0),
-                ),
-              ),
-            ),
+            _buildSectionTitle('Target Glucose Range'),
+            _buildTargetRangeField(
+                _targetMinController, 'Minimum ($_selectedUnit)'),
             const SizedBox(height: 16),
-            TextField(
-              controller: _targetMaxController,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(
-                labelText: 'Maximum ($_selectedUnit)',
-                errorText: _targetRangeError,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12.0),
-                ),
-              ),
-            ),
+            _buildTargetRangeField(
+                _targetMaxController, 'Maximum ($_selectedUnit)'),
             const Divider(),
-
-            // Notifications Toggle
-            const Text(
-              'Notifications',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
+            _buildSectionTitle('Notifications'),
             SwitchListTile(
-              secondary: Icon(Icons.notifications, color: Colors.blue),
+              secondary: const Icon(Icons.notifications, color: Colors.blue),
               title: const Text('Enable Glucose Level Notifications'),
               value: _notificationsEnabled,
-              onChanged: (value) {
-                setState(() {
-                  _notificationsEnabled = value;
-                });
-              },
+              onChanged: (value) =>
+                  setState(() => _notificationsEnabled = value),
               activeColor: Colors.blue[800],
             ),
             const Divider(),
-
-            // Dark Mode Toggle
-            const Text(
-              'Theme Settings',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
+            _buildSectionTitle('Theme Settings'),
             SwitchListTile(
-              secondary: Icon(Icons.dark_mode, color: Colors.black),
+              secondary: const Icon(Icons.dark_mode, color: Colors.black),
               title: const Text('Enable Dark Mode'),
               value: _darkModeEnabled,
-              onChanged: (value) {
-                setState(() {
-                  _darkModeEnabled = value;
-                });
-              },
+              onChanged: (value) => setState(() => _darkModeEnabled = value),
               activeColor: Colors.blue[800],
             ),
             const SizedBox(height: 30),
-
-            // Save All Settings Button
             Center(
               child: ElevatedButton(
                 onPressed: () {
-                  if (_validateTargetRange()) {
-                    _saveSettings();
-                  }
+                  if (_validateTargetRange()) _saveSettings();
                 },
                 style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 50,
-                    vertical: 15,
-                  ),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 50, vertical: 15),
                   backgroundColor: Colors.blue[800],
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12.0),
@@ -311,4 +222,51 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
   }
+
+Widget _buildSectionTitle(String text) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Text(
+        text,
+        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+
+  Widget _buildRadioTile({
+    required String title,
+    required String value,
+    required String? groupValue,
+    required void Function(String?) onChanged,
+    IconData? icon,
+    Color? iconColor,
+  }) {
+    return ListTile(
+      leading: Icon(icon ?? Icons.radio_button_checked,
+          color: iconColor ?? Colors.blue[800]),
+      title: Text(title),
+      trailing: Radio<String>(
+        value: value,
+        groupValue: groupValue,
+        onChanged: onChanged,
+        activeColor: Colors.blue[800],
+      ),
+    );
+  }
+
+  Widget _buildTargetRangeField(
+      TextEditingController controller, String label) {
+    return TextField(
+      controller: controller,
+      keyboardType: TextInputType.number,
+      decoration: InputDecoration(
+        labelText: label,
+        errorText: _targetRangeError,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12.0),
+        ),
+      ),
+    );
+  }
+
 }

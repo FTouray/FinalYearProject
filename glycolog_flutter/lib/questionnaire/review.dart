@@ -1,3 +1,4 @@
+import 'package:Glycolog/utils.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -78,10 +79,19 @@ class _ReviewScreenState extends State<ReviewScreen> {
                       ),
                       ...(_reviewData['glucose_check'] as List).map((glucose) {
                         return ListTile(
-                          title: Text(
-                              'Level: ${glucose['glucose_level']} | Target Min: ${glucose['target_min']} | Target Max: ${glucose['target_max']}'),
+                          title: FutureBuilder(
+                            future:
+                                formatGlucoseDynamic(glucose['glucose_level']),
+                            builder: (context, snapshot) {
+                              final formattedGlucose = snapshot.data ??
+                                  glucose['glucose_level'].toString();
+                              return Text(
+                                  'Level: $formattedGlucose | Target Min: ${glucose['target_min']} | Target Max: ${glucose['target_max']}');
+                            },
+                          ),
                           subtitle: Text(
-                              'Evaluation: ${glucose['evaluation']} | Timestamp: ${glucose['timestamp']}'),
+                              'Evaluation: ${glucose['evaluation']} | Timestamp: ${formatTimestamp(glucose['timestamp'])}'),
+
                         );
                       }).toList(),
                       const Divider(),

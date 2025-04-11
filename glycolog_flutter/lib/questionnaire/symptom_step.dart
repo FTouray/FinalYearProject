@@ -14,7 +14,7 @@ class SymptomStepScreen extends StatefulWidget {
 class _SymptomStepScreenState extends State<SymptomStepScreen> {
   final Map<String, bool> selectedSymptoms = {};
   final Map<String, dynamic> responseValues = {};
-  final String? apiUrl = dotenv.env['API_URL']; 
+  final String? apiUrl = dotenv.env['API_URL'];
 
   final List<String> symptoms = [
     'Fatigue',
@@ -40,11 +40,6 @@ class _SymptomStepScreenState extends State<SymptomStepScreen> {
   @override
   void initState() {
     super.initState();
-    // Initialize dropdown-related keys with null
-    responseValues["stress"] = null;
-    responseValues["routine_change"] = null;
-    responseValues["routine_change_details"] = null;
-    responseValues["routine_effect"] = null;
     responseValues["sleep_hours"] = 7.0;
   }
 
@@ -59,15 +54,12 @@ class _SymptomStepScreenState extends State<SymptomStepScreen> {
         padding: const EdgeInsets.all(16.0),
         child: ListView(
           children: [
-            // Progress Bar
             LinearProgressIndicator(
-              value: 0.25, // Progress for step 1 of 4
+              value: 0.25,
               backgroundColor: Colors.grey[300],
               valueColor: AlwaysStoppedAnimation<Color>(Colors.blue[800]!),
             ),
             const SizedBox(height: 20),
-
-            // Symptoms Section
             _buildSectionTitle("Symptoms"),
             ..._buildSymptomQuestions(),
             _buildSectionTitle("Rest and Stress"),
@@ -83,8 +75,6 @@ class _SymptomStepScreenState extends State<SymptomStepScreen> {
               options: ["Yes", "No"],
               responseKey: "stress",
             ),
-
-            // Routine Disruptions Section
             _buildSectionTitle("Routine Disruptions"),
             _buildDropdownQuestion(
               question:
@@ -120,20 +110,14 @@ class _SymptomStepScreenState extends State<SymptomStepScreen> {
                   onPressed: () {
                     Navigator.pop(context);
                   },
-                  child: const Text(
-                    'Back',
-                    style: TextStyle(fontSize: 16),
-                  ),
+                  child: const Text('Back', style: TextStyle(fontSize: 16)),
                 ),
                 ElevatedButton(
                   onPressed: _isLoading ? null : _submitData,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue[800],
                   ),
-                  child: const Text(
-                    'Next',
-                    style: TextStyle(fontSize: 16),
-                  ),
+                  child: const Text('Next', style: TextStyle(fontSize: 16)),
                 ),
               ],
             ),
@@ -143,7 +127,6 @@ class _SymptomStepScreenState extends State<SymptomStepScreen> {
     );
   }
 
-  // Helper to build section titles
   Widget _buildSectionTitle(String title) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 20.0),
@@ -154,7 +137,6 @@ class _SymptomStepScreenState extends State<SymptomStepScreen> {
     );
   }
 
-  // Build symptom questions with severity sliders
   List<Widget> _buildSymptomQuestions() {
     return symptoms.map((symptom) {
       return Column(
@@ -198,7 +180,6 @@ class _SymptomStepScreenState extends State<SymptomStepScreen> {
     }).toList();
   }
 
-  // Build slider-based question
   Widget _buildSliderQuestion({
     required String question,
     required double min,
@@ -209,13 +190,9 @@ class _SymptomStepScreenState extends State<SymptomStepScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          question,
-          style: const TextStyle(fontSize: 16),
-        ),
+        Text(question, style: const TextStyle(fontSize: 16)),
         Slider(
-          value:
-              (responseValues[responseKey] as double?) ?? 7.0, // Default to 7
+          value: (responseValues[responseKey] as double?) ?? 7.0,
           min: min,
           max: max,
           divisions: divisions,
@@ -231,7 +208,6 @@ class _SymptomStepScreenState extends State<SymptomStepScreen> {
     );
   }
 
-  // Build dropdown-based question
   Widget _buildDropdownQuestion({
     required String question,
     required List<String> options,
@@ -240,10 +216,7 @@ class _SymptomStepScreenState extends State<SymptomStepScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          question,
-          style: const TextStyle(fontSize: 16),
-        ),
+        Text(question, style: const TextStyle(fontSize: 16)),
         DropdownButton<String>(
           value: responseValues[responseKey] as String?,
           isExpanded: true,
@@ -265,7 +238,6 @@ class _SymptomStepScreenState extends State<SymptomStepScreen> {
     );
   }
 
-  // Map severity values to labels
   String _getSeverityLabel(double value) {
     switch (value.toInt()) {
       case 1:
@@ -312,19 +284,10 @@ class _SymptomStepScreenState extends State<SymptomStepScreen> {
       },
     };
 
-    String? token = await AuthService().getAccessToken();
-
-    if (token == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Error: User is not authenticated.')),
-      );
-      setState(() {
-        _isLoading = false;
-      });
-      return;
-    }
-
     try {
+      final token = await AuthService().getAccessToken();
+      if (token == null) throw Exception("User is not authenticated.");
+
       final response = await http.post(
         Uri.parse('$apiUrl/questionnaire/symptom-step/'),
         headers: {
@@ -338,9 +301,12 @@ class _SymptomStepScreenState extends State<SymptomStepScreen> {
         Navigator.pushNamed(context, '/glucose-step');
       } else {
         final error = jsonDecode(response.body);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${error['error']}')),
-        );
+        final message = error['error'] ??
+            error.entries
+                .map((e) => '${e.key}: ${e.value.join(", ")}')
+                .join("\n");
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(message)));
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(

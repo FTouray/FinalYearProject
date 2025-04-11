@@ -59,8 +59,8 @@ class _MealConfirmationScreenState extends State<MealConfirmationScreen> {
           'Content-Type': 'application/json',
         },
         body: json.encode({
-          'name': mealNameController.text.isEmpty ? null : mealNameController.text,
-          'timestamp': formatTimestamp(widget.timestamp.toIso8601String()),
+          'name': mealNameController.text.trim().isEmpty ? '' : mealNameController.text.trim(),
+          'timestamp': widget.timestamp.toIso8601String(),
           'food_item_ids': widget.selectedItems.map((item) => item.foodId).toList(),
         }),
       );
@@ -76,6 +76,7 @@ class _MealConfirmationScreenState extends State<MealConfirmationScreen> {
         );
       } else {
         print('Failed to save meal. Status code: ${response.statusCode}');
+        print('❌ Body: ${response.body}');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to save meal.')),
         );

@@ -1,208 +1,219 @@
-import 'package:Glycolog/services/auth_service.dart';
+import 'dart:convert';
+import 'package:Glycolog/utils.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'dart:convert';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:Glycolog/services/auth_service.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class InsightsScreen extends StatefulWidget {
-  const InsightsScreen({Key? key}) : super(key: key);
+  const InsightsScreen({super.key});
 
   @override
-  _InsightsScreenState createState() => _InsightsScreenState();
+  State<InsightsScreen> createState() => _InsightsScreenState();
 }
 
 class _InsightsScreenState extends State<InsightsScreen> {
   Map<String, dynamic>? insightsData;
   bool isLoading = true;
-  final String? apiUrl = dotenv.env['API_URL']; 
+  final String? apiUrl = dotenv.env['API_URL'];
+  String _selectedUnit = 'mg/dL';
 
   @override
   void initState() {
     super.initState();
-    fetchAIInsights();
+    _loadUnitAndFetchInsights();
   }
 
-  Future<void> fetchAIInsights() async {
-    String? token = await AuthService().getAccessToken();
+  Future<void> _loadUnitAndFetchInsights() async {
+    final prefs = await SharedPreferences.getInstance();
+    _selectedUnit = prefs.getString('selectedUnit') ?? 'mg/dL';
+    await fetchInsights();
+  }
+
+  Future<void> fetchInsights() async {
+    final token = await AuthService().getAccessToken();
+    if (token == null) return;
 
     try {
-      final response = await http.get(
-        Uri.parse('$apiUrl/ai-insights/'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
+      final summaryRes = await http.get(
+        Uri.parse('$apiUrl/insights/summary/'),
+        headers: {'Authorization': 'Bearer $token'},
       );
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
+      final trendRes = await http.get(
+        Uri.parse('$apiUrl/health/trends/weekly/'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (summaryRes.statusCode == 200 && trendRes.statusCode == 200) {
         setState(() {
-          insightsData = data;
+          insightsData = {
+            ...json.decode(summaryRes.body),
+            "trend": json.decode(trendRes.body)['trend'],
+          };
           isLoading = false;
         });
       } else {
-        setState(() {
-          isLoading = false;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content:
-                  Text('Failed to fetch AI insights: ${response.statusCode}')),
-        );
+        print("Failed to load insights.");
       }
-    } catch (error) {
-      setState(() {
-        isLoading = false;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('An error occurred: $error')),
-      );
+    } catch (e) {
+      print("Error fetching insights: $e");
     }
+  }
+
+  Future<void> generatePdf() async {
+    final pdf = pw.Document();
+    final trend = insightsData!['trend'];
+    final avgGlucose = insightsData?['glucose']?['average']?.toDouble();
+    final aiInsight = insightsData?['ai_insight'] ?? "No insights available.";
+
+    final formattedGlucose = await formatGlucoseDynamic(avgGlucose);
+
+    print("AI_INSIGHT: $aiInsight");
+
+    pdf.addPage(
+      pw.MultiPage(
+        build: (pw.Context context) => [
+          pw.Text("🧠 Personal Insights Summary",
+              style:
+                  pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold)),
+          pw.Text("Generated: ${DateTime.now().toLocal()}",
+              style: pw.TextStyle(fontSize: 12, color: PdfColors.grey)),
+          pw.SizedBox(height: 20),
+          pw.Text("📊 Health Trend", style: pw.TextStyle(fontSize: 18)),
+          pw.Text("Glucose Avg: $formattedGlucose $_selectedUnit"),
+          pw.Text("Steps: ${trend['avg_steps']}"),
+          pw.Text("Sleep: ${trend['avg_sleep_hours']} hrs"),
+          pw.Text("Heart Rate: ${trend['avg_heart_rate']} bpm"),
+          pw.Text("Sessions: ${trend['total_exercise_sessions']}"),
+          pw.SizedBox(height: 16),
+          pw.Text("Summary: ", style: pw.TextStyle(fontSize: 18)),
+          pw.Text("${trend['ai_summary']}"),
+          pw.SizedBox(height: 16),
+          pw.Text("✨ AI Summary Insights", style: pw.TextStyle(fontSize: 18)),
+          pw.Text(aiInsight),
+          pw.SizedBox(height: 16),
+          pw.Text("🎯 Focus Area", style: pw.TextStyle(fontSize: 18)),
+          pw.Text("Avg Glucose Prediction: $formattedGlucose $_selectedUnit"),
+          pw.Text("Focus: Maintain steady glucose, prioritize rest."),
+        ],
+      ),
+    );
+
+
+    await Printing.layoutPdf(
+      name:
+          'Glycolog_Insights_${DateTime.now().toIso8601String().split('T').first}.pdf',
+      onLayout: (format) async => pdf.save(),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('AI-Powered Insights'),
-        backgroundColor: Colors.blue[800],
+        title: const Text("Personal Insights"),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.download),
+            tooltip: "Download PDF",
+            onPressed: isLoading ? null : generatePdf,
+          ),
+        ],
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
-          : insightsData == null
-              ? const Center(child: Text('No AI insights available.'))
-              : SingleChildScrollView(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Your Personalized AI Insights',
-                        style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 10),
-                      _buildWellnessPredictions(),
-                      const Divider(),
-                      _buildGlucosePredictions(),
-                      const Divider(),
-                      _buildIdentifiedPatterns(),
-                      const Divider(),
-                      const Text(
-                        'General Trends & Community Insights',
-                        style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 10),
-                      _buildGeneralTrends(),
-                      const Divider(),
-                      const Text(
-                        'AI Personalized Recommendations',
-                        style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 10),
-                      _buildRecommendations(),
-                    ],
-                  ),
-                ),
+          : ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                _buildTrendCard(insightsData!['trend']),
+                const SizedBox(height: 20),
+                _buildAIInsight(insightsData!['ai_insight']),
+                const SizedBox(height: 20),
+                _buildFocusAreas(insightsData!),
+              ],
+            ),
     );
   }
 
-  Widget _buildWellnessPredictions() {
-    final wellnessPredictions = insightsData?['wellness_predictions'];
-    if (wellnessPredictions == null || wellnessPredictions.isEmpty) {
-      return const Text('No wellness predictions available.');
-    }
-    return Column(
-      children: [
-        _buildInsightCard(
-          'Predicted wellness risk score: ${wellnessPredictions[0]['wellness_risk_score']}%',
-          Icons.health_and_safety,
-          Colors.green,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildGlucosePredictions() {
-    final glucosePredictions = insightsData?['glucose_predictions'];
-    if (glucosePredictions == null || glucosePredictions.isEmpty) {
-      return const Text('No glucose predictions available.');
-    }
-    return Column(
-      children: glucosePredictions.map<Widget>((glucose) {
-        return _buildInsightCard(
-          'Predicted glucose level: ${glucose['predicted_glucose']} mg/dL (Confidence: ${glucose['confidence']}%)',
-          Icons.bloodtype,
-          Colors.red,
+  Widget _buildTrendCard(Map trend) {
+    return FutureBuilder<String>(
+      future: formatGlucoseDynamic(trend['avg_glucose_level']?.toDouble()),
+      builder: (context, snapshot) {
+        final formattedGlucose = snapshot.data ?? '-';
+        return Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text("📊 Weekly Health Trend",
+                    style:
+                        TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                const SizedBox(height: 10),
+                Text("Glucose: $formattedGlucose $_selectedUnit"),
+                Text("Steps: ${trend['avg_steps']}"),
+                Text("Sleep: ${trend['avg_sleep_hours']} hrs"),
+                Text("Heart Rate: ${trend['avg_heart_rate']} bpm"),
+                Text("Sessions: ${trend['total_exercise_sessions']}"),
+                const SizedBox(height: 10),
+                Text("Summary: ${trend['ai_summary']}"),
+              ],
+            ),
+          ),
         );
-      }).toList(),
+      },
     );
   }
 
-  Widget _buildIdentifiedPatterns() {
-    final patterns = insightsData?['patterns'];
-    if (patterns == null || patterns.isEmpty) {
-      return const Text('No specific patterns detected.');
-    }
-    return Column(
-      children: patterns.map<Widget>((pattern) {
-        return _buildInsightCard(
-          pattern,
-          Icons.trending_up,
-          Colors.orange,
-        );
-      }).toList(),
-    );
-  }
-
-  Widget _buildGeneralTrends() {
-    final generalTrends = insightsData?['general_trends'];
-    if (generalTrends == null || generalTrends.isEmpty) {
-      return const Text('No general trends available.');
-    }
-    return Column(
-      children: generalTrends.map<Widget>((trend) {
-        return _buildInsightCard(
-          trend,
-          Icons.people,
-          Colors.purple,
-        );
-      }).toList(),
-    );
-  }
-
-  Widget _buildRecommendations() {
-    final recommendations = insightsData?['recommendations'];
-    if (recommendations == null || recommendations.isEmpty) {
-      return const Text('No recommendations available.');
-    }
-    return Column(
-      children: recommendations.map<Widget>((rec) {
-        return _buildInsightCard(
-          rec,
-          Icons.lightbulb,
-          Colors.blue,
-        );
-      }).toList(),
-    );
-  }
-
-  Widget _buildInsightCard(String text, IconData icon, Color iconColor) {
+  Widget _buildAIInsight(String aiInsight) {
     return Card(
-      elevation: 4,
-      margin: const EdgeInsets.only(bottom: 16.0),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: iconColor.withOpacity(0.2),
-          child: Icon(icon, color: iconColor),
-        ),
-        title: Text(
-          text,
-          style: const TextStyle(fontSize: 14),
+      color: Colors.blue.shade50,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text("🧠 AI Summary Insight",
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            const SizedBox(height: 10),
+            Text(aiInsight),
+          ],
         ),
       ),
+    );
+  }
+
+  Widget _buildFocusAreas(Map data) {
+    final glucoseInfo = data['glucose'] ?? {};
+    final avgGlucose = glucoseInfo['average']?.toDouble();
+
+    return FutureBuilder<String>(
+      future: formatGlucoseDynamic(avgGlucose),
+      builder: (context, snapshot) {
+        final formattedGlucose = snapshot.data ?? '-';
+        return Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text("🎯 Next Focus Area",
+                    style:
+                        TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                const SizedBox(height: 10),
+                Text("Avg Glucose Level: $formattedGlucose $_selectedUnit"),
+                const SizedBox(height: 10),
+                const Text("Focus: Maintain steady glucose, prioritize rest."),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

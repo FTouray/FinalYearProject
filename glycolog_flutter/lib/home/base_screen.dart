@@ -1,120 +1,79 @@
 import 'package:flutter/material.dart';
 import 'package:Glycolog/services/auth_service.dart';
 
-class BaseScreen extends StatelessWidget {
+class BaseScaffoldScreen extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onItemTapped;
   final Widget body;
-  final AuthService authService = AuthService(); // Initialize AuthService here
+  final AuthService authService = AuthService();
 
-  BaseScreen({
-    Key? key,
+  BaseScaffoldScreen({
+    super.key,
     required this.selectedIndex,
     required this.onItemTapped,
     required this.body,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Image.asset('assets/logos/glycolog_logo.png',
-            height: 40), // Logo in the middle
+        title: Image.asset('assets/logos/glycolog_logo.png', height: 40),
         centerTitle: true,
         leading: Builder(
           builder: (context) => IconButton(
-            icon: const Icon(Icons.menu), // Hamburger menu icon
-            onPressed: () {
-              // Use the context of the Scaffold to open the drawer
-              Scaffold.of(context)
-                  .openDrawer(); // Correct context for opening the drawer
-            },
+            icon: const Icon(Icons.menu),
+            onPressed: () => Scaffold.of(context).openDrawer(),
           ),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout), // Logout icon
-            onPressed: () async {
-              await _logout(context); // Call logout function
-            },
+            icon: const Icon(Icons.logout),
+            onPressed: () async => await authService.logout(context),
           ),
         ],
       ),
       drawer: Drawer(
         child: ListView(
-          padding: EdgeInsets.zero,
-          children: <Widget>[
+          children: [
             DrawerHeader(
-              decoration: BoxDecoration(
-                color: Colors.blue[800],
-              ),
-              child: const Text(
-                'Menu',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 24,
-                ),
-              ),
+              decoration: BoxDecoration(color: Colors.blue[800]),
+              child: const Text('Menu',
+                  style: TextStyle(color: Colors.white, fontSize: 24)),
             ),
             ListTile(
               leading: const Icon(Icons.home),
               title: const Text('Home'),
-              onTap: () {
-                Navigator.pop(context); // Close the drawer first
-                Navigator.pushNamed(context, '/home');
-              },
+              onTap: () => Navigator.pushNamed(context, '/home'),
             ),
             ListTile(
               leading: const Icon(Icons.analytics),
               title: const Text('Glucose Log'),
-              onTap: () {
-                Navigator.pop(context); // Close the drawer first
-                Navigator.pushNamed(context, '/glucose-log');
-              },
+              onTap: () => Navigator.pushNamed(context, '/glucose-log'),
             ),
             ListTile(
               leading: const Icon(Icons.logout),
               title: const Text('Logout'),
-              onTap: () async {
-                await _logout(context); // Call logout function
-              },
+              onTap: () async => await authService.logout(context),
             ),
           ],
         ),
       ),
-      body: body, // This will hold the main content of the page
+      body: body,
       bottomNavigationBar: BottomNavigationBar(
         backgroundColor: Colors.blue[800],
         selectedItemColor: Colors.white,
         unselectedItemColor: Colors.blue[200],
         currentIndex: selectedIndex,
-        onTap: (index) {
-          onItemTapped(index);
-          if (index == 0) {
-            // If the first item (Home) is tapped, navigate to Home
-            Navigator.pushNamed(context, '/home');
-          }
-        },
-        items: const <BottomNavigationBarItem>[
+        onTap: onItemTapped,
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+          BottomNavigationBarItem(icon: Icon(Icons.people), label: 'Community'),
           BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.people),
-            label: 'Community',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.account_circle),
-            label: 'Profile',
-          ),
+              icon: Icon(Icons.account_circle), label: 'Profile'),
         ],
       ),
     );
   }
-
-  // Logout function using AuthService
-  Future<void> _logout(BuildContext context) async {
-    await authService.logout(context); // AuthService handles navigation
-  }
+  
 }

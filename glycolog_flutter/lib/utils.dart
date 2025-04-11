@@ -4,9 +4,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 // Function to format the timestamp
 String formatTimestamp(String timestamp) {
-  final DateTime dateTime = DateTime.parse(timestamp);
-  final DateFormat formatter = DateFormat('dd/MM/yyyy HH:mm:ss');
-  return formatter.format(dateTime);
+  final DateTime utcTime = DateTime.parse(timestamp).toUtc();
+  final DateTime localTime = utcTime.toLocal();
+  final DateFormat formatter = DateFormat('dd/MM/yyyy HH:mm');
+  return formatter.format(localTime);
 }
 
 // Function to format DateTime and TimeOfDay

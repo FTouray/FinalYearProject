@@ -37,9 +37,11 @@ ALLOWED_HOSTS = ['*']
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://192.168.1.12",
-    "http://192.168.1.5",
+    "http://192.168.1.18",
     "http://147.252.144.128",
     "http://172.20.10.6",
+    "http://147.252.144.113",
+    
 ]
 
 
@@ -56,7 +58,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "rest_framework_simplejwt",
     "corsheaders",
-    'django_q',
+    "channels",
 ]
 
 Q_CLUSTER = {
@@ -151,7 +153,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-gb'
 
-TIME_ZONE = 'GMT'
+TIME_ZONE = 'Europe/Dublin'
 
 USE_I18N = True
 
@@ -169,3 +171,8 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Celery Configuration
+CELERY_BROKER_URL = 'redis://localhost:6379/0'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'

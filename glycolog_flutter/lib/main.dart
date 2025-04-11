@@ -1,4 +1,8 @@
+import 'package:Glycolog/forum/forum_create_thread_screen.dart';
+import 'package:Glycolog/forum/forum_home_screen.dart';
+import 'package:Glycolog/forum/forum_thread_screen.dart';
 import 'package:Glycolog/services/health_sync_service.dart';
+import 'package:Glycolog/services/reminder_service.dart';
 import 'glycaemicResponseTracker/gRT_history_detail_screen.dart';
 import 'package:Glycolog/glycaemicResponseTracker/gRT_meal_log_history_screen.dart';
 import 'package:Glycolog/glycaemicResponseTracker/gRT_meal_log_screen.dart';
@@ -31,22 +35,28 @@ import 'dart:convert';
 import 'package:flutter_dotenv/flutter_dotenv.dart';  
 import 'questionnaire/glucose_step.dart';
 import 'questionnaire/review.dart';
-//import 'package:awesome_notifications/awesome_notifications.dart';
-//import 'package:flutter_background_service/flutter_background_service.dart';
+// import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:timezone/data/latest.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
-//final AwesomeNotifications awesomeNotifications = AwesomeNotifications();
+// final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: "assets/.env");
 
- // await _initNotifications();
- // await _initBackgroundService();
+  tz.initializeTimeZones();
 
   final darkMode = await _loadDarkModePreference();
   final token = await _loadToken();
 
+  // const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('app_icon'); 
+  // const InitializationSettings initializationSettings = InitializationSettings(android: initializationSettingsAndroid);
+
+  // await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+
+  // ReminderService.init(flutterLocalNotificationsPlugin);
 
   runApp(MyApp(darkModeEnabled: darkMode, token: token));
 
@@ -55,69 +65,6 @@ void main() async {
   }
 }
 
-// Future<void> _initNotifications() async {
-//   await awesomeNotifications.initialize(
-//     null,
-//     [
-//       NotificationChannel(
-//         channelKey: 'daily_health_summary',
-//         channelName: 'Daily Health Summary',
-//         channelDescription: 'Notifications for daily health sync results',
-//         defaultColor: const Color(0xFF9D50DD),
-//         importance: NotificationImportance.High,
-//         channelShowBadge: true,
-//       )
-//     ],
-//     debug: true,
-//   );
-// }
-
-// Future<void> _initBackgroundService() async {
-//   final service = FlutterBackgroundService();
-
-//   await service.configure(
-//     androidConfiguration: AndroidConfiguration(
-//       onStart: _onBackgroundTask,
-//       isForegroundMode: true,
-//       autoStart: true,
-//       initialNotificationTitle: 'Glycolog Running',
-//       initialNotificationContent: 'Background sync active.',
-//       notificationChannelId: 'daily_health_summary',
-//     ),
-//     iosConfiguration: IosConfiguration(),
-//   );
-
-//   await service.startService();
-// }
-
-// @pragma('vm:entry-point')
-// Future<void> _onBackgroundTask(ServiceInstance service) async {
-//   if (service is AndroidServiceInstance) {
-//     service.on('stopService').listen((event) {
-//       service.stopSelf();
-//     });
-//   }
-
-//   final token = await AuthService().getAccessToken();
-//   if (token != null) {
-//     final healthService = HealthConnectService();
-//     final synced = await healthService.sendToBackend(token);
-
-//     if (synced) {
-//       await AwesomeNotifications().createNotification(
-//         content: NotificationContent(
-//           id: 2,
-//           channelKey: 'daily_health_summary',
-//           title: '✅ Background Health Sync',
-//           body: 'Health data was synced in the background.',
-//           notificationLayout: NotificationLayout.Default,
-//         ),
-//       );
-//     }
-//   }
-
-//   service.stopSelf();
-// }
 
 Future<void> _syncHealthData(String token) async {
   final healthService = HealthSyncService();
@@ -168,13 +115,24 @@ class _MyAppState extends State<MyApp> {
   bool _isDarkMode = false;
   String? _token;
   AuthService authService = AuthService();
+  String? _firstName;
 
   @override
   void initState() {
     super.initState();
     _isDarkMode = widget.darkModeEnabled;
     _token = widget.token;
+     _loadFirstName().then((name) {
+      setState(() {
+        _firstName = name ?? 'User';
+      });
+    });
+    // _initReminders();
   }
+
+  // void _initReminders() async {
+  //   await ReminderService.syncRemindersWithLocalNotifications();
+  // }
 
   // Toggle dark mode
   void _toggleDarkMode(bool isEnabled) {
@@ -216,6 +174,11 @@ class _MyAppState extends State<MyApp> {
     await prefs.setString('access_token', token);
   }
 
+  Future<String?> _loadFirstName() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('first_name');
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -231,16 +194,7 @@ class _MyAppState extends State<MyApp> {
           : '/login', // Navigate based on token presence
       routes: {
         '/login': (context) => const LoginScreen(),
-        '/home': (context) {
-          // Extract arguments (first name) passed during navigation
-          final args = ModalRoute.of(context)?.settings.arguments;
-          if (args is String) {
-            return HomePage(firstName: args); // Pass first name to HomePage
-          } else {
-            return HomePage(
-                firstName: 'User'); // Default name if argument is not found
-          }
-        },
+        '/home': (context) => HomePage(firstName: _firstName ?? 'User'),
         '/onboarding': (context) => OnboardingScreen(),
         '/register': (context) => const RegisterScreen(),
         '/glucose-log': (context) => const GlucoseLogScreen(),
@@ -275,6 +229,12 @@ class _MyAppState extends State<MyApp> {
         '/chatbot': (context) => const ChatbotScreen(),
         '/add-medication': (context) => const AddMedicationScreen(),
         '/medications': (context) => const MedicationsScreen(),
+        '/forum': (context) => const ForumHomeScreen(),
+        '/forum/create-thread': (context) {
+          final args = ModalRoute.of(context)?.settings.arguments
+              as Map<String, dynamic>?;
+          return ForumCreateThreadScreen(categoryId: args?['categoryId']);
+        },
       },
       onGenerateRoute: (settings) {
         switch (settings.name) {
@@ -298,11 +258,24 @@ class _MyAppState extends State<MyApp> {
             }
             return _errorRoute(); // Handle incorrect argument passing
 
+          case '/forum/thread':
+            final args = settings.arguments as Map<String, dynamic>?;
+            if (args != null &&
+                args.containsKey('threadId') &&
+                args.containsKey('username')) {
+              return MaterialPageRoute(
+                builder: (_) => ForumThreadScreen(
+                  threadId: args['threadId'].toString(),
+                  username: args['username'],
+                ),
+              );
+            }
+            return _errorRoute();
+            
           default:
             return null; // If the route is not found, let Flutter handle it
         }
-      },
-      
+      },      
     );
   }
 

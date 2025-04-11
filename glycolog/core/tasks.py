@@ -1,10 +1,9 @@
 from datetime import timedelta
 from django.utils.timezone import now
-from django_q.tasks import schedule
 from celery import shared_task
 from django.db import models
 from core.models import CustomUser, FitnessActivity, AIRecommendation, UserNotification
-from core.ai_services import generate_ai_recommendation, generate_health_trends
+from core.fitness_ai import generate_ai_recommendation, generate_health_trends
 
 
 def check_and_notify_missing_data(user_id=None):
@@ -66,22 +65,26 @@ def generate_ai_recommendations(user_id=None):
             AIRecommendation.objects.create(user=user, recommendation_text=recommendation)
 
 
-def schedule_health_tasks():
-    schedule("core.tasks.generate_health_insight_prompts", schedule_type="H", repeats=-1)
-    schedule("core.tasks.generate_ai_recommendations", schedule_type="D", repeats=-1)
-    for user in CustomUser.objects.all():
-        schedule("core.tasks.generate_health_insight_prompts", user.id, schedule_type="H", repeats=-1)
-        schedule("core.tasks.generate_ai_recommendations", user.id, schedule_type="D", repeats=-1)
+# def schedule_health_tasks():
+#     schedule("core.tasks.generate_health_insight_prompts", schedule_type="H", repeats=-1)
+#     schedule("core.tasks.generate_ai_recommendations", schedule_type="D", repeats=-1)
+#     for user in CustomUser.objects.all():
+#         schedule("core.tasks.generate_health_insight_prompts", user.id, schedule_type="H", repeats=-1)
+#         schedule("core.tasks.generate_ai_recommendations", user.id, schedule_type="D", repeats=-1)
 
 
-def schedule_health_trend_updates():
-    schedule("core.ai_services.generate_health_trends", None, period_type="weekly", schedule_type="W", repeats=-1)
-    schedule("core.ai_services.generate_health_trends", None, period_type="monthly", schedule_type="M", repeats=-1)
-    for user in CustomUser.objects.all():
-        schedule("core.ai_services.generate_health_trends", user.id, period_type="weekly", schedule_type="W", repeats=-1)
-        schedule("core.ai_services.generate_health_trends", user.id, period_type="monthly", schedule_type="M", repeats=-1)
+# def schedule_health_trend_updates():
+#     schedule("core.ai_services.generate_health_trends", None, period_type="weekly", schedule_type="W", repeats=-1)
+#     schedule("core.ai_services.generate_health_trends", None, period_type="monthly", schedule_type="M", repeats=-1)
+#     for user in CustomUser.objects.all():
+#         schedule("core.ai_services.generate_health_trends", user.id, period_type="weekly", schedule_type="W", repeats=-1)
+#         schedule("core.ai_services.generate_health_trends", user.id, period_type="monthly", schedule_type="M", repeats=-1)
 
-
+@shared_task
+def send_push_notification(user_id, title, message):
+    # TODO: Implement actual push notification logic using Firebase or other service
+    print(f"PUSH to {user_id}: {title} - {message}")
+    
 @shared_task
 def send_medication_reminder(user_id, medication_name):
     print(f"Reminder: Time to take {medication_name} for User {user_id}")

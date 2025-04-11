@@ -53,6 +53,82 @@ class _ExerciseStepScreenState extends State<ExerciseStepScreen> {
     'Other'
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    _fetchLatestActivity();
+  }
+
+  Future<void> _fetchLatestActivity() async {
+    setState(() => isLoading = true);
+    try {
+      final token = await AuthService().getAccessToken();
+      if (token == null) return;
+
+      final response = await http.get(
+        Uri.parse('$apiUrl/health/latest/'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+
+        setState(() {
+          final now = DateTime.now();
+          final lastTime = DateTime.tryParse(data['start_time'] ?? '');
+
+          if (lastTime != null) {
+            final daysAgo = now.difference(lastTime).inDays;
+
+            if (daysAgo <= 1) {
+              lastExerciseTime = 'Today';
+            } else if (daysAgo <= 3) {
+              lastExerciseTime = '2-3 Days Ago';
+            } else if (daysAgo <= 7) {
+              lastExerciseTime = 'More than 5 Days Ago';
+            } else {
+              lastExerciseTime = 'I Don’t Remember';
+            }
+          }
+          exerciseType = _matchDropdownValue(data['activity_type'], exerciseTypes);
+          exerciseDuration = (data['duration_minutes'] ?? 0).toDouble();
+
+          final steps = data['steps'] ?? 0;
+          final heartRate = data['heart_rate'] ?? 0;
+          final duration = data['duration_minutes'] ?? 0;
+          final calories = data['calories_burned'] ?? 0;
+
+          if (steps > 6000 ||
+              heartRate > 130 ||
+              calories > 300 ||
+              duration > 40) {
+            exerciseIntensity = 'Vigorous';
+          } else if (steps > 3000 || heartRate > 100 || duration > 20) {
+            exerciseIntensity = 'Moderate';
+          } else {
+            exerciseIntensity = 'Low';
+          }
+        });
+      } else {
+        print("Failed to fetch latest activity: ${response.body}");
+      }
+    } catch (e) {
+      print("Error fetching activity: $e");
+    } finally {
+      setState(() => isLoading = false);
+    }
+  }
+
+String? _matchDropdownValue(String? fetchedValue, List<String> options) {
+    if (fetchedValue == null) return null;
+
+    return options.firstWhere(
+      (option) => option.toLowerCase() == fetchedValue.toLowerCase(),
+      orElse: () => options.contains('Other') ? 'Other' : '',
+    );
+  }
+
+
   Future<void> _submitData() async {
     setState(() {
       isLoading = true;

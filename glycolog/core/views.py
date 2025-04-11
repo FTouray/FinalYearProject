@@ -4,24 +4,20 @@ import json
 from django.utils import timezone
 from django.http import JsonResponse
 from django.utils.dateparse import parse_time, parse_datetime
-from django_q.tasks import async_task
 import pandas as pd
 from django.db.models import Max
 import requests
-from rest_framework import status
+from rest_framework import status, viewsets
 from rest_framework.response import Response
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
 from django.conf import settings
 from core.fitness_ai import generate_ai_recommendation, generate_health_trends
-from core.ai_model import feature_engineering
-from core.ai_model.data_processing import load_data_from_db
-from core.ai_model.recommendation_engine import generate_recommendations, load_models, predict_glucose, predict_wellness_risk
 from core.services.ocr_service import extract_text_from_image, parse_dosage_info
-from core.services.rxnorm_service import fetch_dosage_forms_from_rxnorm, fetch_rxnorm_details, guess_default_frequency, search_rxnorm, search_rxnorm_approx, search_rxnorm_partial
+from core.services.openfda_service import fetch_openfda_drug_details, search_openfda_drugs
 from core.services.reminder_service import schedule_medication_reminder
-from .serializers import ChatMessageSerializer, ExerciseCheckSerializer, FoodCategorySerializer, FoodItemSerializer, GlucoseCheckSerializer, GlucoseLogSerializer, MealCheckSerializer, MealSerializer, MedicationReminderSerializer, MedicationSerializer, QuestionnaireSessionSerializer, RegisterSerializer, LoginSerializer, SettingsSerializer, SymptomCheckSerializer
-from .models import AIHealthTrend, AIRecommendation, ChatMessage, CustomUser, ExerciseCheck, FeelingCheck, FitnessActivity, FoodCategory, FoodItem, GlucoseCheck, GlucoseLog, GlycaemicResponseTracker, LocalNotificationPrompt, Meal, MealCheck, Medication, MedicationReminder, QuestionnaireSession, SymptomCheck  
+from .serializers import ChatMessageSerializer, CommentSerializer, ExerciseCheckSerializer, FoodCategorySerializer, FoodItemSerializer, ForumCategorySerializer, ForumThreadSerializer, GlucoseCheckSerializer, GlucoseLogSerializer, MealCheckSerializer, MealSerializer, MedicationReminderSerializer, MedicationSerializer, QuestionnaireSessionSerializer, RegisterSerializer, LoginSerializer, SettingsSerializer, SymptomCheckSerializer
+from .models import AIHealthTrend, AIRecommendation, ChatMessage, Comment, CustomUser, ExerciseCheck, FeelingCheck, FitnessActivity, FoodCategory, FoodItem, ForumCategory, ForumThread, GlucoseCheck, GlucoseLog, GlycaemicResponseTracker, LocalNotificationPrompt, Meal, MealCheck, Medication, MedicationReminder, PersonalInsight, QuestionnaireSession, SymptomCheck  
 from django.contrib.auth import get_user_model
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.permissions import AllowAny
@@ -38,6 +34,9 @@ import logging
 from googleapiclient.discovery import build
 from rest_framework.generics import ListAPIView
 from openai import OpenAI
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
+
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -564,111 +563,6 @@ def questionnaire_data_visualization(request):
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
-def questionnaire_get_insights(request):
-    user = request.user
-
-    # Fetch the user's completed questionnaire sessions
-    user_sessions = QuestionnaireSession.objects.filter(user=user, completed=True).order_by("-created_at")
-
-    if not user_sessions.exists():
-        return Response({"error": "No completed sessions found for this user."}, status=404)
-
-    # Analyze user-specific data
-    personal_insights = {
-        "high_glucose": user_sessions.filter(glucose_check__glucose_level__gt=("glucose_check__target_max")).count(),
-        "low_sleep": user_sessions.filter(symptom_check__sleep_hours__lt=6).count(),
-        "exercise_impact": user_sessions.filter(exercise_check__post_exercise_feeling="Energised").count(),
-        "skipped_meals": user_sessions.filter(meal_check__skipped_meals__len__gt=0).count(),
-    }
-
-    # General trends (aggregated data for all users)
-    all_sessions = QuestionnaireSession.objects.filter(completed=True)
-    general_trends = {
-        "avg_glucose": all_sessions.aggregate(avg_glucose=Avg("glucose_check__glucose_level")),
-        "avg_sleep": all_sessions.aggregate(avg_sleep=Avg("symptom_check__sleep_hours")),
-        "exercise_effect": all_sessions.filter(exercise_check__post_exercise_feeling="Energised").count(),
-        "skipped_meals_effect": all_sessions.filter(meal_check__wellness_impact=True).count(),
-    }
-
-    return Response({
-        "personal_insights": personal_insights,
-        "general_trends": general_trends,
-    }, status=200)
-
-
-@api_view(["GET"])
-@permission_classes([IsAuthenticated])
-def questionnaire_get_ai_insights(request):
-    """
-    Fetch AI-generated insights and recommendations based on all logged data.
-    """
-    user = request.user
-
-    # Fetch all relevant data
-    symptom_data = SymptomCheck.objects.filter(session__user=user)
-    exercise_data = ExerciseCheck.objects.filter(session__user=user)
-    glucose_data = GlucoseCheck.objects.filter(session__user=user)
-    meal_data = MealCheck.objects.filter(session__user=user)
-    glucose_logs = GlucoseLog.objects.filter(user=user)
-
-    if not (
-        symptom_data.exists()
-        or exercise_data.exists()
-        or glucose_data.exists()
-        or meal_data.exists()
-        or glucose_logs.exists()
-    ):
-        return Response(
-            {"error": "No relevant data found for AI insights."}, status=404
-        )
-
-    # Load all data for AI processing
-    data = load_data_from_db(
-        questionnaire_queryset=QuestionnaireSession.objects.filter(
-            user=user, completed=True
-        ),
-        symptom_queryset=symptom_data,
-        glucose_check_queryset=glucose_data,
-        meal_check_queryset=meal_data,
-        exercise_queryset=exercise_data,
-        glucose_log_queryset=glucose_logs,
-        glycaemic_response_queryset=GlycaemicResponseTracker.objects.filter(user=user),
-        meal_queryset=Meal.objects.filter(user=user),
-        feeling_queryset=FeelingCheck.objects.filter(user=user),
-    )
-
-    if data.empty:
-        return Response({"error": "No sufficient data available."}, status=400)
-
-    # Apply feature engineering before predictions
-    data = feature_engineering(data)
-
-    # Load AI models
-    wellness_model, glucose_model = load_models()
-
-    # Make predictions
-    wellness_predictions = predict_wellness_risk(wellness_model, data)
-    glucose_predictions = predict_glucose(glucose_model, data)
-
-    # Generate AI-based recommendations
-    recommendations = generate_recommendations(data)
-
-    response_data = {
-        "wellness_predictions": wellness_predictions.tolist(),
-        "glucose_predictions": glucose_predictions.tolist(),
-        "recommendations": recommendations,
-    }
-
-    return Response(response_data, status=200)
-
-def convert_glucose_units(glucose_value, preferred_unit="mg/dL"):
-    """Convert glucose levels based on user preference (mg/dL or mmol/L)."""
-    if preferred_unit == "mmol/L":
-        return round(glucose_value / 18, 2)  # Convert mg/dL to mmol/L
-    return glucose_value  # Keep mg/dL as is
-
-@api_view(["GET"])
-@permission_classes([IsAuthenticated])
 def get_dashboard_summary(request):
     user = request.user
     today = now()
@@ -1001,21 +895,7 @@ def chat_with_virtual_coach(request):
         return JsonResponse({"error": "Message cannot be empty"}, status=400)
 
     ChatMessage.objects.create(user=user, sender="user", message=user_message)
-    
-    # recent_data = FitnessActivity.objects.filter(
-    # user=user,
-    # start_time__gte=now() - timedelta(days=3)
-    # )
-
-    # if not recent_data.exists():
-    #     fallback = (
-    #         "I wasn’t able to find any recent health data to analyze. "
-    #         "But I can still offer general wellness tips or answer your questions!"
-    #     )
-
-    #     ChatMessage.objects.create(user=user, sender="assistant", message=fallback)
-    #     return JsonResponse({"response": fallback}, status=200)
-
+   
     past_recommendations = AIRecommendation.objects.filter(user=user).order_by("-generated_at")[:5]
     recommendations_summary = "\n".join(
         [f"{rec.recommendation_text} (given on {rec.generated_at.strftime('%Y-%m-%d')})" for rec in past_recommendations]
@@ -1114,39 +994,22 @@ def queue_local_notification(request):
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
-def fetch_medications_from_rxnorm(request):
+def fetch_medications_from_openfda(request):
     query = request.GET.get("query", "")
-    if not query:
-        return JsonResponse({"error": "Search query required"}, status=400)
 
-    results = search_rxnorm_approx(query)
-
+    results = search_openfda_drugs(query=query.strip())
     return JsonResponse({"medications": results})
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
-def get_medication_details(request):
-    rxcui = request.GET.get("rxcui")
-    if not rxcui:
-        return JsonResponse({"error": "Missing rxcui"}, status=400)
+def get_medication_details_openfda(request):
+    fda_id = request.GET.get("id")
+    if not fda_id:
+        return JsonResponse({"error": "Missing FDA ID"}, status=400)
 
-
-    # 1) Basic info about the medication
-    rx_info = fetch_rxnorm_details(rxcui)  # returns { "name": "metformin", "dosage_forms": [], "default_frequency": ... }
-
-    # 2) Extended dosage forms
-    dosage_data = fetch_dosage_forms_from_rxnorm(rxcui)  # returns { "rxcui": rxcui, "dosage_forms": [...] }
-
-    # 3) Merge them
-    med_name = rx_info.get("name", "")
-    dosage_forms = dosage_data.get("dosage_forms", [])
-
-    details = {
-        "rxcui": rxcui,
-        "name": med_name,
-        "dosage_forms": dosage_forms,
-        "default_frequency": guess_default_frequency(med_name, dosage_forms)
-    }
+    details = fetch_openfda_drug_details(fda_id)
+    if not details:
+        return JsonResponse({"error": "Details not found"}, status=404)
 
     return JsonResponse(details)
 
@@ -1154,33 +1017,47 @@ def get_medication_details(request):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def set_reminder(request):
-    """Set a medication reminder for the user."""
+    """
+    Expects JSON like:
+    {
+      "medication_id": 123,
+      "day_of_week": 4,   # (1=Monday, 4=Thursday, etc.)
+      "hour": 16,
+      "minute": 0,
+      "repeat_weeks": 4
+    }
+    """
     user = request.user
-    medication_name = request.data.get("medication_name")
-    reminder_time = request.data.get("time")
+    medication_id = request.data.get("medication_id")
+    day_of_week = request.data.get("day_of_week")
+    hour = request.data.get("hour")
+    minute = request.data.get("minute")
+    repeat_weeks = request.data.get("repeat_weeks", 4)
 
-    if not medication_name or not reminder_time:
-        return JsonResponse({"error": "Medication name and time are required."}, status=400)
+    if not medication_id or day_of_week is None or hour is None or minute is None:
+        return Response({"error": "Missing required fields."}, status=400)
 
-    reminder, created = MedicationReminder.objects.get_or_create(
+    medication = get_object_or_404(Medication, id=medication_id, user=user)
+
+    reminder = MedicationReminder.objects.create(
         user=user,
-        medication_name=medication_name,
-        reminder_time=reminder_time
+        medication=medication,
+        day_of_week=day_of_week,
+        hour=hour,
+        minute=minute,
+        repeat_weeks=repeat_weeks
     )
 
-    if created:
-        async_task("core.tasks.send_medication_reminder", user.id, medication_name, schedule_type="D", repeats=-1)
+    return Response({"message": "Reminder set successfully!", "reminder_id": reminder.id}, status=201)
 
-    return JsonResponse({"message": "Reminder set successfully!"})
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def get_medication_reminders(request):
-    """Retrieve all medication reminders for the user"""
-    reminders = MedicationReminder.objects.filter(user=request.user)
+    """Retrieve all medication reminders for the user."""
+    reminders = MedicationReminder.objects.filter(user=request.user).select_related("medication")
     serializer = MedicationReminderSerializer(reminders, many=True)
-    return JsonResponse({"reminders": serializer.data})
-
+    return Response(serializer.data, status=200)
 
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
@@ -1205,27 +1082,36 @@ def MedicationReminderListView(request):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def save_medication(request):
-    """Save selected medication from RxNorm API or manually entered"""
+    """Save medication from OpenFDA or manual entry"""
     user = request.user
     name = request.data.get("name")
-    rxnorm_id = request.data.get("rxnorm_id", None)  
+    fda_id = request.data.get("fda_id")  # renamed field
+    generic_name = request.data.get("generic_name", "")
     dosage = request.data.get("dosage", "")
     frequency = request.data.get("frequency", "")
     last_taken = request.data.get("last_taken", None)
 
     if not name:
-        return Response({"error": "Medication name is required."}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"error": "Medication name is required."}, status=400)
 
     medication, created = Medication.objects.get_or_create(
         user=user,
         name=name,
-        defaults={"rxnorm_id": rxnorm_id, "dosage": dosage, "frequency": frequency, "last_taken": last_taken}
+        defaults={
+            "fda_id": fda_id,
+            "generic_name": generic_name,
+            "dosage": dosage,
+            "frequency": frequency,
+            "last_taken": last_taken,
+        },
     )
 
     serializer = MedicationSerializer(medication)
-    if created:
-        return Response({"message": "Medication saved successfully."}, status=status.HTTP_201_CREATED)
-    return Response({"message": "Medication already exists."}, status=status.HTTP_200_OK)
+    return Response(
+        {"message": "Medication saved successfully." if created else "Already exists.", "data": serializer.data},
+        status=201 if created else 200,
+    )
+
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
@@ -1278,47 +1164,33 @@ def scan_medication(request):
     file = request.FILES['image']
     file_path = "temp.jpg"
     try:
-        # Save uploaded image
         with open(file_path, 'wb+') as destination:
             for chunk in file.chunks():
                 destination.write(chunk)
 
-        # Step 1: OCR
         extracted_text = extract_text_from_image(file_path)
-
-        # Step 2: Parse dosage/frequency from the text
         parsed_info = parse_dosage_info(extracted_text)
-        
-        # Step 3: Try to find a matching medication in RxNorm by search
-        rxn_results = search_rxnorm(extracted_text)
-        if rxn_results:
-            # Just pick the first result, or show them to user in a list
-            first_match = rxn_results[0]
-            rxcui = first_match["rxcui"]
-            name = first_match["name"]
 
-            # Step 4: Get dosage forms
-            dosage_data = fetch_dosage_forms_from_rxnorm(rxcui)
-            # Step 5: Guess frequency
-            default_freq = guess_default_frequency(name, dosage_data["dosage_forms"])
+        matches = search_openfda_drugs(extracted_text)
+        if matches:
+            top = matches[0]
+            details = fetch_openfda_drug_details(top['id'])
 
-            # Combine everything
             return JsonResponse({
-                "name": name,
-                "rxcui": rxcui,
-                "dosage_forms": dosage_data["dosage_forms"],
-                "dosage": parsed_info.get("dosage"),  # e.g. "500mg"
-                "frequency": parsed_info.get("frequency") or default_freq,
-            })
-        else:
-            # If no RxNorm match, just return the OCR text
-            return JsonResponse({
-                "name": extracted_text,
+                "name": details.get("name", extracted_text),
+                "fda_id": top["id"],
+                "generic_name": details.get("generic_name", ""),
                 "dosage": parsed_info.get("dosage"),
                 "frequency": parsed_info.get("frequency"),
-                "dosage_forms": [],
-                "rxcui": None,
             })
+        else:
+            return JsonResponse({
+                "name": extracted_text,
+                "fda_id": None,
+                "dosage": parsed_info.get("dosage"),
+                "frequency": parsed_info.get("frequency"),
+            })
+
     except Exception as e:
         return JsonResponse({"error": f"Failed to process image: {e}"}, status=500)
     
@@ -1331,3 +1203,269 @@ class MedicationReminderListView(ListAPIView):
     queryset = MedicationReminder.objects.all()
     serializer_class = MedicationReminderSerializer
     permission_classes = [IsAuthenticated]
+    
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def list_threads_by_category(request, category_id):
+    threads = ForumThread.objects.filter(category_id=category_id).order_by("-created_at")
+    data = [
+        {
+            "id": thread.id,
+            "title": thread.title,
+            "comment_count": thread.comment_count(),
+            "latest_reply": thread.latest_reply().created_at.strftime("%Y-%m-%d %H:%M") if thread.latest_reply() else None,
+        }
+        for thread in threads
+    ]
+    return JsonResponse(data, safe=False)
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def create_thread(request):
+    title = request.data.get("title")
+    category_id = request.data.get("category_id")
+
+    if not title or not category_id:
+        return JsonResponse({"error": "Missing title or category"}, status=400)
+
+    thread = ForumThread.objects.create(
+        title=title,
+        category_id=category_id,
+        created_by=request.user
+    )
+
+    return JsonResponse({"id": thread.id, "message": "Thread created successfully"}, status=201)
+
+# Comments
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def list_comments_for_thread(request, thread_id):
+    comments = Comment.objects.filter(thread_id=thread_id).order_by("created_at")
+    serializer = CommentSerializer(comments, many=True)
+    return JsonResponse(serializer.data, safe=False)
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def create_comment(request):
+    content = request.data.get("content")
+    thread_id = request.data.get("thread_id")
+
+    if not content or not thread_id:
+        return JsonResponse({"error": "Missing content or thread ID"}, status=400)
+
+    comment = Comment.objects.create(
+        content=content,
+        thread_id=thread_id,
+        author=request.user
+    )
+
+    # Broadcast via WebSocket
+    channel_layer = get_channel_layer()
+    async_to_sync(channel_layer.group_send)(
+        f"forum_{thread_id}",
+        {
+            "type": "chat.message",
+            "message": comment.content,
+            "username": comment.author.username,
+        }
+    )
+
+    return JsonResponse({"message": "Comment added"}, status=201)
+        
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def list_forum_categories(request):
+    return JsonResponse(list(ForumCategory.objects.values()), safe=False)
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def create_category(request):
+    name = request.data.get("name")
+    description = request.data.get("description", "")
+
+    if not name:
+        return JsonResponse({"error": "Missing category name"}, status=400)
+
+    if ForumCategory.objects.filter(name__iexact=name).exists():
+        return JsonResponse({"error": "A category with that name already exists."}, status=400)
+
+    category = ForumCategory.objects.create(
+        name=name,
+        description=description
+    )
+
+    return JsonResponse({"id": category.id, "message": "Category created"}, status=201)
+
+client = OpenAI()
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def get_insights_summary_with_ai(request):
+    user = request.user
+    today = now().date()
+
+    # --- Glucose ---
+    latest_log = GlucoseLog.objects.filter(user=user).order_by("-timestamp").first()
+    latest_check = GlucoseCheck.objects.filter(session__user=user).order_by("-timestamp").first()
+
+    if latest_log and (not latest_check or latest_log.timestamp > latest_check.timestamp):
+        latest_glucose_value = latest_log.glucose_level
+        latest_glucose_time = latest_log.timestamp
+    elif latest_check:
+        latest_glucose_value = latest_check.glucose_level
+        latest_glucose_time = latest_check.timestamp
+    else:
+        latest_glucose_value = None
+        latest_glucose_time = None
+
+    avg_log = GlucoseLog.objects.filter(user=user).aggregate(Avg("glucose_level"))["glucose_level__avg"] or 0
+    avg_check = GlucoseCheck.objects.filter(session__user=user).aggregate(Avg("glucose_level"))["glucose_level__avg"] or 0
+    avg_glucose_level = round((avg_log + avg_check) / 2, 2) if (avg_log or avg_check) else None
+
+    # --- Meals ---
+    manual_meals_today = Meal.objects.filter(user=user, timestamp__date=today).count()
+    questionnaire_meals_today = MealCheck.objects.filter(session__user=user, created_at__date=today).count()
+    total_meals_today = manual_meals_today + questionnaire_meals_today
+
+    avg_gi_meals = Meal.objects.filter(user=user).aggregate(Avg("food_items__glycaemic_index"))["food_items__glycaemic_index__avg"]
+    avg_weighted_gi_questionnaire = MealCheck.objects.filter(session__user=user)
+    weighted_gis = [meal.weighted_gi for meal in avg_weighted_gi_questionnaire]
+    avg_weighted_gi = round(sum(weighted_gis) / len(weighted_gis), 2) if weighted_gis else None
+
+    # --- Activity ---
+    fitness_logs = FitnessActivity.objects.filter(user=user).order_by("-start_time")[:7]
+    steps = [f.steps for f in fitness_logs if f.steps]
+    sleep = [f.total_sleep_hours for f in fitness_logs if f.total_sleep_hours]
+
+    questionnaire_exercises = ExerciseCheck.objects.filter(session__user=user)
+    exercise_sessions = questionnaire_exercises.count()
+
+    avg_steps = int(sum(steps) / len(steps)) if steps else None
+    avg_sleep = round(sum(sleep) / len(sleep), 2) if sleep else None
+
+    # --- Medications ---
+    next_reminder = MedicationReminder.objects.filter(user=user).order_by("hour", "minute").first()
+
+    # --- Questionnaire ---
+    sessions = QuestionnaireSession.objects.filter(user=user, completed=True)
+    symptoms_logged = SymptomCheck.objects.filter(session__in=sessions).count()
+    skipped_meals = MealCheck.objects.filter(session__in=sessions).exclude(skipped_meals=[]).count()
+
+    # --- Summary for AI ---
+    summary = f"""
+    AI Health Summary for {user.username}:
+
+    Glucose:
+    - Latest value: {latest_glucose_value}
+    - Average: {avg_glucose_level}
+
+    Meals:
+    - Logged today: {total_meals_today}
+    - Avg GI (manual meals): {round(avg_gi_meals, 2) if avg_gi_meals else 'N/A'}
+    - Avg Weighted GI (questionnaire): {avg_weighted_gi}
+
+    Activity:
+    - Avg steps: {avg_steps}
+    - Avg sleep: {avg_sleep}
+    - Exercise sessions: {exercise_sessions}
+
+    Medications:
+    - Next reminder: {next_reminder.medication.name if next_reminder else 'None'} at {f"{next_reminder.hour:02d}:{next_reminder.minute:02d}" if next_reminder else 'N/A'}
+
+    Questionnaire:
+    - Sessions completed: {sessions.count()}
+    - Symptoms logged: {symptoms_logged}
+    - Skipped meals: {skipped_meals}
+
+    Please generate a friendly, personalized insight summary for the user based on this data.
+    Highlight wellness, risks, and give at least 1 actionable tip.
+    """
+
+    response = client.chat.completions.create(
+        model="gpt-4",
+        messages=[
+            {"role": "system", "content": "You are a diabetic health coach providing expert personalized feedback."},
+            {"role": "user", "content": summary}
+        ]
+    )
+
+    ai_insight = response.choices[0].message.content.strip()
+
+    # Save insight to database
+    PersonalInsight.objects.create(
+        user=user,
+        summary_text=ai_insight,
+        raw_data={
+            "glucose": {
+                "latest": latest_glucose_value,
+                "timestamp": latest_glucose_time.isoformat() if latest_glucose_time else None,
+                "average": avg_glucose_level,
+            },
+            "meals_logged_today": total_meals_today,
+            "avg_gi": avg_gi_meals,
+            "avg_weighted_gi": avg_weighted_gi,
+            "avg_steps": avg_steps,
+            "avg_sleep": avg_sleep,
+            "exercise_sessions_logged": exercise_sessions,
+            "next_med_reminder": {
+                "medication": next_reminder.medication.name if next_reminder else None,
+                "hour": next_reminder.hour if next_reminder else None,
+                "minute": next_reminder.minute if next_reminder else None,
+            } if next_reminder else None,
+            "questionnaire": {
+                "completed": sessions.count(),
+                "symptoms_logged": symptoms_logged,
+                "skipped_meals": skipped_meals,
+            },
+        }
+    )
+
+    return Response({
+        "glucose": {
+            "latest": {
+                "value": latest_glucose_value,
+                "timestamp": latest_glucose_time,
+            },
+            "average": avg_glucose_level,
+        },
+        "meals": {
+            "logged_today": total_meals_today,
+            "avg_gi_meals": round(avg_gi_meals, 2) if avg_gi_meals else None,
+            "avg_weighted_gi": avg_weighted_gi,
+        },
+        "activity": {
+            "avg_steps": avg_steps,
+            "avg_sleep": avg_sleep,
+            "exercise_sessions_logged": exercise_sessions,
+        },
+        "medications": {
+            "next_reminder": {
+                "medication": next_reminder.medication.name if next_reminder else None,
+                "hour": next_reminder.hour if next_reminder else None,
+                "minute": next_reminder.minute if next_reminder else None,
+            } if next_reminder else None,
+        },
+        "questionnaire": {
+            "sessions_completed": sessions.count(),
+            "symptoms_logged": symptoms_logged,
+            "skipped_meals": skipped_meals,
+        },
+        "ai_insight": ai_insight,
+    })
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def list_past_insights(request):
+    user = request.user
+    insights = PersonalInsight.objects.filter(user=user).order_by("-generated_at")
+
+    data = [
+        {
+            "timestamp": i.generated_at.strftime("%Y-%m-%d %H:%M"),
+            "summary": i.summary_text,
+            "raw_data": i.raw_data
+        }
+        for i in insights
+    ]
+    return JsonResponse({"insights": data})

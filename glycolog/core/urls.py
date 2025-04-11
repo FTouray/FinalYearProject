@@ -1,10 +1,9 @@
 from django.urls import path
-from .views import (
-    MedicationListView, MedicationReminderListView,
-    chat_with_virtual_coach, delete_medication, exercise_step, fetch_medications_from_rxnorm,
-    chat_history, get_ai_health_trends, get_all_ai_health_trends, get_last_synced_workout, latest_fitness_entry,
+from .views import ( MedicationListView, MedicationReminderListView,
+    chat_with_virtual_coach, create_category, create_comment, create_thread, delete_medication, exercise_step, 
+    chat_history, fetch_medications_from_openfda, get_ai_health_trends, get_all_ai_health_trends, get_insights_summary_with_ai, get_last_synced_workout, latest_fitness_entry,
     get_local_notifications, get_medication_reminders, list_ai_recommendations,
-    get_saved_medications, questionnaire_get_ai_insights, questionnaire_get_insights, today_fitness_summary, meal_step, glucose_step, glycaemic_response_main,
+    get_saved_medications, list_comments_for_thread, list_forum_categories, list_past_insights, list_threads_by_category, today_fitness_summary, meal_step, glucose_step, glycaemic_response_main,
     list_categories, list_food_items_by_category, log_glucose, log_meal, meal_log_detail,
     meal_log_history, questionnaire_data_visualization, queue_local_notification, register_user,
     login_user, review_answers, save_medication, scan_medication, set_reminder, settings_view,
@@ -32,26 +31,26 @@ urlpatterns = [
 
     # Glycaemic Response Tracker
     path("glycaemic-response/", glycaemic_response_main, name="glycaemic-response"),
-    path("meal-log/create/", log_meal, name="log-meal"),
+    path("log-meal/", log_meal, name="log-meal"),
     path("meal-log/history/", meal_log_history, name="meal-log-history"),
     path("meal-log/<int:meal_id>/", meal_log_detail, name="meal-log-detail"),
 
     # Food Data
-    path("food/categories/", list_categories, name="list_categories"),
-    path("food/categories/<int:category_id>/items/", list_food_items_by_category, name="list_food_items_by_category"),
+    path("categories/", list_categories, name="list_categories"),
+    path("categories/<int:category_id>/food-items/", list_food_items_by_category, name="list_food_items_by_category"),
 
     # Questionnaire
     path("questionnaire/start/", start_questionnaire, name="start-questionnaire"),
-    path("questionnaire/symptom/", symptom_step, name="symptom-step"),
-    path("questionnaire/glucose/", glucose_step, name="glucose-step"),
-    path("questionnaire/meal/", meal_step, name="meal-step"),
-    path("questionnaire/exercise/", exercise_step, name="exercise-step"),
+    path("questionnaire/symptom-step/", symptom_step, name="symptom-step"),
+    path("questionnaire/glucose-step/", glucose_step, name="glucose-step"),
+    path("questionnaire/meal-step/", meal_step, name="meal-step"),
+    path("questionnaire/exercise-step/", exercise_step, name="exercise-step"),
     path("questionnaire/review/", review_answers, name="review-answers"),
-    path("questionnaire/visualize/", questionnaire_data_visualization, name="data-visualization"),
+    path("questionnaire/data-visualization/", questionnaire_data_visualization, name="data-visualization"),
 
     # Insights
-    path("insights/", questionnaire_get_insights, name="insights"),
-    path("insights/ai/", questionnaire_get_ai_insights, name="ai-insights"),
+    path("insights/summary/", get_insights_summary_with_ai, name="insights-summary"),
+    path("insights/past/", list_past_insights, name="list-past-insight"),
 
     # Health Coach Dashboard
     path("dashboard/summary/", get_dashboard_summary, name="get_dashboard_summary"),
@@ -74,7 +73,7 @@ urlpatterns = [
     path("notifications/queue/", queue_local_notification, name="queue_local_notification"),
 
     # Medication Support
-    path("medications/search/", fetch_medications_from_rxnorm, name="fetch-medications"),
+    path("medications/search/", fetch_medications_from_openfda, name="fetch-medications"),
     path("medications/scan/", scan_medication, name="scan-medication"),
     path("medications/save/", save_medication, name="save-medication"),
     path("medications/list/", get_saved_medications, name="get-saved-medications"),
@@ -84,4 +83,14 @@ urlpatterns = [
     # Reminders
     path("reminders/set/", set_reminder, name="set-reminder"),
     path("reminders/", get_medication_reminders, name="get-reminders"),
+    
+    # Forum
+    path("forum/categories/", list_forum_categories, name="list_forum_categories"),
+    path("forum/categories/<int:category_id>/", list_categories, name="list_categories"),
+    path("forum/category/create/", create_category, name="create_category"),
+    path("forum/categories/<int:category_id>/threads/", list_threads_by_category, name="list_threads_by_category"),
+    path("forum/threads/create/", create_thread, name="create_thread"),
+    path("forum/threads/<int:thread_id>/comments/", list_comments_for_thread, name="list_comments_for_thread"),
+    path("forum/comments/create/", create_comment, name="create_comment"),
+
 ]

@@ -16,7 +16,7 @@ class _GlucoseStepScreenState extends State<GlucoseStepScreen> {
   final TextEditingController _glucoseController = TextEditingController();
   bool _isLoading = false;
   String? _error;
-  final String? apiUrl = dotenv.env['API_URL']; 
+  final String? apiUrl = dotenv.env['API_URL'];
 
   @override
   Widget build(BuildContext context) {
@@ -30,7 +30,7 @@ class _GlucoseStepScreenState extends State<GlucoseStepScreen> {
         child: ListView(
           children: [
             LinearProgressIndicator(
-              value: 0.5, // Progress for step 2 of 4
+              value: 0.5,
               backgroundColor: Colors.grey[300],
               valueColor: AlwaysStoppedAnimation<Color>(Colors.blue[800]!),
             ),
@@ -58,23 +58,15 @@ class _GlucoseStepScreenState extends State<GlucoseStepScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 TextButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                  },
-                  child: const Text(
-                    'Back',
-                    style: TextStyle(fontSize: 16),
-                  ),
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Back', style: TextStyle(fontSize: 16)),
                 ),
                 ElevatedButton(
                   onPressed: _isLoading ? null : _submitData,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue[800],
                   ),
-                  child: const Text(
-                    'Next',
-                    style: TextStyle(fontSize: 16),
-                  ),
+                  child: const Text('Next', style: TextStyle(fontSize: 16)),
                 ),
               ],
             ),
@@ -101,14 +93,10 @@ class _GlucoseStepScreenState extends State<GlucoseStepScreen> {
     }
 
     try {
-      // Fetch token and target range from shared preferences
       String? token = await AuthService().getAccessToken();
+      if (token == null) throw Exception('User is not authenticated.');
 
-      if (token == null) {
-        throw Exception('User is not authenticated.');
-      }
-
-      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      final prefs = await SharedPreferences.getInstance();
       double? targetMin = prefs.getDouble('targetMin');
       double? targetMax = prefs.getDouble('targetMax');
 
@@ -151,3 +139,4 @@ class _GlucoseStepScreenState extends State<GlucoseStepScreen> {
     }
   }
 }
+

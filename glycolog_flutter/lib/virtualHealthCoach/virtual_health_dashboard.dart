@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:Glycolog/home/base_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -891,74 +892,87 @@ String _formatValue(String label, dynamic value) {
   
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Health Coach Dashboard"),
-        actions: [
-          IconButton(
-            icon: isSyncing
-                ? const CircularProgressIndicator()
-                : const Icon(Icons.sync),
-            onPressed: () async {
-              final token = await AuthService().getAccessToken();
-              if (token != null) await _syncHealthData(token);
-              await _loadDashboard(token!);
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.chat),
-            onPressed: () => Navigator.pushNamed(context, '/chatbot'),
-            tooltip: "Chat with Coach",
-          ),
-          IconButton(
-            icon: const Icon(Icons.calendar_today),
-            onPressed: _filterByDate,
-            tooltip: "Pick a day",
-          ),
-        ],
-      ),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: () async {
+    return BaseScaffoldScreen(
+      selectedIndex: 0,
+      onItemTapped: (index) {
+        final routes = ['/home', '/forum', '/settings'];
+        if (index >= 0 && index < routes.length) {
+          Navigator.pushNamed(context, routes[index]);
+        }
+      },
+      body: Scaffold(
+        appBar: AppBar(
+          title: const Text("Health Coach Dashboard"),
+          backgroundColor: Colors.blue[800],
+          actions: [
+            IconButton(
+              icon: isSyncing
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.sync),
+              onPressed: () async {
                 final token = await AuthService().getAccessToken();
                 if (token != null) await _syncHealthData(token);
                 await _loadDashboard(token!);
               },
-              child: ListView(
-                controller: _scrollController,
-                padding: const EdgeInsets.all(12),
-                children: [
-                  _buildTodaySummary(),
-                  _buildTrendSummary(),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8.0),
-                    child: DropdownButton<String>(
-                      value: trendType,
-                      items: ['weekly', 'monthly'].map((type) {
-                        return DropdownMenuItem<String>(
-                          value: type,
-                          child: Text("View $type trend"),
-                        );
-                      }).toList(),
-                      onChanged: (value) async {
-                        if (value != null) {
-                          setState(() => trendType = value);
-                          final token = await AuthService().getAccessToken();
-                          await _loadDashboard(token!);
-                        }
-                      },
-                    ),
-                  ),
-
-                  _buildGraph("Step Trend", "steps", Colors.blue),
-                  _buildGraph(
-                      "Heart Rate Trend", "heart_rate", Colors.redAccent),
-                  _buildGraph("Sleep Trend", "sleep_hours", Colors.purple),
-                  _buildHistorySection(),
-                ],
-              ),
             ),
+            IconButton(
+              icon: const Icon(Icons.chat),
+              onPressed: () => Navigator.pushNamed(context, '/chatbot'),
+              tooltip: "Chat with Coach",
+            ),
+            IconButton(
+              icon: const Icon(Icons.calendar_today),
+              onPressed: _filterByDate,
+              tooltip: "Pick a day",
+            ),
+          ],
+        ),
+        body: isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : RefreshIndicator(
+                onRefresh: () async {
+                  final token = await AuthService().getAccessToken();
+                  if (token != null) await _syncHealthData(token);
+                  await _loadDashboard(token!);
+                },
+                child: ListView(
+                  controller: _scrollController,
+                  padding: const EdgeInsets.all(12),
+                  children: [
+                    _buildTodaySummary(),
+                    _buildTrendSummary(),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8.0),
+                      child: DropdownButton<String>(
+                        value: trendType,
+                        items: ['weekly', 'monthly'].map((type) {
+                          return DropdownMenuItem<String>(
+                            value: type,
+                            child: Text("View $type trend"),
+                          );
+                        }).toList(),
+                        onChanged: (value) async {
+                          if (value != null) {
+                            setState(() => trendType = value);
+                            final token = await AuthService().getAccessToken();
+                            await _loadDashboard(token!);
+                          }
+                        },
+                      ),
+                    ),
+                    _buildGraph("Step Trend", "steps", Colors.blue),
+                    _buildGraph(
+                        "Heart Rate Trend", "heart_rate", Colors.redAccent),
+                    _buildGraph("Sleep Trend", "sleep_hours", Colors.purple),
+                    _buildHistorySection(),
+                  ],
+                ),
+              ),
+      ),
     );
   }
+
 }

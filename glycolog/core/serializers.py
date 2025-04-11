@@ -3,7 +3,7 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
-from .models import ChatMessage, ExerciseCheck, FeelingCheck, FollowUpQuestion, FoodCategory, FoodItem, GlucoseCheck, GlycaemicResponseTracker, Insight, Meal, GlucoseLog, MealCheck, Medication, MedicationReminder, QuestionnaireSession, SymptomCheck  # Import your models
+from .models import ChatMessage, Comment, ExerciseCheck, FeelingCheck, FollowUpQuestion, FoodCategory, FoodItem, ForumCategory, ForumThread, GlucoseCheck, GlycaemicResponseTracker, Insight, Meal, GlucoseLog, MealCheck, Medication, MedicationReminder, QuestionnaireSession, SymptomCheck  # Import your models
 
 # Get the custom user model
 User = get_user_model()
@@ -294,11 +294,46 @@ class InsightSerializer(serializers.ModelSerializer):
 class MedicationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Medication
-        fields = ['id', 'user', 'name', 'rxnorm_id', 'dosage', 'frequency', 'last_taken']
+        fields = ['id', 'user', 'name', 'fda_id', 'generic_name', 'dosage', 'frequency', 'last_taken']
 
 class MedicationReminderSerializer(serializers.ModelSerializer):
-    medication_name = serializers.ReadOnlyField(source='medication.name')
+    class Meta:
+        model = MedicationReminder
+        fields = ["id", "medication", "day_of_week", "hour", "minute", "repeat_weeks", "created_at"]
 
     class Meta:
         model = MedicationReminder
         fields = ['id', 'user', 'medication', 'medication_name', 'reminder_time', 'status']
+
+class ForumCategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ForumCategory
+        fields = '__all__'
+
+class ForumThreadSerializer(serializers.ModelSerializer):
+    comment_count = serializers.SerializerMethodField()
+    latest_reply = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ForumThread
+        fields = ['id', 'title', 'created_by', 'created_at', 'category', 'comment_count', 'latest_reply']
+
+    def get_comment_count(self, obj):
+        return obj.comment_count()
+
+    def get_latest_reply(self, obj):
+        latest = obj.latest_reply()
+        return {
+            "content": latest.content,
+            "author": latest.author.username,
+            "created_at": latest.created_at
+        } if latest else None
+
+class CommentSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(source="author.username", read_only=True)
+    message = serializers.CharField(source="content", read_only=True)
+    timestamp = serializers.DateTimeField(source="created_at", read_only=True)
+
+    class Meta:
+        model = Comment
+        fields = ["id", "username", "message", "timestamp"]
