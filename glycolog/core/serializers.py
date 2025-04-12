@@ -3,7 +3,7 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
-from .models import ChatMessage, Comment, ExerciseCheck, FeelingCheck, FollowUpQuestion, FoodCategory, FoodItem, ForumCategory, ForumThread, GlucoseCheck, GlycaemicResponseTracker, Insight, Meal, GlucoseLog, MealCheck, Medication, MedicationReminder, QuestionnaireSession, SymptomCheck  # Import your models
+from .models import Achievement, ChatMessage, Comment, ExerciseCheck, FeelingCheck, FollowUpQuestion, FoodCategory, FoodItem, ForumCategory, ForumThread, GlucoseCheck, GlycaemicResponseTracker, Insight, Meal, GlucoseLog, MealCheck, Medication, MedicationReminder, QuestionnaireSession, Quiz, QuizSet, SymptomCheck, UserProfile, UserProgress  
 
 # Get the custom user model
 User = get_user_model()
@@ -337,3 +337,40 @@ class CommentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Comment
         fields = ["id", "username", "message", "timestamp"]
+        
+
+class QuizSerializer(serializers.ModelSerializer):
+    options = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Quiz
+        fields = ['id', 'question', 'options']
+
+    def get_options(self, obj):
+        return [obj.correct_answer] + obj.wrong_answers
+
+
+class QuizSetSerializer(serializers.ModelSerializer):
+    quizzes = QuizSerializer(source='quiz_set', many=True, read_only=True)
+
+    class Meta:
+        model = QuizSet
+        fields = ['id', 'title', 'description', 'related_topic', 'level', 'quizzes']
+
+
+class UserProgressSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserProgress
+        fields = ['quiz_set', 'score', 'completed', 'badge_awarded', 'xp_earned']
+
+
+class AchievementSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Achievement
+        fields = ['badge_name', 'points', 'awarded_at']
+
+
+class UserProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserProfile
+        fields = ['xp', 'level']

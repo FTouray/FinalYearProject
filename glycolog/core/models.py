@@ -1,8 +1,10 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.db.models import Q
+from django.dispatch import receiver
 from django.forms import JSONField
 from datetime import datetime, timedelta
+from django.db.models.signals import post_save
 
 # Custom user model extending Django's AbstractUser
 class CustomUser(AbstractUser):
@@ -487,3 +489,63 @@ class PersonalInsight(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.generated_at.strftime('%Y-%m-%d %H:%M:%S')}"
+    
+class QuizSet(models.Model):
+    title = models.CharField(max_length=100)
+    description = models.TextField()
+    related_topic = models.CharField(max_length=100)  
+    level = models.PositiveIntegerField(unique=True)
+
+    def __str__(self):
+        return f"{self.title} (Level {self.level})"
+
+
+class Quiz(models.Model):
+    quiz_set = models.ForeignKey(QuizSet, on_delete=models.CASCADE)
+    question = models.TextField()
+    correct_answer = models.CharField(max_length=255)
+    wrong_answers = models.JSONField()
+
+class UserProgress(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    quiz_set = models.ForeignKey(QuizSet, on_delete=models.CASCADE)
+    score = models.FloatField()
+    completed = models.BooleanField(default=False)
+    badge_awarded = models.BooleanField(default=False)
+    xp_earned = models.PositiveIntegerField(default=0)
+
+
+class Achievement(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    badge_name = models.CharField(max_length=100)
+    points = models.IntegerField(default=0)
+    awarded_at = models.DateTimeField(auto_now_add=True)
+
+
+class UserProfile(models.Model):
+    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
+    xp = models.PositiveIntegerField(default=0)
+    level = models.PositiveIntegerField(default=1)
+
+    def update_xp_and_level(self, earned_xp):
+        self.xp += earned_xp
+        self.level = (self.xp // 500) + 1 
+        self.save()
+        
+class QuizAttempt(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    quiz_set = models.ForeignKey(QuizSet, on_delete=models.CASCADE)
+    score = models.FloatField()
+    xp_earned = models.PositiveIntegerField()
+    attempted_at = models.DateTimeField(auto_now_add=True)
+    review = models.JSONField(default=list)
+        
+@receiver(post_save, sender=CustomUser)
+def create_user_profile(sender, instance, created, **kwargs):
+    if created:
+        UserProfile.objects.create(user=instance)
+
+
+@receiver(post_save, sender=CustomUser)
+def save_user_profile(sender, instance, **kwargs):
+    instance.userprofile.save()

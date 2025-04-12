@@ -9,6 +9,8 @@ from django.db.models import Max
 import requests
 from rest_framework import status, viewsets
 from rest_framework.response import Response
+from rest_framework.views import APIView
+from django.db.models import Sum
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
 from django.conf import settings
@@ -17,7 +19,7 @@ from core.services.ocr_service import extract_text_from_image, parse_dosage_info
 from core.services.openfda_service import fetch_openfda_drug_details, search_openfda_drugs
 from core.services.reminder_service import schedule_medication_reminder
 from .serializers import ChatMessageSerializer, CommentSerializer, ExerciseCheckSerializer, FoodCategorySerializer, FoodItemSerializer, ForumCategorySerializer, ForumThreadSerializer, GlucoseCheckSerializer, GlucoseLogSerializer, MealCheckSerializer, MealSerializer, MedicationReminderSerializer, MedicationSerializer, QuestionnaireSessionSerializer, RegisterSerializer, LoginSerializer, SettingsSerializer, SymptomCheckSerializer
-from .models import AIHealthTrend, AIRecommendation, ChatMessage, Comment, CustomUser, ExerciseCheck, FeelingCheck, FitnessActivity, FoodCategory, FoodItem, ForumCategory, ForumThread, GlucoseCheck, GlucoseLog, GlycaemicResponseTracker, LocalNotificationPrompt, Meal, MealCheck, Medication, MedicationReminder, PersonalInsight, QuestionnaireSession, SymptomCheck  
+from .models import AIHealthTrend, AIRecommendation, Achievement, ChatMessage, Comment, CustomUser, ExerciseCheck, FeelingCheck, FitnessActivity, FoodCategory, FoodItem, ForumCategory, ForumThread, GlucoseCheck, GlucoseLog, GlycaemicResponseTracker, LocalNotificationPrompt, Meal, MealCheck, Medication, MedicationReminder, PersonalInsight, QuestionnaireSession, Quiz, QuizAttempt, QuizSet, SymptomCheck, UserProfile, UserProgress  
 from django.contrib.auth import get_user_model
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.permissions import AllowAny
@@ -36,6 +38,10 @@ from rest_framework.generics import ListAPIView
 from openai import OpenAI
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
+from core.utils.model_loader import load_model
+from core.utils.preprocessing import preprocess_user_data
+from core.ml_models.train_personal_model import train_personal_model
+from core.ml_models.train_global_model import train_model, load_data
 
 
 User = get_user_model()
@@ -1469,3 +1475,217 @@ def list_past_insights(request):
         for i in insights
     ]
     return JsonResponse({"insights": data})
+
+class TrainPersonalModelView(APIView):
+    def post(self, request, user_id):
+        try:
+            train_personal_model(user_id)
+            return Response({"message": f"Personal model trained for user {user_id}"}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class TrainGlobalModelView(APIView):
+    def post(self, request):
+        try:
+            data = load_data()
+            train_model(data)
+            return Response({"message": "Global model trained successfully"}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class PredictView(APIView):
+    def post(self, request, user_id):
+        try:
+            # Load the personal model
+            model = load_model(model_type='personal', user_id=user_id)
+            
+            # Preprocess the input data
+            features = preprocess_user_data(user_id)
+            if features.empty:
+                return Response({"error": "Insufficient data for prediction"}, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Make prediction
+            prediction = model.predict(features)
+            return Response({"prediction": prediction.tolist()}, status=status.HTTP_200_OK)
+        except FileNotFoundError:
+            return Response({"error": "Model not found"}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+class PredictRiskView(APIView):
+    def post(self, request):
+        # Load the model
+        model_path = os.path.join(settings.BASE_DIR, 'core', 'ml_models', 'global_risk_model.pkl')
+        if not os.path.exists(model_path):
+            return Response({'error': 'Model not found.'}, status=status.HTTP_404_NOT_FOUND)
+        model = joblib.load(model_path)
+
+        # Extract features from request data
+        features = request.data.get('features')
+        if features is None:
+            return Response({'error': 'No features provided.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Make prediction
+        prediction = model.predict([features])
+        return Response({'prediction': prediction[0]})
+    
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def get_quizset_quizzes(request, level):
+    quiz_set = get_object_or_404(QuizSet, level=level)
+    quizzes = Quiz.objects.filter(quiz_set=quiz_set)
+    data = [
+        {
+            "id": quiz.id,
+            "question": quiz.question,
+            "options": [quiz.correct_answer] + quiz.wrong_answers
+        }
+        for quiz in quizzes
+    ]
+    return JsonResponse({"quiz_set": quiz_set.title, "description": quiz_set.description, "quizzes": data})
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def submit_quiz(request, quizset_id):
+    quiz_set = get_object_or_404(QuizSet, pk=quizset_id)
+    user_answers = request.data.get("answers", [])
+    questions = Quiz.objects.filter(quiz_set=quiz_set)
+    score = 0
+
+    detailed_results = []
+    for i, question in enumerate(questions):
+        user_answer = user_answers[i] if i < len(user_answers) else None
+        is_correct = user_answer == question.correct_answer
+        if is_correct:
+            score += 1
+
+        detailed_results.append({
+            "id": question.id,
+            "question": question.question,
+            "correct_answer": question.correct_answer,
+            "user_answer": user_answer,
+            "is_correct": is_correct,
+            "options": [question.correct_answer] + question.wrong_answers
+        })
+
+    percentage = (score / questions.count()) * 100
+    xp_awarded = 100 if percentage >= 70 else 50
+
+    progress, created = UserProgress.objects.get_or_create(
+        user=request.user,
+        quiz_set=quiz_set,
+        defaults={
+            "score": 0.0,
+            "completed": False,
+            "badge_awarded": False,
+            "xp_earned": 0
+        }
+    )
+    progress.score = percentage
+    progress.completed = percentage >= 70
+    progress.xp_earned = xp_awarded
+    progress.save()
+
+    if progress.completed and not progress.badge_awarded:
+        Achievement.objects.create(user=request.user, badge_name=f"Completed {quiz_set.title}", points=100)
+        progress.badge_awarded = True
+        progress.save()
+
+    user_profile, _ = UserProfile.objects.get_or_create(user=request.user)
+    user_profile.update_xp_and_level(xp_awarded)
+
+    QuizAttempt.objects.create(
+        user=request.user,
+        quiz_set=quiz_set,
+        score=percentage,
+        xp_earned=xp_awarded,
+        review=detailed_results
+    )
+
+    return JsonResponse({
+        "score": percentage,
+        "completed": progress.completed,
+        "xp_awarded": xp_awarded,
+        "quiz_set_level": quiz_set.level,
+        "review": detailed_results
+    })
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def list_all_quizsets_and_progress(request):
+    quiz_sets = QuizSet.objects.all().order_by("level")
+    progress_map = {
+        p.quiz_set.id: {"completed": p.completed, "score": p.score, "xp_earned": p.xp_earned}
+        for p in UserProgress.objects.filter(user=request.user)
+    }
+    data = [
+        {
+            "id": qs.id,
+            "title": qs.title,
+            "description": qs.description,
+            "level": qs.level,
+            "progress": progress_map.get(qs.id, {"completed": False, "score": 0, "xp_earned": 0})
+        }
+        for qs in quiz_sets
+    ]
+    return JsonResponse(data, safe=False)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def list_user_achievements(request):
+    achievements = Achievement.objects.filter(user=request.user).order_by("-awarded_at")
+    data = [
+        {
+            "badge_name": a.badge_name,
+            "points": a.points,
+            "awarded_at": a.awarded_at.strftime("%Y-%m-%d %H:%M")
+        }
+        for a in achievements
+    ]
+    return JsonResponse(data, safe=False)
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def leaderboard(request):
+    leaderboard_data = Achievement.objects.values("user__username").annotate(
+        total_points=Sum("points")
+    ).order_by("-total_points")[:10]
+    data = [
+        {
+            "username": entry["user__username"],
+            "points": entry["total_points"]
+        }
+        for entry in leaderboard_data
+    ]
+    return JsonResponse(data, safe=False)
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def get_user_profile(request):
+    profile, _ = UserProfile.objects.get_or_create(user=request.user)
+    print("User:", request.user)
+    print("Has profile:", hasattr(request.user, 'userprofile'))
+    return JsonResponse({
+        "xp": profile.xp,
+        "level": profile.level
+    })
+    
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def list_quiz_attempts(request):
+    attempts = QuizAttempt.objects.filter(user=request.user).order_by("-attempted_at")
+    data = [
+        {
+            "level": a.quiz_set.level,
+            "title": a.quiz_set.title,
+            "score": a.score,
+            "xp_earned": a.xp_earned,
+            "attempted_at": a.attempted_at.strftime("%Y-%m-%d %H:%M"),
+            "review": a.review
+        }
+        for a in attempts
+    ]
+    return JsonResponse(data, safe=False)

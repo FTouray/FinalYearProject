@@ -1,8 +1,13 @@
 import 'package:Glycolog/forum/forum_create_thread_screen.dart';
 import 'package:Glycolog/forum/forum_home_screen.dart';
 import 'package:Glycolog/forum/forum_thread_screen.dart';
+import 'package:Glycolog/learning/achievement_screen.dart';
+import 'package:Glycolog/learning/animated_quiz.dart';
+import 'package:Glycolog/learning/gamification_hub_screen.dart';
+import 'package:Glycolog/learning/quiz_attempt_history.dart';
+import 'package:Glycolog/learning/quiz_attempt_review.dart';
+import 'package:Glycolog/learning/quiz_result.dart';
 import 'package:Glycolog/services/health_sync_service.dart';
-import 'package:Glycolog/services/reminder_service.dart';
 import 'glycaemicResponseTracker/gRT_history_detail_screen.dart';
 import 'package:Glycolog/glycaemicResponseTracker/gRT_meal_log_history_screen.dart';
 import 'package:Glycolog/glycaemicResponseTracker/gRT_meal_log_screen.dart';
@@ -30,17 +35,12 @@ import 'loginRegister/register_screen.dart';
 import 'home/settings_screen.dart';
 import 'glycaemicResponseTracker/gRT_main_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import 'package:flutter_dotenv/flutter_dotenv.dart';  
 import 'questionnaire/glucose_step.dart';
 import 'questionnaire/review.dart';
-// import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tz;
-import 'package:timezone/timezone.dart' as tz;
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
-// final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -50,13 +50,6 @@ void main() async {
 
   final darkMode = await _loadDarkModePreference();
   final token = await _loadToken();
-
-  // const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('app_icon'); 
-  // const InitializationSettings initializationSettings = InitializationSettings(android: initializationSettingsAndroid);
-
-  // await flutterLocalNotificationsPlugin.initialize(initializationSettings);
-
-  // ReminderService.init(flutterLocalNotificationsPlugin);
 
   runApp(MyApp(darkModeEnabled: darkMode, token: token));
 
@@ -127,12 +120,7 @@ class _MyAppState extends State<MyApp> {
         _firstName = name ?? 'User';
       });
     });
-    // _initReminders();
   }
-
-  // void _initReminders() async {
-  //   await ReminderService.syncRemindersWithLocalNotifications();
-  // }
 
   // Toggle dark mode
   void _toggleDarkMode(bool isEnabled) {
@@ -150,29 +138,6 @@ class _MyAppState extends State<MyApp> {
 
   final String baseUrl = dotenv.env['API_URL']!;
 
-  // Function to refresh the token
-  Future<void> _refreshToken(BuildContext context) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/token/refresh/'),
-      headers: {'Content-Type': 'application/json'},
-      body: json.encode({'refresh': _token}),
-    );
-
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      _token = data['access'];
-      await _saveToken(_token!);
-    } else {
-      print('Failed to refresh token: ${response.reasonPhrase}');
-      await authService.logout(context);
-    }
-  }
-
-  // Save the token in SharedPreferences
-  Future<void> _saveToken(String token) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('access_token', token);
-  }
 
   Future<String?> _loadFirstName() async {
     final prefs = await SharedPreferences.getInstance();
@@ -235,6 +200,24 @@ class _MyAppState extends State<MyApp> {
               as Map<String, dynamic>?;
           return ForumCreateThreadScreen(categoryId: args?['categoryId']);
         },
+        '/gamification': (context) => GamificationGameHub(),
+        '/gamification/module': (context) {
+          final level = ModalRoute.of(context)!.settings.arguments as int;
+          return AnimatedQuizPage(level: level);
+        },
+        '/gamification/result': (context) {
+          final result = ModalRoute.of(context)!.settings.arguments
+              as Map<String, dynamic>;
+          return QuizResultPage(
+              result: result);
+        },
+        '/gamification/stats': (context) => AchievementsAndLeaderboard(),
+        '/gamification/attempts': (context) => QuizAttemptHistoryPage(),
+        '/gamification/attempt-review': (context) {
+          final review =
+              ModalRoute.of(context)!.settings.arguments as List<dynamic>;
+          return QuizAttemptReviewPage(review: review);
+        }
       },
       onGenerateRoute: (settings) {
         switch (settings.name) {
