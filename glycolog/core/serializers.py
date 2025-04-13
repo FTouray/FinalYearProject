@@ -1,5 +1,6 @@
 from django.shortcuts import get_object_or_404
 from rest_framework import serializers
+from django.contrib.auth import authenticate
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
@@ -41,6 +42,24 @@ class RegisterSerializer(serializers.ModelSerializer):
 class LoginSerializer(serializers.Serializer):
     username = serializers.CharField(required=True)
     password = serializers.CharField(write_only=True, required=True)
+    
+    first_name = serializers.CharField(read_only=True)
+    last_name = serializers.CharField(read_only=True)
+    email = serializers.EmailField(read_only=True)
+    phone_number = serializers.CharField(read_only=True, allow_blank=True, required=False)
+
+    def validate(self, data):
+        user = authenticate(
+            username=data.get("username"),
+            password=data.get("password")
+        )
+
+        if user is None:
+            raise serializers.ValidationError("Invalid username or password.")
+
+        # Attach user to the validated data so it can be used in the view
+        data['user'] = user
+        return data
 
 # Glucose Log Serializer
 class GlucoseLogSerializer(serializers.ModelSerializer):

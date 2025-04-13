@@ -1,14 +1,14 @@
 from django.urls import path
 from .views import ( MedicationListView, MedicationReminderListView, 
     chat_with_virtual_coach, create_category, create_comment, create_thread, delete_medication, exercise_step, 
-    chat_history, fetch_medications_from_openfda, get_ai_health_trends, get_all_ai_health_trends, get_insights_summary_with_ai, get_last_synced_workout, get_predictive_feedback, get_quizset_quizzes, get_user_profile, latest_fitness_entry,
+    chat_history, fetch_medications_from_openfda, get_ai_health_trends, get_all_ai_health_trends, get_insights_summary_with_ai, get_last_synced_workout, get_predictive_feedback, get_quizset_quizzes, get_user_profile, get_user_profile_detail, latest_fitness_entry,
     get_local_notifications, get_medication_reminders, leaderboard, list_ai_recommendations,
     get_saved_medications, list_all_quizsets_and_progress, list_comments_for_thread, list_forum_categories, list_past_insights, list_quiz_attempts, list_threads_by_category, list_user_achievements, submit_quiz, today_fitness_summary, meal_step, glucose_step, glycaemic_response_main,
     list_categories, list_food_items_by_category, log_glucose, log_meal, meal_log_detail,
     meal_log_history, questionnaire_data_visualization, queue_local_notification, register_user,
     login_user, review_answers, save_medication, scan_medication, set_reminder, settings_view,
     glucose_log_details, glucose_log_history, start_questionnaire, log_health_entry,
-    symptom_step, update_medication, get_dashboard_summary
+    symptom_step, update_medication, get_dashboard_summary, update_profile
 )
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
@@ -20,6 +20,8 @@ urlpatterns = [
     # Auth
     path("register/", register_user, name="register"),
     path("login/", login_user, name="login"),
+    path("update/profile/", update_profile, name="update_profile"),
+    path("profile/details", get_user_profile_detail, name="get_user_profile_detail"),
 
     # Glucose Log
     path("glucose-log/", log_glucose, name="glucose-log"),

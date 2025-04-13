@@ -73,36 +73,62 @@ def register_user(request):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['POST'])
-@permission_classes([AllowAny])  
+@permission_classes([AllowAny])
 def login_user(request):
     serializer = LoginSerializer(data=request.data)
 
     if serializer.is_valid():
-        username = serializer.validated_data['username']
-        password = serializer.validated_data['password']
-
-        # Authenticate user
-        user = authenticate(request, username=username, password=password)
+        user = authenticate(
+            request,
+            username=serializer.validated_data['username'],
+            password=serializer.validated_data['password']
+        )
 
         if user is not None:
-            # Generate access token
             refresh = RefreshToken.for_user(user)
-            access = AccessToken.for_user(user)
+            access = refresh.access_token
 
-            print(f"Login successful for user: {username}")
             return Response({
-                "access": str(access),  # Include the access token in the response
-                "refresh": str(refresh),  # Refresh token
-                "first_name": user.first_name,  # Include the first name in the response
+                "access": str(access),
+                "refresh": str(refresh),
                 "username": user.username,
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+                "email": user.email,
+                "phone_number": user.phone_number
             }, status=status.HTTP_200_OK)
-        else:
-            print(f"Login failed for user: {username}")
-            return Response({"error": "Username or password is incorrect."}, status=status.HTTP_401_UNAUTHORIZED)
-    else:
-        print("Serializer validation failed:", serializer.errors)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(
+            {"error": "Invalid username or password."},
+            status=status.HTTP_401_UNAUTHORIZED
+        )
+
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_user_profile_detail(request):
+    user = request.user
+    return Response({
+        "first_name": user.first_name,
+        "last_name": user.last_name,
+        "email": user.email,
+        "phone_number": user.phone_number
+    })
+    
+@api_view(['PATCH'])
+@permission_classes([IsAuthenticated])
+def update_profile(request):
+    user = request.user
+    data = request.data
+
+    user.first_name = data.get('first_name', user.first_name)
+    user.last_name = data.get('last_name', user.last_name)
+    user.email = data.get('email', user.email)
+    user.phone_number = data.get('phone_number', user.phone_number)
+    user.save()
+
+    return Response({'message': 'Profile updated successfully'})
 
 @api_view(['GET','POST'])
 @permission_classes([IsAuthenticated])  # Ensure the user is authenticated

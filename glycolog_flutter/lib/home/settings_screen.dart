@@ -1,6 +1,10 @@
 import 'package:Glycolog/home/base_screen.dart';
+import 'package:Glycolog/services/auth_service.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class SettingsScreen extends StatefulWidget {
   final Function(bool) onToggleDarkMode; // Callback to toggle dark mode
@@ -12,6 +16,10 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  final TextEditingController _firstNameController = TextEditingController();
+  final TextEditingController _lastNameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
   String _selectedUnit = 'mg/dL'; // Default unit for glucose measurement
   bool _notificationsEnabled = true; // Notifications on by default
   bool _darkModeEnabled = false; // Dark mode off by default
@@ -20,11 +28,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final TextEditingController _targetMinController = TextEditingController();
   final TextEditingController _targetMaxController = TextEditingController();
   String? _targetRangeError; // Validation error for target range
+  final String? apiUrl = dotenv.env['API_URL'];
+  bool _profileFetched = false;
+  bool _isEditingProfile = false;
 
   @override
   void initState() {
     super.initState();
-    _loadPreferences(); // Load saved settings
+    _loadPreferences();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_profileFetched) {
+      fetchUserProfile(); // this ensures it's only called once
+      _profileFetched = true;
+    }
   }
 
   // Load saved settings from SharedPreferences
@@ -50,36 +70,99 @@ class _SettingsScreenState extends State<SettingsScreen> {
     });
   }
 
+  Future<void> fetchUserProfile() async {
+    final token = await AuthService().getAccessToken();
+    print("🔑 Access Token: $token");
+
+    if (token == null) {
+      print("❌ No token found.");
+      return;
+    }
+
+    final res = await http.get(
+      Uri.parse('$apiUrl/profile/details'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+
+    if (res.statusCode == 200) {
+      final data = json.decode(res.body);
+      print("✅ Profile data received: $data");
+
+      setState(() {
+        _firstNameController.text = data['first_name'] ?? '';
+        _lastNameController.text = data['last_name'] ?? '';
+        _emailController.text = data['email'] ?? '';
+        _phoneController.text = data['phone_number'] ?? '';
+      });
+    } else {
+      print("⚠️ Failed to load profile: ${res.statusCode}");
+      print("🧾 Body: ${res.body}");
+    }
+  }
+
+
+
   // Save settings for persistence in SharedPreferences
   Future<void> _saveSettings() async {
     final prefs = await SharedPreferences.getInstance();
+    final token = await AuthService().getAccessToken();
+    final apiUrl = dotenv.env['API_URL'];
+
     await prefs.setString('selectedUnit', _selectedUnit);
     await prefs.setBool('notificationsEnabled', _notificationsEnabled);
     await prefs.setBool('darkModeEnabled', _darkModeEnabled);
     await prefs.setString('diabetesType', _diabetesType);
     await prefs.setBool('isInsulinDependent', _isInsulinDependent);
 
+    await prefs.setString('first_name', _firstNameController.text);
+    await prefs.setString('last_name', _lastNameController.text);
+    await prefs.setString('email', _emailController.text);
+    await prefs.setString('phone_number', _phoneController.text);
+
     // Save target range in mg/dL for consistency
     double targetMin = double.parse(_targetMinController.text);
     double targetMax = double.parse(_targetMaxController.text);
     if (_selectedUnit == 'mmol/L') {
-      targetMin *= 18; // Convert mmol/L to mg/dL
+      targetMin *= 18;
       targetMax *= 18;
     }
     await prefs.setDouble('targetMin', targetMin);
     await prefs.setDouble('targetMax', targetMax);
 
-    // Trigger the dark mode change across the app
+    // Send to backend
+    if (token != null) {
+      final res = await http.patch(
+        Uri.parse('$apiUrl/update/profile/'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          "first_name": _firstNameController.text,
+          "last_name": _lastNameController.text,
+          "email": _emailController.text,
+          "phone_number": _phoneController.text,
+        }),
+      );
+
+      if (res.statusCode == 200 || res.statusCode == 204) {
+        print("✅ Profile updated on server");
+      } else {
+        print("⚠️ Failed to update profile on server: ${res.statusCode}");
+      }
+    }
+
     widget.onToggleDarkMode(_darkModeEnabled);
 
-    // Show confirmation message
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Profile Settings saved successfully!'),
+        content: Text('Profile settings saved successfully!'),
         duration: Duration(seconds: 2),
       ),
     );
   }
+
 
 // Validate the target range
   bool _validateTargetRange() {
@@ -121,16 +204,57 @@ class _SettingsScreenState extends State<SettingsScreen> {
  @override
   Widget build(BuildContext context) {
     return BaseScaffoldScreen(
-      selectedIndex: 2, 
+      selectedIndex: 2,
       onItemTapped: (index) {
         final routes = ['/home', '/forum', '/settings'];
         Navigator.pushNamed(context, routes[index]);
       },
+      
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Card(
+              elevation: 2,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              margin: const EdgeInsets.symmetric(vertical: 10),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.account_circle, color: Colors.blue),
+                        const SizedBox(width: 8),
+                        const Text("Your Profile", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                        const Spacer(),
+                        IconButton(
+                          icon: Icon(
+                            _isEditingProfile ? Icons.close : Icons.edit,
+                            color: Colors.blue,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _isEditingProfile = !_isEditingProfile;
+                            });
+                          },
+                          tooltip: _isEditingProfile ? "Cancel Editing" : "Edit Profile",
+                        )
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    _buildProfileField(_firstNameController, 'First Name', icon: Icons.badge, enabled: _isEditingProfile),
+                    _buildProfileField(_lastNameController, 'Last Name', icon: Icons.person, enabled: _isEditingProfile),
+                    _buildProfileField(_emailController, 'Email', icon: Icons.email, inputType: TextInputType.emailAddress, enabled: _isEditingProfile),
+                    _buildProfileField(_phoneController, 'Phone Number', icon: Icons.phone, inputType: TextInputType.phone, enabled: _isEditingProfile),
+                  ],
+                ),
+              ),
+            ),
+
+            const Divider(),
             _buildSectionTitle('Measurement Unit'),
             _buildRadioTile(
               title: 'mg/dL',
@@ -199,10 +323,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 30),
             Center(
-              child: ElevatedButton(
+              child: ElevatedButton.icon(
                 onPressed: () {
                   if (_validateTargetRange()) _saveSettings();
                 },
+                icon: const Icon(Icons.save, color: Colors.white),
+                label: const Text(
+                  'Save All Settings',
+                  style: TextStyle(fontSize: 18, color: Colors.white),
+                ),
                 style: ElevatedButton.styleFrom(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 50, vertical: 15),
@@ -211,13 +340,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     borderRadius: BorderRadius.circular(12.0),
                   ),
                 ),
-                child: const Text(
-                  'Save All Settings',
-                  style: TextStyle(fontSize: 18, color: Colors.white),
-                ),
               ),
             ),
+
           ],
+        ),
+      ),
+    );
+  }
+
+Widget _buildProfileField(TextEditingController controller, String label,
+      {IconData? icon,
+      TextInputType inputType = TextInputType.text,
+      bool enabled = true}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: TextField(
+        controller: controller,
+        enabled: enabled,
+        keyboardType: inputType,
+        decoration: InputDecoration(
+          labelText: label,
+          prefixIcon: Icon(icon ?? Icons.person_outline),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.0)),
         ),
       ),
     );

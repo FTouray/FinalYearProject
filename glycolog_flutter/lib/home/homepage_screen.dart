@@ -197,7 +197,7 @@ Future<void> _setup() async {
             GamificationDashboardCard(),
             const SizedBox(height: 24),
             _buildFeatureItem(
-              "💬 Daily Check-in",
+              "💬 Not Feeling Well",
               "Let us know how you’re feeling.",
               () => _showFeelingPopup(context),
             ),
