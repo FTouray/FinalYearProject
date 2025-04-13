@@ -14,6 +14,7 @@ from firebase_admin import credentials
 from pathlib import Path
 import os
 from dotenv import load_dotenv
+from celery.schedules import crontab
 load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -176,3 +177,10 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CELERY_BROKER_URL = 'redis://localhost:6379/0'
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
+
+CELERY_BEAT_SCHEDULE = {
+    'retrain-user-models-weekly': {
+        'task': 'core.tasks.retrain_all_user_models_task',
+        'schedule': crontab(hour=3, minute=0, day_of_week='sun'),
+    },
+}

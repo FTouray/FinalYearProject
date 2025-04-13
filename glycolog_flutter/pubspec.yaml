@@ -53,6 +53,7 @@ dependencies:
   web_socket_channel: ^2.4.0
   pdf: ^3.10.4
   printing: ^5.11.0
+  confetti: ^0.8.0
   # flutter_local_notifications: 18.0.1
   # flutter_background_service: ^5.0.5
   # awesome_notifications: ^0.10.1

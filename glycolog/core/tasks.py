@@ -1,6 +1,7 @@
 from datetime import timedelta
 from django.utils.timezone import now
 from celery import shared_task
+import subprocess
 from django.db import models
 from core.models import CustomUser, FitnessActivity, AIRecommendation, UserNotification
 from core.fitness_ai import generate_ai_recommendation, generate_health_trends
@@ -89,3 +90,8 @@ def send_push_notification(user_id, title, message):
 def send_medication_reminder(user_id, medication_name):
     print(f"Reminder: Time to take {medication_name} for User {user_id}")
     return f"Reminder sent for {medication_name}"
+
+@shared_task
+def retrain_all_user_models_task():
+    subprocess.run(["python", "manage.py", "retrain_all_user_models"])
+    return "✅ User models retrained"

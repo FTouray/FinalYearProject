@@ -18,8 +18,8 @@ from core.fitness_ai import generate_ai_recommendation, generate_health_trends
 from core.services.ocr_service import extract_text_from_image, parse_dosage_info
 from core.services.openfda_service import fetch_openfda_drug_details, search_openfda_drugs
 from core.services.reminder_service import schedule_medication_reminder
-from .serializers import ChatMessageSerializer, CommentSerializer, ExerciseCheckSerializer, FoodCategorySerializer, FoodItemSerializer, ForumCategorySerializer, ForumThreadSerializer, GlucoseCheckSerializer, GlucoseLogSerializer, MealCheckSerializer, MealSerializer, MedicationReminderSerializer, MedicationSerializer, QuestionnaireSessionSerializer, RegisterSerializer, LoginSerializer, SettingsSerializer, SymptomCheckSerializer
-from .models import AIHealthTrend, AIRecommendation, Achievement, ChatMessage, Comment, CustomUser, ExerciseCheck, FeelingCheck, FitnessActivity, FoodCategory, FoodItem, ForumCategory, ForumThread, GlucoseCheck, GlucoseLog, GlycaemicResponseTracker, LocalNotificationPrompt, Meal, MealCheck, Medication, MedicationReminder, PersonalInsight, QuestionnaireSession, Quiz, QuizAttempt, QuizSet, SymptomCheck, UserProfile, UserProgress  
+from .serializers import ChatMessageSerializer, CommentSerializer, ExerciseCheckSerializer, FoodCategorySerializer, FoodItemSerializer, ForumCategorySerializer, ForumThreadSerializer, GlucoseCheckSerializer, GlucoseLogSerializer, MealCheckSerializer, MealSerializer, MedicationReminderSerializer, MedicationSerializer, PredictiveFeedbackSerializer, QuestionnaireSessionSerializer, RegisterSerializer, LoginSerializer, SettingsSerializer, SymptomCheckSerializer
+from .models import AIHealthTrend, AIRecommendation, Achievement, ChatMessage, Comment, CustomUser, ExerciseCheck, FeelingCheck, FitnessActivity, FoodCategory, FoodItem, ForumCategory, ForumThread, GlucoseCheck, GlucoseLog, GlycaemicResponseTracker, LocalNotificationPrompt, Meal, MealCheck, Medication, MedicationReminder, PersonalInsight, PredictiveFeedback, QuestionnaireSession, Quiz, QuizAttempt, QuizSet, SymptomCheck, UserProfile, UserProgress  
 from django.contrib.auth import get_user_model
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.permissions import AllowAny
@@ -38,10 +38,7 @@ from rest_framework.generics import ListAPIView
 from openai import OpenAI
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
-from core.utils.model_loader import load_model
-from core.utils.preprocessing import preprocess_user_data
-from core.ml_models.train_personal_model import train_personal_model
-from core.ml_models.train_global_model import train_model, load_data
+import re
 
 
 User = get_user_model()
@@ -515,7 +512,7 @@ def review_answers(request):
 
     session.completed = True
     session.save()
-
+    
     return Response(data)
 
 @api_view(["GET"])
@@ -1476,59 +1473,6 @@ def list_past_insights(request):
     ]
     return JsonResponse({"insights": data})
 
-class TrainPersonalModelView(APIView):
-    def post(self, request, user_id):
-        try:
-            train_personal_model(user_id)
-            return Response({"message": f"Personal model trained for user {user_id}"}, status=status.HTTP_200_OK)
-        except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-class TrainGlobalModelView(APIView):
-    def post(self, request):
-        try:
-            data = load_data()
-            train_model(data)
-            return Response({"message": "Global model trained successfully"}, status=status.HTTP_200_OK)
-        except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-class PredictView(APIView):
-    def post(self, request, user_id):
-        try:
-            # Load the personal model
-            model = load_model(model_type='personal', user_id=user_id)
-            
-            # Preprocess the input data
-            features = preprocess_user_data(user_id)
-            if features.empty:
-                return Response({"error": "Insufficient data for prediction"}, status=status.HTTP_400_BAD_REQUEST)
-            
-            # Make prediction
-            prediction = model.predict(features)
-            return Response({"prediction": prediction.tolist()}, status=status.HTTP_200_OK)
-        except FileNotFoundError:
-            return Response({"error": "Model not found"}, status=status.HTTP_404_NOT_FOUND)
-        except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
-class PredictRiskView(APIView):
-    def post(self, request):
-        # Load the model
-        model_path = os.path.join(settings.BASE_DIR, 'core', 'ml_models', 'global_risk_model.pkl')
-        if not os.path.exists(model_path):
-            return Response({'error': 'Model not found.'}, status=status.HTTP_404_NOT_FOUND)
-        model = joblib.load(model_path)
-
-        # Extract features from request data
-        features = request.data.get('features')
-        if features is None:
-            return Response({'error': 'No features provided.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Make prediction
-        prediction = model.predict([features])
-        return Response({'prediction': prediction[0]})
-    
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def get_quizset_quizzes(request, level):
@@ -1689,3 +1633,56 @@ def list_quiz_attempts(request):
         for a in attempts
     ]
     return JsonResponse(data, safe=False)
+
+SYMPTOMS = [
+    'Fatigue', 'Headaches', 'Dizziness', 'Thirst', 'Nausea', 'Blurred Vision',
+    'Irritability', 'Sweating', 'Frequent Urination', 'Dry Mouth',
+    'Slow Wound Healing', 'Weight Loss', 'Increased Hunger', 'Shakiness',
+    'Hunger', 'Fast Heartbeat'
+]
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_predictive_feedback(request):
+    user = request.user
+    all_feedback = PredictiveFeedback.objects.filter(user=user).order_by('-timestamp')
+
+    # Read preferred unit from headers (default to mg/dL)
+    preferred_unit = request.headers.get('Glucose-Unit', 'mg/dL')
+
+    def convert_value(val):
+        try:
+            val = float(val)
+            return val / 18.01559 if preferred_unit == 'mmol/L' else val
+        except:
+            return val
+
+    def convert_units(text):
+        # Look for patterns like <=130, >=180, =110
+        pattern = r'([<>=]=?)\s*(\d+(?:\.\d+)?)'
+
+        def replacer(match):
+            op = match.group(1)
+            value = match.group(2)
+            converted = convert_value(value)
+            rounded = round(converted, 1) if preferred_unit == 'mmol/L' else int(round(converted))
+            return f"{op} {rounded}"
+
+        return re.sub(pattern, replacer, text)
+
+    feedback_data = [
+        {
+            'text': convert_units(fb.insight),
+            'type': fb.feedback_type,
+            'timestamp': fb.timestamp
+        }
+        for fb in all_feedback
+    ]
+
+    summary = {
+        'positive': [f['text'] for f in feedback_data if f['type'] in ('improvement', 'shap') and f['text'].startswith("✅")],
+        'trend': [f['text'] for f in feedback_data if f['type'] == 'trend'],
+        'all': feedback_data
+    }
+
+    return Response({'predictive_feedback': summary})

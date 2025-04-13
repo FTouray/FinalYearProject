@@ -114,8 +114,6 @@ class FeelingCheck(models.Model):
     feeling = models.CharField(
         max_length=20,
         choices=[
-            ('good', 'Good'),
-            ('okay', 'Okay'),
             ('bad', 'Bad'),
         ]
     )
@@ -549,3 +547,17 @@ def create_user_profile(sender, instance, created, **kwargs):
 @receiver(post_save, sender=CustomUser)
 def save_user_profile(sender, instance, **kwargs):
     instance.userprofile.save()
+    
+class PredictiveFeedback(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="predictive_feedback")
+    insight = models.TextField()  # The actual feedback/explanation string
+    timestamp = models.DateTimeField(auto_now_add=True)
+    model_version = models.CharField(max_length=50, default="v1.0")
+    feedback_type = models.CharField(max_length=20, choices=[
+    ('shap', 'SHAP-based'),
+    ('trend', 'Trend-based'),
+    ('improvement', 'Improvement'),
+])
+
+    def __str__(self):
+        return f"{self.user.username} - {self.timestamp.strftime('%Y-%m-%d %H:%M')}"

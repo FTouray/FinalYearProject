@@ -3,7 +3,7 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
-from .models import Achievement, ChatMessage, Comment, ExerciseCheck, FeelingCheck, FollowUpQuestion, FoodCategory, FoodItem, ForumCategory, ForumThread, GlucoseCheck, GlycaemicResponseTracker, Insight, Meal, GlucoseLog, MealCheck, Medication, MedicationReminder, QuestionnaireSession, Quiz, QuizSet, SymptomCheck, UserProfile, UserProgress  
+from .models import Achievement, ChatMessage, Comment, ExerciseCheck, FeelingCheck, FollowUpQuestion, FoodCategory, FoodItem, ForumCategory, ForumThread, GlucoseCheck, GlycaemicResponseTracker, Insight, Meal, GlucoseLog, MealCheck, Medication, MedicationReminder, PredictiveFeedback, QuestionnaireSession, Quiz, QuizSet, SymptomCheck, UserProfile, UserProgress  
 
 # Get the custom user model
 User = get_user_model()
@@ -374,3 +374,8 @@ class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserProfile
         fields = ['xp', 'level']
+        
+class PredictiveFeedbackSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PredictiveFeedback
+        fields = ['user', 'insight', 'timestamp', 'model_version', 'feedback_type']
