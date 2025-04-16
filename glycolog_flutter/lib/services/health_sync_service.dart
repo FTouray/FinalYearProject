@@ -1,10 +1,9 @@
 import 'dart:convert';
-import 'package:flutter/material.dart';
 import 'package:health/health.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:Glycolog/services/auth_service.dart';
+import 'package:glycolog/services/auth_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class HealthSyncService {
@@ -37,30 +36,6 @@ class HealthSyncService {
     );
   }
 
-  // Optionally fetch just last 24 hours (not used below, but can be used if needed)
-  Future<List<HealthDataPoint>> _getLast24HoursData() async {
-    final now = DateTime.now();
-    final start = now.subtract(const Duration(days: 1));
-
-    print("📆 Fetching last 24h data from $start to $now");
-
-    final records = await _health.getHealthDataFromTypes(
-      types: _requiredTypes,
-      startTime: start,
-      endTime: now,
-    );
-
-    final deduplicated = _health.removeDuplicates(records);
-    print("📦 Last 24h records fetched: ${records.length}");
-    print("🧹 Deduplicated count: ${deduplicated.length}");
-
-    if (deduplicated.isNotEmpty) {
-      print("🧪 Sample: ${deduplicated.first.type} "
-          "at ${deduplicated.first.dateFrom} = ${deduplicated.first.value}");
-    }
-
-    return deduplicated;
-  }
 
   // The main function we call for historical data
   Future<List<HealthDataPoint>> _getHistoricalData(

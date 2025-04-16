@@ -1,13 +1,13 @@
-import 'package:Glycolog/home/base_screen.dart';
+import 'package:glycolog/home/base_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:Glycolog/services/auth_service.dart';
+import 'package:glycolog/services/auth_service.dart';
 import 'forum_thread_list_screen.dart';
 
 class ForumHomeScreen extends StatefulWidget {
-  const ForumHomeScreen({Key? key}) : super(key: key);
+  const ForumHomeScreen({super.key});
 
   @override
   State<ForumHomeScreen> createState() => _ForumHomeScreenState();

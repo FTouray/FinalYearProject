@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:Glycolog/utils.dart';
+import 'package:glycolog/utils.dart';
 
 class GlucoseLogConfirmationScreen extends StatelessWidget {
   final double glucoseLevel;
@@ -9,13 +9,13 @@ class GlucoseLogConfirmationScreen extends StatelessWidget {
   final String mealContext;
 
   const GlucoseLogConfirmationScreen({
-    Key? key,
+    super.key,
     required this.glucoseLevel,
     required this.selectedDate,
     required this.selectedTime,
     required this.measurementUnit,
     required this.mealContext,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

@@ -1,4 +1,4 @@
-import 'package:Glycolog/services/auth_service.dart';
+import 'package:glycolog/services/auth_service.dart';
 import 'package:device_calendar/device_calendar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -12,8 +12,7 @@ class MedicationReminderScreen extends StatefulWidget {
   const MedicationReminderScreen({super.key, required this.medication});
 
   @override
-  State<MedicationReminderScreen> createState() =>
-      _MedicationReminderScreenState();
+  State<MedicationReminderScreen> createState() => _MedicationReminderScreenState();
 }
 
 class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
@@ -81,8 +80,7 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
         context: context,
         builder: (_) => AlertDialog(
           title: const Text("Reminder Added"),
-          content: const Text(
-              "Your medication reminders have been added to your calendar."),
+          content: const Text("Your medication reminders have been added to your calendar."),
           actions: [
             TextButton(
               child: const Text("OK"),
@@ -137,10 +135,8 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
           frequency == RecurrenceFrequency.Daily
               ? startDate.add(Duration(days: repeatInterval * repeatDuration))
               : frequency == RecurrenceFrequency.Weekly
-                  ? startDate
-                      .add(Duration(days: repeatInterval * 7 * repeatDuration))
-                  : startDate.add(
-                      Duration(days: 30 * repeatInterval * repeatDuration)),
+                  ? startDate.add(Duration(days: repeatInterval * 7 * repeatDuration))
+                  : startDate.add(Duration(days: 30 * repeatInterval * repeatDuration)),
           local,
         ),
       ),
@@ -150,37 +146,40 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
 
     if (result?.isSuccess == true && result?.data != null) {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(
-          'eventId_med${widget.medication["id"]}', result!.data!);
+      await prefs.setString('eventId_med${widget.medication["id"]}', result!.data!);
     }
   }
 
   int _dayStringToInt(String day) {
     switch (day) {
-      case "Monday":
-        return 1;
-      case "Tuesday":
-        return 2;
-      case "Wednesday":
-        return 3;
-      case "Thursday":
-        return 4;
-      case "Friday":
-        return 5;
-      case "Saturday":
-        return 6;
-      case "Sunday":
-        return 7;
+      case "Monday": return 1;
+      case "Tuesday": return 2;
+      case "Wednesday": return 3;
+      case "Thursday": return 4;
+      case "Friday": return 5;
+      case "Saturday": return 6;
+      case "Sunday": return 7;
+      default: return 1;
+    }
+  }
+
+  String getUnitLabel(String type) {
+    switch (type) {
+      case "Daily":
+        return "days";
+      case "Weekly":
+        return "weeks";
+      case "Monthly":
+        return "months";
       default:
-        return 1;
+        return "periods";
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar:
-          AppBar(title: Text("Set Reminder for ${widget.medication['name']}")),
+      appBar: AppBar(title: Text("Set Reminder for ${widget.medication['name']}")),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -211,8 +210,7 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
             DropdownButton<String>(
               value: frequencyType,
               items: frequencyTypes
-                  .map((type) =>
-                      DropdownMenuItem(value: type, child: Text(type)))
+                  .map((type) => DropdownMenuItem(value: type, child: Text(type)))
                   .toList(),
               onChanged: (value) => setState(() => frequencyType = value!),
             ),
@@ -223,8 +221,7 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
                 DropdownButton<int>(
                   value: repeatInterval,
                   items: List.generate(30, (index) => index + 1)
-                      .map((val) =>
-                          DropdownMenuItem(value: val, child: Text("$val")))
+                      .map((val) => DropdownMenuItem(value: val, child: Text("$val")))
                       .toList(),
                   onChanged: (value) => setState(() => repeatInterval = value!),
                 ),
@@ -232,18 +229,19 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
                 Text(frequencyType.toLowerCase()),
               ],
             ),
-            Row(
+           Row(
               children: [
-                const Text("Repeat for: "),
-                const SizedBox(width: 10),
+                const Text("Repeat for "),
+                const SizedBox(width: 8),
                 DropdownButton<int>(
                   value: repeatDuration,
                   items: [1, 2, 3, 4, 6, 8, 12]
                       .map((val) => DropdownMenuItem(
-                          value: val,
-                          child: Text("$val ${frequencyType.toLowerCase()}s")))
+                            value: val,
+                            child: Text("$val ${getUnitLabel(frequencyType)}"),
+                          ))
                       .toList(),
-                  onChanged: (value) => setState(() => repeatDuration = value!),
+                  onChanged: (val) => setState(() => repeatDuration = val!),
                 ),
               ],
             ),

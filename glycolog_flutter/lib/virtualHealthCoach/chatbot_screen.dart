@@ -14,8 +14,7 @@ class ChatbotScreen extends StatefulWidget {
 class _ChatbotScreenState extends State<ChatbotScreen> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  List<Map<String, String>> _messages = [];
-  String? _preferredGlucoseUnit = "mg/dL"; // Default unit
+  final List<Map<String, String>> _messages = [];
   final String? apiUrl = dotenv.env['API_URL'];
 
   int _currentPage = 1;
@@ -43,7 +42,6 @@ Future<void> _fetchPreferredGlucoseUnit() async {
     final savedUnit = prefs.getString('selectedUnit');
 
     setState(() {
-      _preferredGlucoseUnit = savedUnit ?? 'mg/dL';
     });
   }
 

@@ -1,11 +1,13 @@
 import 'dart:convert';
-import 'package:Glycolog/learning/xp_level_widget.dart';
-import 'package:Glycolog/services/auth_service.dart';
+import 'package:glycolog/learning/xp_level_widget.dart';
+import 'package:glycolog/services/auth_service.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class GamificationDashboardCard extends StatefulWidget {
+  const GamificationDashboardCard({super.key});
+
   @override
   _GamificationDashboardCardState createState() => _GamificationDashboardCardState();
 }

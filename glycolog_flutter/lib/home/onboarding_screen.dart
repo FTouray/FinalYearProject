@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class OnboardingScreen extends StatefulWidget {
+  const OnboardingScreen({super.key});
+
   @override
   _OnboardingScreenState createState() => _OnboardingScreenState();
 }
@@ -168,7 +170,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               controller: _targetMinController,
               keyboardType: TextInputType.number,
               decoration: InputDecoration(
-                labelText: 'Minimum (${_selectedUnit})',
+                labelText: 'Minimum ($_selectedUnit)',
                 errorText: _targetRangeError,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12.0),
@@ -180,7 +182,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               controller: _targetMaxController,
               keyboardType: TextInputType.number,
               decoration: InputDecoration(
-                labelText: 'Maximum (${_selectedUnit})',
+                labelText: 'Maximum ($_selectedUnit)',
                 errorText: _targetRangeError,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12.0),

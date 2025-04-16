@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:glycolog/glycaemicResponseTracker/grt_meal_confirmation_screen.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'gRT_meal_confirmation_screen.dart';
-import 'package:Glycolog/services/auth_service.dart';
+import 'package:glycolog/services/auth_service.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class FoodCategory {
@@ -30,7 +30,7 @@ bool operator ==(Object other) =>
 }
 
 class MealSelectionScreen extends StatefulWidget {
-  const MealSelectionScreen({Key? key}) : super(key: key);
+  const MealSelectionScreen({super.key});
 
   @override
   _MealSelectionScreenState createState() => _MealSelectionScreenState();
@@ -40,10 +40,10 @@ class _MealSelectionScreenState extends State<MealSelectionScreen> {
   List<FoodCategory> _categories = [];
   List<FoodItem> selectedItems = [];
   int? _expandedCategoryId;
-  Map<int, List<FoodItem>> _cachedFoodItems = {}; // Cache for food items
-  List<FoodItem> _allFoodItems = [];
+  final Map<int, List<FoodItem>> _cachedFoodItems = {}; // Cache for food items
+  final List<FoodItem> _allFoodItems = [];
   List<FoodItem> _filteredFoodItems = [];
-  TextEditingController _searchController = TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
   bool _isSearching = false;
   final String? apiUrl = dotenv.env['API_URL'];
 

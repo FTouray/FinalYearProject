@@ -1,9 +1,9 @@
-import 'package:Glycolog/glycaemicResponseTracker/gRT_history_detail_screen.dart';
+import 'package:glycolog/glycaemicResponseTracker/gRT_history_detail_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:Glycolog/services/auth_service.dart';
+import 'package:glycolog/services/auth_service.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:Glycolog/utils.dart';
+import 'package:glycolog/utils.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class MealLogHistoryScreen extends StatefulWidget {

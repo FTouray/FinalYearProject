@@ -1,12 +1,12 @@
 import 'dart:async';
-import 'package:Glycolog/services/forum_http_service.dart';
+import 'package:glycolog/services/forum_http_service.dart';
 import 'package:flutter/material.dart';
 
 class ForumThreadScreen extends StatefulWidget {
   final String threadId;
   final String username;
 
-  ForumThreadScreen({required this.threadId, required this.username});
+  const ForumThreadScreen({super.key, required this.threadId, required this.username});
 
   @override
   _ForumThreadScreenState createState() => _ForumThreadScreenState();

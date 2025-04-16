@@ -1,11 +1,10 @@
 import 'dart:convert';
-import 'package:Glycolog/glycaemicResponseTracker/gRT_main_screen.dart';
-import 'package:Glycolog/services/auth_service.dart';
+import 'package:glycolog/glycaemicResponseTracker/gRT_main_screen.dart';
+import 'package:glycolog/services/auth_service.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
-import 'gRT_meal_log_screen.dart';
-import 'package:Glycolog/utils.dart';
+import 'grt_meal_log_screen.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class MealConfirmationScreen extends StatefulWidget {
@@ -13,10 +12,10 @@ class MealConfirmationScreen extends StatefulWidget {
   final DateTime timestamp;
 
   const MealConfirmationScreen({
-    Key? key,
+    super.key,
     required this.selectedItems,
     required this.timestamp,
-  }) : super(key: key);
+  });
 
   @override
   _MealConfirmationScreenState createState() => _MealConfirmationScreenState();

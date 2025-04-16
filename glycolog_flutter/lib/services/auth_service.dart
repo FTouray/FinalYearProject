@@ -20,7 +20,7 @@ class AuthService {
 
     if (refreshToken == null) {
       print("No refresh token found");
-      return null;
+      return;
     }
 
     try {
@@ -53,7 +53,7 @@ class AuthService {
     } catch (e) {
       // Handle network or other errors
       print("Network error: $e");
-      return null;
+      return;
     }
   }
 

@@ -1,17 +1,17 @@
 import 'dart:convert';
-import 'package:Glycolog/home/base_screen.dart';
+import 'package:glycolog/home/base_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:Glycolog/services/health_sync_service.dart';
-import 'package:Glycolog/services/auth_service.dart';
+import 'package:glycolog/services/health_sync_service.dart';
+import 'package:glycolog/services/auth_service.dart';
 
 extension StringCasingExtension on String {
   String capitalize() => "${this[0].toUpperCase()}${substring(1)}";
 }
 class VirtualHealthDashboard extends StatefulWidget {
-  const VirtualHealthDashboard({Key? key}) : super(key: key);
+  const VirtualHealthDashboard({super.key});
 
   @override
   State<VirtualHealthDashboard> createState() => _VirtualHealthDashboardState();
@@ -27,7 +27,7 @@ class _VirtualHealthDashboardState extends State<VirtualHealthDashboard> {
   String trendType = "weekly";
   List<Map<String, dynamic>> _filteredHistory = [];
   bool isRefreshingSummary = false;
-  ScrollController _scrollController = ScrollController(); // Add to state
+  final ScrollController _scrollController = ScrollController(); // Add to state
 
 
 IconData _getActivityIcon(String activityType) {
@@ -614,7 +614,7 @@ Widget _buildGraph(String title, String metric, Color color) {
                               FlClipData.none(), // tooltips allowed outside
                           lineTouchData: LineTouchData(
                             touchTooltipData: LineTouchTooltipData(
-                              getTooltipColor: (touchedSpot) => Colors.grey.withOpacity(0.8),
+                              getTooltipColor: (touchedSpot) => Colors.grey.withValues(alpha: 0.8),
                               tooltipRoundedRadius: 8,
                               tooltipMargin: 12,
                               fitInsideHorizontally: false,
@@ -771,18 +771,6 @@ String _formatValue(String label, dynamic value) {
   }
 
 
-  Widget _buildDataRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label.replaceAll("_", " ").toUpperCase()),
-          Text(_formatValue(label, value)),
-        ],
-      ),
-    );
-  }
 
   Widget _buildHistorySection() {
     return Card(

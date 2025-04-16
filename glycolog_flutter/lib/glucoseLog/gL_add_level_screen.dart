@@ -4,12 +4,12 @@ import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart
 import 'dart:io';
 import 'package:image/image.dart' as img;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:Glycolog/services/auth_service.dart';
+import 'package:glycolog/services/auth_service.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'dart:convert';
-import 'gL_confirmation_screen.dart';
-import 'package:Glycolog/utils.dart';
+import 'gl_confirmation_screen.dart';
+import 'package:glycolog/utils.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class AddGlucoseLevelScreen extends StatefulWidget {

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:Glycolog/services/auth_service.dart';
+import 'package:glycolog/services/auth_service.dart';
 
 class BaseScaffoldScreen extends StatelessWidget {
   final int selectedIndex;
@@ -32,32 +32,6 @@ class BaseScaffoldScreen extends StatelessWidget {
             onPressed: () async => await authService.logout(context),
           ),
         ],
-      ),
-      drawer: Drawer(
-        child: ListView(
-          children: [
-            DrawerHeader(
-              decoration: BoxDecoration(color: Colors.blue[800]),
-              child: const Text('Menu',
-                  style: TextStyle(color: Colors.white, fontSize: 24)),
-            ),
-            ListTile(
-              leading: const Icon(Icons.home),
-              title: const Text('Home'),
-              onTap: () => Navigator.pushNamed(context, '/home'),
-            ),
-            ListTile(
-              leading: const Icon(Icons.analytics),
-              title: const Text('Glucose Log'),
-              onTap: () => Navigator.pushNamed(context, '/glucose-log'),
-            ),
-            ListTile(
-              leading: const Icon(Icons.logout),
-              title: const Text('Logout'),
-              onTap: () async => await authService.logout(context),
-            ),
-          ],
-        ),
       ),
       body: body,
       bottomNavigationBar: BottomNavigationBar(

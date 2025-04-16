@@ -5,7 +5,7 @@ import '../services/auth_service.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class ExerciseStepScreen extends StatefulWidget {
-  const ExerciseStepScreen({Key? key}) : super(key: key);
+  const ExerciseStepScreen({super.key});
 
   @override
   _ExerciseStepScreenState createState() => _ExerciseStepScreenState();

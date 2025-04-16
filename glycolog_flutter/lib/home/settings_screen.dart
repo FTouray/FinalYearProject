@@ -1,5 +1,5 @@
-import 'package:Glycolog/home/base_screen.dart';
-import 'package:Glycolog/services/auth_service.dart';
+import 'package:glycolog/home/base_screen.dart';
+import 'package:glycolog/services/auth_service.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;

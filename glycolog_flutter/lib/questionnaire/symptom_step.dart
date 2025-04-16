@@ -5,7 +5,7 @@ import '../services/auth_service.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class SymptomStepScreen extends StatefulWidget {
-  const SymptomStepScreen({Key? key}) : super(key: key);
+  const SymptomStepScreen({super.key});
 
   @override
   _SymptomStepScreenState createState() => _SymptomStepScreenState();

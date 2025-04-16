@@ -1,4 +1,4 @@
-import 'package:Glycolog/utils.dart';
+import 'package:glycolog/utils.dart';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:http/http.dart' as http;
@@ -9,7 +9,7 @@ import '../services/auth_service.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class QuestionnaireVisualizationScreen extends StatefulWidget {
-  const QuestionnaireVisualizationScreen({Key? key}) : super(key: key);
+  const QuestionnaireVisualizationScreen({super.key});
 
   @override
   _QuestionnaireVisualizationScreenState createState() =>
@@ -116,7 +116,7 @@ class _QuestionnaireVisualizationScreenState
         'is_latest': item['is_latest'] ?? false,
         'glucose_check': _normalizeGlucoseList(
             item['glucose_check'] ?? [], _preferredGlucoseUnit),
-        'wellness_score': _mapWellnessToScore(item['feeling_check']) ?? 0,
+        'wellness_score': _mapWellnessToScore(item['feeling_check']),
         'exercise_type':
             item['exercise_check']?.map((e) => e['exercise_type'])?.toList() ??
                 [],
@@ -550,8 +550,8 @@ class _QuestionnaireVisualizationScreenState
             show: true,
             gradient: LinearGradient(
               colors: [
-                Colors.blue.withOpacity(0.4),
-                Colors.blue.withOpacity(0.1),
+                Colors.blue.withValues(alpha: 0.4),
+                Colors.blue.withValues(alpha: 0.1),
               ],
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
@@ -567,9 +567,9 @@ class _QuestionnaireVisualizationScreenState
               const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           tooltipRoundedRadius: 8,
           tooltipBorder:
-              BorderSide(color: Colors.white.withOpacity(0.8), width: 1),
+              BorderSide(color: Colors.white.withValues(alpha: 0.8), width: 1),
           tooltipMargin: 16,
-          getTooltipColor: (touchedSpot) => Colors.grey.withOpacity(0.8),
+          getTooltipColor: (touchedSpot) => Colors.grey.withValues(alpha: 0.8),
           getTooltipItems: (touchedSpots) {
             return touchedSpots.map((spot) {
               final index = spot.spotIndex;
@@ -581,7 +581,7 @@ class _QuestionnaireVisualizationScreenState
 
               return LineTooltipItem(
                 'Session $sessionId\n'
-                'Glucose: $glucoseLevel ${_preferredGlucoseUnit}\n'
+                'Glucose: $glucoseLevel $_preferredGlucoseUnit\n'
                 'Date & Time: $formattedDate',
                 const TextStyle(color: Colors.white),
               );
@@ -673,7 +673,7 @@ class _QuestionnaireVisualizationScreenState
       maxY: maxY.toDouble(), // Set dynamic max Y value
       barTouchData: BarTouchData(
         touchTooltipData: BarTouchTooltipData(
-          getTooltipColor: (touchedSpot) => Colors.blueGrey.withOpacity(0.8),
+          getTooltipColor: (touchedSpot) => Colors.blueGrey.withValues(alpha: 0.8),
           tooltipPadding: const EdgeInsets.all(8),
           tooltipMargin: 8,
           fitInsideHorizontally: true,
@@ -802,7 +802,7 @@ class _QuestionnaireVisualizationScreenState
       maxY: maxY, // Dynamically calculated max Y
       barTouchData: BarTouchData(
         touchTooltipData: BarTouchTooltipData(
-          getTooltipColor: (touchedSpot) => Colors.blueGrey.withOpacity(0.8),
+          getTooltipColor: (touchedSpot) => Colors.blueGrey.withValues(alpha: 0.8),
           tooltipPadding: const EdgeInsets.all(8),
           tooltipMargin: 8,
           fitInsideHorizontally: true,
@@ -930,8 +930,8 @@ class _QuestionnaireVisualizationScreenState
             show: true,
             gradient: LinearGradient(
               colors: [
-                Colors.blue.withOpacity(0.4),
-                Colors.blue.withOpacity(0.1),
+                Colors.blue.withValues(alpha: 0.4),
+                Colors.blue.withValues(alpha: 0.1),
               ],
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
@@ -946,9 +946,9 @@ class _QuestionnaireVisualizationScreenState
               const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           tooltipRoundedRadius: 8,
           tooltipBorder:
-              BorderSide(color: Colors.white.withOpacity(0.8), width: 1),
+              BorderSide(color: Colors.white.withValues(alpha: 0.8), width: 1),
           tooltipMargin: 16,
-          getTooltipColor: (touchedSpot) => Colors.grey.withOpacity(0.8),
+          getTooltipColor: (touchedSpot) => Colors.grey.withValues(alpha: 0.8),
           getTooltipItems: (touchedSpots) {
             return touchedSpots.map((spot) {
               final index = spot.spotIndex;
@@ -1241,7 +1241,7 @@ class _QuestionnaireVisualizationScreenState
                 barTouchData: BarTouchData(
                   touchTooltipData: BarTouchTooltipData(
                     getTooltipColor: (touchedSpot) =>
-                        Colors.blueGrey.withOpacity(0.8),
+                        Colors.blueGrey.withValues(alpha: 0.8),
                     getTooltipItem: (group, groupIndex, rod, rodIndex) {
                       final symptomName = symptomNames[rodIndex];
                       return BarTooltipItem(

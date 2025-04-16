@@ -6,7 +6,7 @@ import '../services/auth_service.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class GlucoseStepScreen extends StatefulWidget {
-  const GlucoseStepScreen({Key? key}) : super(key: key);
+  const GlucoseStepScreen({super.key});
 
   @override
   _GlucoseStepScreenState createState() => _GlucoseStepScreenState();

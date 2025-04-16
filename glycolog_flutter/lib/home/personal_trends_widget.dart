@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:Glycolog/services/auth_service.dart';
+import 'package:glycolog/services/auth_service.dart';
 import 'package:confetti/confetti.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -7,6 +7,8 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class PersonalTrendsWidget extends StatefulWidget {
+  const PersonalTrendsWidget({super.key});
+
   @override
   _PersonalTrendsWidgetState createState() => _PersonalTrendsWidgetState();
 }
@@ -73,7 +75,7 @@ class _PersonalTrendsWidgetState extends State<PersonalTrendsWidget> {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       margin: const EdgeInsets.only(left: 8),
       decoration: BoxDecoration(
-        color: color!.withOpacity(0.2),
+        color: color!.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Text(

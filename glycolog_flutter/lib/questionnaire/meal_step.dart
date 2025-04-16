@@ -33,7 +33,7 @@ class FoodItem {
 }
 
 class MealStepScreen extends StatefulWidget {
-  const MealStepScreen({Key? key}) : super(key: key);
+  const MealStepScreen({super.key});
 
   @override
   _MealStepScreenState createState() => _MealStepScreenState();
@@ -47,12 +47,12 @@ class _MealStepScreenState extends State<MealStepScreen> {
   bool wellnessImpact = false;
   bool _isLoading = false;
   String? _error;
-  TextEditingController _notesController = TextEditingController();
+  final TextEditingController _notesController = TextEditingController();
   int? _expandedCategoryId;
-  Map<int, List<FoodItem>> _cachedFoodItems = {};
-  List<FoodItem> _allFoodItems = [];
+  final Map<int, List<FoodItem>> _cachedFoodItems = {};
+  final List<FoodItem> _allFoodItems = [];
   List<FoodItem> _filteredFoodItems = [];
-  TextEditingController _searchController = TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
   bool _isSearching = false;
   final String? apiUrl = dotenv.env['API_URL'];
 

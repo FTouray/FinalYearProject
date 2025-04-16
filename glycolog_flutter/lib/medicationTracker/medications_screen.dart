@@ -1,11 +1,11 @@
-import 'package:Glycolog/home/base_screen.dart';
+import 'package:glycolog/home/base_screen.dart';
 import 'package:device_calendar/device_calendar.dart';
 import 'package:flutter/material.dart';
-import 'package:Glycolog/services/auth_service.dart';
+import 'package:glycolog/services/auth_service.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:Glycolog/utils.dart';
+import 'package:glycolog/utils.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class MedicationsScreen extends StatefulWidget {
@@ -230,7 +230,7 @@ class _MedicationsScreenState extends State<MedicationsScreen> {
               IconButton(
                 icon: const Icon(Icons.alarm, color: Colors.green),
                 onPressed: () async {
-                  final result = await Navigator.pushNamed(
+                  await Navigator.pushNamed(
                     context,
                     '/medication-reminder',
                     arguments: med,

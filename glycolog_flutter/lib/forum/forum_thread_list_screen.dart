@@ -1,4 +1,4 @@
-import 'package:Glycolog/services/auth_service.dart';
+import 'package:glycolog/services/auth_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'forum_thread_screen.dart';
@@ -11,10 +11,10 @@ class ForumThreadListScreen extends StatefulWidget {
   final String categoryName;
 
   const ForumThreadListScreen({
-    Key? key,
+    super.key,
     required this.categoryId,
     required this.categoryName,
-  }) : super(key: key);
+  });
 
   @override
   State<ForumThreadListScreen> createState() => _ForumThreadListScreenState();

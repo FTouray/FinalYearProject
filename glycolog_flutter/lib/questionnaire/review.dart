@@ -1,4 +1,4 @@
-import 'package:Glycolog/utils.dart';
+import 'package:glycolog/utils.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -6,7 +6,7 @@ import '../services/auth_service.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class ReviewScreen extends StatefulWidget {
-  const ReviewScreen({Key? key}) : super(key: key);
+  const ReviewScreen({super.key});
 
   @override
   _ReviewScreenState createState() => _ReviewScreenState();
@@ -93,7 +93,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
                               'Evaluation: ${glucose['evaluation']} | Timestamp: ${formatTimestamp(glucose['timestamp'])}'),
 
                         );
-                      }).toList(),
+                      }),
                       const Divider(),
                       const Text(
                         'Meal Check:',
@@ -107,7 +107,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
                           subtitle: Text(
                               'Skipped Meals: ${meal['skipped_meals'].join(", ")} | Wellness Impact: ${meal['wellness_impact']}'),
                         );
-                      }).toList(),
+                      }),
                       const Divider(),
                       const Text(
                         'Exercise Check:',
@@ -134,7 +134,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
                           title: Text('Symptoms: ${symptom['symptoms']}'),
                           subtitle: Text('Notes: ${symptom['notes']}'),
                         );
-                      }).toList(),
+                      }),
                       const SizedBox(height: 30),
                       ElevatedButton(
                         onPressed: () {

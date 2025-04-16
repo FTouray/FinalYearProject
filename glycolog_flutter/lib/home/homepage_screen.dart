@@ -1,12 +1,12 @@
 import 'dart:convert';
-import 'package:Glycolog/home/personal_trends_widget.dart';
-import 'package:Glycolog/learning/gamification_dashboard_widget.dart';
+import 'package:glycolog/home/personal_trends_widget.dart';
+import 'package:glycolog/learning/gamification_dashboard_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'base_screen.dart';
-import 'package:Glycolog/services/auth_service.dart';
+import 'package:glycolog/services/auth_service.dart';
 
 class HomePage extends StatefulWidget {
   final String? firstName;
@@ -63,10 +63,11 @@ Future<void> _setup() async {
   Future<void> _checkAuthentication() async {
     AuthService authService = AuthService();
     String? token = await authService.getAccessToken();
-    if (token == null)
+    if (token == null) {
       await authService.logout(context);
-    else
+    } else {
       await authService.refreshAccessToken(context);
+    }
   }
 
   Future<void> _handleFirstLaunch() async {
@@ -74,14 +75,6 @@ Future<void> _setup() async {
     if (!(prefs.getBool('wasAppOpened') ?? false)) {
       await prefs.setBool('wasAppOpened', true);
       _showFeelingPopup(context);
-    }
-  }
-
-  void _onItemTapped(int index) {
-    setState(() => _selectedIndex = index);
-    final routes = ['/home', '/forum', '/settings'];
-    if (ModalRoute.of(context)?.settings.name != routes[index]) {
-      Navigator.pushNamed(context, routes[index]);
     }
   }
 
@@ -133,12 +126,6 @@ Future<void> _setup() async {
         ),
       ),
     );
-  }
-
-
-  void _navigateToInsights(String feeling) {
-    Navigator.pop(context);
-    Navigator.pushNamed(context, '/insights', arguments: {"feeling": feeling});
   }
 
   Future<void> _startQuestionnaire(String feeling) async {
@@ -276,7 +263,7 @@ String _getGreetingMessage() {
 
 
   Widget _buildFeatureItem(String title, String subtitle, VoidCallback onTap,
-    {IconData icon = Icons.chevron_right, Color? color}) {
+    {IconData icon = Icons.chevron_right}) {
   return GestureDetector(
     onTap: onTap,
     child: Container(
@@ -291,7 +278,7 @@ String _getGreetingMessage() {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.blue.withOpacity(0.2),
+            color: Colors.blue..withValues(alpha: 0.2),
             blurRadius: 8,
             offset: Offset(0, 4),
           )

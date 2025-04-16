@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:Glycolog/utils.dart';
+import 'package:glycolog/utils.dart';
 
 class LogDetailsScreen extends StatelessWidget {
   final Map<String, dynamic> logDetails;

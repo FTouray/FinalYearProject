@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:Glycolog/utils.dart';
+import 'package:glycolog/utils.dart';
 
 class MealDetailScreen extends StatelessWidget {
   final Map<String, dynamic> meal;
