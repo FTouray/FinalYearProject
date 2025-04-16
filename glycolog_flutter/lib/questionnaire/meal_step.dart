@@ -36,10 +36,10 @@ class MealStepScreen extends StatefulWidget {
   const MealStepScreen({super.key});
 
   @override
-  _MealStepScreenState createState() => _MealStepScreenState();
+  MealStepScreenState createState() => MealStepScreenState();
 }
 
-class _MealStepScreenState extends State<MealStepScreen> {
+class MealStepScreenState extends State<MealStepScreen> {
   List<FoodCategory> _categories = [];
   List<FoodItem> selectedItems = [];
   List<String> skippedMeals = ['Breakfast', 'Lunch', 'Dinner'];

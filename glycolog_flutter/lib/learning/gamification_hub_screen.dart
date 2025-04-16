@@ -8,10 +8,10 @@ class GamificationGameHub extends StatefulWidget {
   const GamificationGameHub({super.key});
 
   @override
-  _GamificationGameHubState createState() => _GamificationGameHubState();
+  GamificationGameHubState createState() => GamificationGameHubState();
 }
 
-class _GamificationGameHubState extends State<GamificationGameHub> {
+class GamificationGameHubState extends State<GamificationGameHub> {
   List quizSets = [];
   bool loading = true;
   final String? apiUrl = dotenv.env['API_URL'];

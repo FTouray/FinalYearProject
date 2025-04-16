@@ -10,10 +10,10 @@ class PersonalTrendsWidget extends StatefulWidget {
   const PersonalTrendsWidget({super.key});
 
   @override
-  _PersonalTrendsWidgetState createState() => _PersonalTrendsWidgetState();
+  PersonalTrendsWidgetState createState() => PersonalTrendsWidgetState();
 }
 
-class _PersonalTrendsWidgetState extends State<PersonalTrendsWidget> {
+class PersonalTrendsWidgetState extends State<PersonalTrendsWidget> {
   Map<String, dynamic> feedback = {};
   bool showAll = false;
   bool loading = true;

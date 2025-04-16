@@ -9,10 +9,10 @@ class AddMedicationScreen extends StatefulWidget {
   const AddMedicationScreen({super.key});
 
   @override
-  _AddMedicationScreenState createState() => _AddMedicationScreenState();
+  AddMedicationScreenState createState() => AddMedicationScreenState();
 }
 
-class _AddMedicationScreenState extends State<AddMedicationScreen> {
+class AddMedicationScreenState extends State<AddMedicationScreen> {
   final TextEditingController searchController = TextEditingController();
   final TextEditingController nameController = TextEditingController();
   final TextEditingController dosageController = TextEditingController();

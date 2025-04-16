@@ -8,10 +8,10 @@ class ChatbotScreen extends StatefulWidget {
   const ChatbotScreen({super.key});
 
   @override
-  _ChatbotScreenState createState() => _ChatbotScreenState();
+  ChatbotScreenState createState() => ChatbotScreenState();
 }
 
-class _ChatbotScreenState extends State<ChatbotScreen> {
+class ChatbotScreenState extends State<ChatbotScreen> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final List<Map<String, String>> _messages = [];

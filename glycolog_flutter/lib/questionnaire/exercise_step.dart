@@ -8,10 +8,10 @@ class ExerciseStepScreen extends StatefulWidget {
   const ExerciseStepScreen({super.key});
 
   @override
-  _ExerciseStepScreenState createState() => _ExerciseStepScreenState();
+  ExerciseStepScreenState createState() => ExerciseStepScreenState();
 }
 
-class _ExerciseStepScreenState extends State<ExerciseStepScreen> {
+class ExerciseStepScreenState extends State<ExerciseStepScreen> {
   String? lastExerciseTime;
   String? exerciseType;
   String? exerciseIntensity;

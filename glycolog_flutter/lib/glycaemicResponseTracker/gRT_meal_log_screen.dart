@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:glycolog/glycaemicResponseTracker/grt_meal_confirmation_screen.dart';
+import 'package:glycolog/glycaemicResponseTracker/gRT_meal_confirmation_screen.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -19,10 +19,14 @@ class FoodItem {
   final double gi;
   final double carbs;
 
-  FoodItem({required this.foodId,required this.name, required this.gi, required this.carbs});
+  FoodItem(
+      {required this.foodId,
+      required this.name,
+      required this.gi,
+      required this.carbs});
 
   @override
-bool operator ==(Object other) =>
+  bool operator ==(Object other) =>
       identical(this, other) || (other is FoodItem && other.foodId == foodId);
 
   @override
@@ -33,10 +37,10 @@ class MealSelectionScreen extends StatefulWidget {
   const MealSelectionScreen({super.key});
 
   @override
-  _MealSelectionScreenState createState() => _MealSelectionScreenState();
+  MealSelectionScreenState createState() => MealSelectionScreenState();
 }
 
-class _MealSelectionScreenState extends State<MealSelectionScreen> {
+class MealSelectionScreenState extends State<MealSelectionScreen> {
   List<FoodCategory> _categories = [];
   List<FoodItem> selectedItems = [];
   int? _expandedCategoryId;
@@ -85,7 +89,6 @@ class _MealSelectionScreenState extends State<MealSelectionScreen> {
     }
   }
 
-
   Future<void> _fetchFoodItems(int categoryId) async {
     if (_cachedFoodItems.containsKey(categoryId)) return;
 
@@ -109,10 +112,10 @@ class _MealSelectionScreenState extends State<MealSelectionScreen> {
         setState(() {
           _cachedFoodItems[categoryId] = (json.decode(response.body) as List)
               .map((data) => FoodItem(
-                    foodId: data['foodId'],     
+                    foodId: data['foodId'],
                     name: data['name'],
                     gi: data['glycaemic_index'],
-                    carbs: data['carbs'], 
+                    carbs: data['carbs'],
                   ))
               .toList();
           _allFoodItems.addAll(_cachedFoodItems[categoryId]!);
@@ -125,17 +128,21 @@ class _MealSelectionScreenState extends State<MealSelectionScreen> {
     }
   }
 
-void _filterFoodItems() {
-  setState(() {
-    _isSearching = _searchController.text.isNotEmpty;
-    if (_isSearching) {
+  void _filterFoodItems() {
+    setState(() {
+      _isSearching = _searchController.text.isNotEmpty;
+      if (_isSearching) {
         // Global search across all items
-        _filteredFoodItems = _allFoodItems.where((item) => item.name.toLowerCase().contains(_searchController.text.toLowerCase())).toList();
-    } else {
-      _filteredFoodItems = [];
-    }
-  });
-}
+        _filteredFoodItems = _allFoodItems
+            .where((item) => item.name
+                .toLowerCase()
+                .contains(_searchController.text.toLowerCase()))
+            .toList();
+      } else {
+        _filteredFoodItems = [];
+      }
+    });
+  }
 
   void _toggleSelection(FoodItem item) {
     setState(() {
@@ -172,8 +179,7 @@ void _filterFoodItems() {
     });
   }
 
- 
-@override
+  @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
@@ -258,9 +264,8 @@ void _filterFoodItems() {
     );
   }
 
-
 // Widget to display search results
-Widget _buildSearchResults() {
+  Widget _buildSearchResults() {
     return ListView.builder(
       shrinkWrap: true,
       physics: const BouncingScrollPhysics(),
@@ -282,7 +287,7 @@ Widget _buildSearchResults() {
   }
 
 // Widget to display categories with expandable food items
-Widget _buildCategoryList() {
+  Widget _buildCategoryList() {
     return ListView.builder(
       shrinkWrap: true,
       physics: const BouncingScrollPhysics(),
@@ -344,10 +349,9 @@ Widget _buildCategoryList() {
     );
   }
 
- @override
+  @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
   }
-
 }

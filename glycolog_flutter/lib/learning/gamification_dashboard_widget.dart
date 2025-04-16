@@ -9,10 +9,10 @@ class GamificationDashboardCard extends StatefulWidget {
   const GamificationDashboardCard({super.key});
 
   @override
-  _GamificationDashboardCardState createState() => _GamificationDashboardCardState();
+  GamificationDashboardCardState createState() => GamificationDashboardCardState();
 }
 
-class _GamificationDashboardCardState extends State<GamificationDashboardCard> {
+class GamificationDashboardCardState extends State<GamificationDashboardCard> {
   int level = 1;
   int xp = 0;
   int? nextLevelToContinue;

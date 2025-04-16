@@ -12,11 +12,11 @@ class QuestionnaireVisualizationScreen extends StatefulWidget {
   const QuestionnaireVisualizationScreen({super.key});
 
   @override
-  _QuestionnaireVisualizationScreenState createState() =>
-      _QuestionnaireVisualizationScreenState();
+  QuestionnaireVisualizationScreenState createState() =>
+      QuestionnaireVisualizationScreenState();
 }
 
-class _QuestionnaireVisualizationScreenState
+class QuestionnaireVisualizationScreenState
     extends State<QuestionnaireVisualizationScreen> {
   bool _isLoading = true;
   bool _hasError = false;

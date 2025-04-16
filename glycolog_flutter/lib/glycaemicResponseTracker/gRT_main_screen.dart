@@ -14,10 +14,10 @@ class GRTMainScreen extends StatefulWidget {
   const GRTMainScreen({super.key});
 
   @override
-  _GRTMainScreenState createState() => _GRTMainScreenState();
+  GRTMainScreenState createState() => GRTMainScreenState();
 }
 
-class _GRTMainScreenState extends State<GRTMainScreen> {
+class GRTMainScreenState extends State<GRTMainScreen> {
   bool isLoading = true;
   String? errorMessage;
   int? lastResponse;

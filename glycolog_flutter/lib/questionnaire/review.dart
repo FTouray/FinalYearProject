@@ -9,10 +9,10 @@ class ReviewScreen extends StatefulWidget {
   const ReviewScreen({super.key});
 
   @override
-  _ReviewScreenState createState() => _ReviewScreenState();
+  ReviewScreenState createState() => ReviewScreenState();
 }
 
-class _ReviewScreenState extends State<ReviewScreen> {
+class ReviewScreenState extends State<ReviewScreen> {
   bool _isLoading = true;
   bool _hasError = false;
   Map<String, dynamic> _reviewData = {};

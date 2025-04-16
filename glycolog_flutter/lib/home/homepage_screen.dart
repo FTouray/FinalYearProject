@@ -12,10 +12,10 @@ class HomePage extends StatefulWidget {
   final String? firstName;
   const HomePage({super.key, this.firstName});
   @override
-  _HomePageState createState() => _HomePageState();
+  HomePageState createState() => HomePageState();
 }
 
-class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
+class HomePageState extends State<HomePage> with WidgetsBindingObserver {
   int _selectedIndex = 0;
   final String? apiUrl = dotenv.env['API_URL'];
   String? _displayName;

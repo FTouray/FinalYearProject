@@ -9,10 +9,10 @@ class GlucoseStepScreen extends StatefulWidget {
   const GlucoseStepScreen({super.key});
 
   @override
-  _GlucoseStepScreenState createState() => _GlucoseStepScreenState();
+  GlucoseStepScreenState createState() => GlucoseStepScreenState();
 }
 
-class _GlucoseStepScreenState extends State<GlucoseStepScreen> {
+class GlucoseStepScreenState extends State<GlucoseStepScreen> {
   final TextEditingController _glucoseController = TextEditingController();
   bool _isLoading = false;
   String? _error;

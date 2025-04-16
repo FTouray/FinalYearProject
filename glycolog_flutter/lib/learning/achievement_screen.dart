@@ -8,11 +8,11 @@ class AchievementsAndLeaderboard extends StatefulWidget {
   const AchievementsAndLeaderboard({super.key});
 
   @override
-  _AchievementsAndLeaderboardState createState() =>
-      _AchievementsAndLeaderboardState();
+  AchievementsAndLeaderboardState createState() =>
+      AchievementsAndLeaderboardState();
 }
 
-class _AchievementsAndLeaderboardState extends State<AchievementsAndLeaderboard>
+class AchievementsAndLeaderboardState extends State<AchievementsAndLeaderboard>
     with SingleTickerProviderStateMixin {
   List achievements = [];
   List leaderboard = [];

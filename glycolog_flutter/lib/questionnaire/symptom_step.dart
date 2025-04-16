@@ -8,10 +8,10 @@ class SymptomStepScreen extends StatefulWidget {
   const SymptomStepScreen({super.key});
 
   @override
-  _SymptomStepScreenState createState() => _SymptomStepScreenState();
+  SymptomStepScreenState createState() => SymptomStepScreenState();
 }
 
-class _SymptomStepScreenState extends State<SymptomStepScreen> {
+class SymptomStepScreenState extends State<SymptomStepScreen> {
   final Map<String, bool> selectedSymptoms = {};
   final Map<String, dynamic> responseValues = {};
   final String? apiUrl = dotenv.env['API_URL'];

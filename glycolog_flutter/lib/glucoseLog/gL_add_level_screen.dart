@@ -16,10 +16,10 @@ class AddGlucoseLevelScreen extends StatefulWidget {
   const AddGlucoseLevelScreen({super.key});
 
   @override
-  _AddGlucoseLevelScreenState createState() => _AddGlucoseLevelScreenState();
+  AddGlucoseLevelScreenState createState() => AddGlucoseLevelScreenState();
 }
 
-class _AddGlucoseLevelScreenState extends State<AddGlucoseLevelScreen> {
+class AddGlucoseLevelScreenState extends State<AddGlucoseLevelScreen> {
   final TextEditingController _glucoseLevelController = TextEditingController();
   DateTime _selectedDate = DateTime.now(); // Default to current date
   TimeOfDay _selectedTime = TimeOfDay.now();

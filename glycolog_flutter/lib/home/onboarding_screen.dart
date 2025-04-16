@@ -7,10 +7,10 @@ class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
 
   @override
-  _OnboardingScreenState createState() => _OnboardingScreenState();
+  OnboardingScreenState createState() => OnboardingScreenState();
 }
 
-class _OnboardingScreenState extends State<OnboardingScreen> {
+class OnboardingScreenState extends State<OnboardingScreen> {
   String _selectedUnit = 'mg/dL'; // Default unit
   String _diabetesType = 'Type 1'; // Default diabetes type
   bool _isInsulinDependent = false; // Default insulin dependency

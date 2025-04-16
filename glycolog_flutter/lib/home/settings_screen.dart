@@ -12,10 +12,10 @@ class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key, required this.onToggleDarkMode});
 
   @override
-  _SettingsScreenState createState() => _SettingsScreenState();
+  SettingsScreenState createState() => SettingsScreenState();
 }
 
-class _SettingsScreenState extends State<SettingsScreen> {
+class SettingsScreenState extends State<SettingsScreen> {
   final TextEditingController _firstNameController = TextEditingController();
   final TextEditingController _lastNameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();

@@ -10,10 +10,10 @@ class MealLogHistoryScreen extends StatefulWidget {
   const MealLogHistoryScreen({super.key});
 
   @override
-  _MealLogHistoryScreenState createState() => _MealLogHistoryScreenState();
+  MealLogHistoryScreenState createState() => MealLogHistoryScreenState();
 }
 
-class _MealLogHistoryScreenState extends State<MealLogHistoryScreen> {
+class MealLogHistoryScreenState extends State<MealLogHistoryScreen> {
   List<Map<String, dynamic>> mealLogs = [];
   List<Map<String, dynamic>> filteredLogs = [];
   bool isLoading = true;

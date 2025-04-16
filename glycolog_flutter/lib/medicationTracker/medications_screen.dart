@@ -12,10 +12,10 @@ class MedicationsScreen extends StatefulWidget {
   const MedicationsScreen({super.key});
 
   @override
-  _MedicationsScreenState createState() => _MedicationsScreenState();
+  MedicationsScreenState createState() => MedicationsScreenState();
 }
 
-class _MedicationsScreenState extends State<MedicationsScreen> {
+class MedicationsScreenState extends State<MedicationsScreen> {
   List<Map<String, dynamic>> medications = [];
   bool isLoading = true;
   String? errorMessage;

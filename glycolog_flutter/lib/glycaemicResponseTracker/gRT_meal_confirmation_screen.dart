@@ -18,10 +18,10 @@ class MealConfirmationScreen extends StatefulWidget {
   });
 
   @override
-  _MealConfirmationScreenState createState() => _MealConfirmationScreenState();
+  MealConfirmationScreenState createState() => MealConfirmationScreenState();
 }
 
-class _MealConfirmationScreenState extends State<MealConfirmationScreen> {
+class MealConfirmationScreenState extends State<MealConfirmationScreen> {
   double get totalGi =>
       widget.selectedItems.fold(0, (sum, item) => sum + item.gi);
   double get totalCarbs =>

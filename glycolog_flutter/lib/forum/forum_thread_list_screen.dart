@@ -82,7 +82,7 @@ class _ForumThreadListScreenState extends State<ForumThreadListScreen> {
                         child: Text("No threads yet. Start the discussion!"),
                       ),
                     ),
-                  ...threads.map((thread) => _buildThreadCard(thread)).toList(),
+                  ...threads.map((thread) => _buildThreadCard(thread)),
                 ],
               ),
             ),

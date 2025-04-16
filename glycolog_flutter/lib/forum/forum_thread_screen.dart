@@ -9,10 +9,10 @@ class ForumThreadScreen extends StatefulWidget {
   const ForumThreadScreen({super.key, required this.threadId, required this.username});
 
   @override
-  _ForumThreadScreenState createState() => _ForumThreadScreenState();
+  ForumThreadScreenState createState() => ForumThreadScreenState();
 }
 
-class _ForumThreadScreenState extends State<ForumThreadScreen> {
+class ForumThreadScreenState extends State<ForumThreadScreen> {
   late ForumHttpService httpService;
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();

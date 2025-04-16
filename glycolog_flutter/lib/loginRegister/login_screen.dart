@@ -8,10 +8,10 @@ class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  _LoginScreenState createState() => _LoginScreenState();
+  LoginScreenState createState() => LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class LoginScreenState extends State<LoginScreen> {
   final TextEditingController usernameController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   bool _obscureText = true; // Track password visibility
