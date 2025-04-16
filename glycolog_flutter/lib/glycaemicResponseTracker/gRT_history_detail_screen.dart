@@ -4,7 +4,7 @@ import 'package:glycolog/utils.dart';
 class MealDetailScreen extends StatelessWidget {
   final Map<String, dynamic> meal;
 
-  MealDetailScreen({Key? key, required this.meal}) : super(key: key);
+  const MealDetailScreen({super.key, required this.meal});
 
   @override
   Widget build(BuildContext context) {

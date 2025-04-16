@@ -90,28 +90,28 @@ class HealthSyncService {
 
     print("🏋️ Found ${workouts.length} workouts");
 
-    final heartRates = grouped[HealthDataType.HEART_RATE]
-            ?.map((p) => _extractNumericValue(p.value))
-            .toList() ??
-        [];
-    final avgHeartRate = heartRates.isNotEmpty
-        ? heartRates.reduce((a, b) => a + b) / heartRates.length
-        : null;
+    // final heartRates = grouped[HealthDataType.HEART_RATE]
+    //         ?.map((p) => _extractNumericValue(p.value))
+    //         .toList() ??
+    //     [];
+    // final avgHeartRate = heartRates.isNotEmpty
+    //     ? heartRates.reduce((a, b) => a + b) / heartRates.length
+    //     : null;
 
     final sleepSeconds = grouped[HealthDataType.SLEEP_ASLEEP]?.fold(
             0, (sum, p) => sum + p.dateTo.difference(p.dateFrom).inSeconds) ??
         0;
     final sleepHours = double.parse((sleepSeconds / 3600).toStringAsFixed(2));
 
-    final allSteps = grouped[HealthDataType.STEPS] ?? [];
-    final fallbackStart = allSteps.isNotEmpty
-        ? allSteps.first.dateFrom
-        : DateTime.now().subtract(const Duration(hours: 1));
-    final fallbackEnd =
-        allSteps.isNotEmpty ? allSteps.last.dateTo : DateTime.now();
+    // final allSteps = grouped[HealthDataType.STEPS] ?? [];
+    // final fallbackStart = allSteps.isNotEmpty
+    //     ? allSteps.first.dateFrom
+    //     : DateTime.now().subtract(const Duration(hours: 1));
+    // final fallbackEnd =
+    //     allSteps.isNotEmpty ? allSteps.last.dateTo : DateTime.now();
 
-    final totalSteps = allSteps.fold(
-        0, (sum, p) => sum + _extractNumericValue(p.value).toInt());
+    // final totalSteps = allSteps.fold(
+    //     0, (sum, p) => sum + _extractNumericValue(p.value).toInt());
 
     // If no official workouts found, create a fallback entry
     if (workouts.isEmpty) {

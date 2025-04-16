@@ -164,6 +164,7 @@ String? _matchDropdownValue(String? fetchedValue, List<String> options) {
 
       if (response.statusCode == 201) {
         print('Data submitted successfully: ${response.body}');
+        if (!mounted) return;
         Navigator.pushReplacementNamed(context, '/review');
       } else {
         final error = jsonDecode(response.body);

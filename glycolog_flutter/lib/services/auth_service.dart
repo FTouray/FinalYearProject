@@ -43,7 +43,9 @@ class AuthService {
         return newToken; // Return the new token
       } else if (response.statusCode == 401) {
         // Handle unauthorized error by clearing tokens and logging out
-        await logout(context);
+        if (context.mounted) {
+          await logout(context);
+        }
         print(
             "Unauthorized: Refresh token is invalid or expired. Logging out.");
       } else {

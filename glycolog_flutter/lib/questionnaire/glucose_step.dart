@@ -120,7 +120,10 @@ class _GlucoseStepScreenState extends State<GlucoseStepScreen> {
         body: jsonEncode(data),
       );
 
+      
+
       if (response.statusCode == 201) {
+        if (!mounted) return;
         Navigator.pushNamed(context, '/meal-step');
       } else {
         final error = jsonDecode(response.body);

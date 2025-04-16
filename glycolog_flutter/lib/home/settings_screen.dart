@@ -155,6 +155,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     widget.onToggleDarkMode(_darkModeEnabled);
 
+    if (!mounted) return;
+
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Profile settings saved successfully!'),

@@ -11,6 +11,8 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:fl_chart/fl_chart.dart';
 
 class GRTMainScreen extends StatefulWidget {
+  const GRTMainScreen({super.key});
+
   @override
   _GRTMainScreenState createState() => _GRTMainScreenState();
 }

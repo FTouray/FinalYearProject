@@ -44,6 +44,8 @@ class _MealConfirmationScreenState extends State<MealConfirmationScreen> {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       String? token = prefs.getString('access_token');
+      
+      if (!mounted) return;
 
       if (token == null) {
         print('No access token found');
@@ -63,6 +65,8 @@ class _MealConfirmationScreenState extends State<MealConfirmationScreen> {
           'food_item_ids': widget.selectedItems.map((item) => item.foodId).toList(),
         }),
       );
+
+    if (!mounted) return;
 
       if (response.statusCode == 201) {
         ScaffoldMessenger.of(context).showSnackBar(

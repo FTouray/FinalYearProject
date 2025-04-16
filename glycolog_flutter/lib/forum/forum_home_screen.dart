@@ -112,8 +112,11 @@ class _ForumHomeScreenState extends State<ForumHomeScreen> {
         body: jsonEncode(payload),
       );
 
+      if (!mounted) return;
+
       if (response.statusCode == 201) {
         await fetchCategories();
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("✅ Category created!")),
         );

@@ -74,6 +74,8 @@ class _LoginScreenState extends State<LoginScreen> {
           bool onboardingCompleted =
               prefs.getBool('onboardingCompleted') ?? false;
 
+          if (!mounted) return;
+
           if (onboardingCompleted) {
             Navigator.pushNamedAndRemoveUntil(
                 context, '/home', (route) => false,

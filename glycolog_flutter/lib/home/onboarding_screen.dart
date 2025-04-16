@@ -42,6 +42,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     // Mark onboarding as complete
     await prefs.setBool('onboardingCompleted', true);
 
+    if (!mounted) return;
+
     // Navigate to HomePage after saving preferences
     Navigator.pushReplacementNamed(context, '/home');
   }

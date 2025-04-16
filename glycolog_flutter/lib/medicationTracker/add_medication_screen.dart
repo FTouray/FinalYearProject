@@ -107,6 +107,8 @@ Future<void> fetchMedications(String query) async {
         }),
       );
 
+      if (!mounted) return;
+
       if (response.statusCode == 201) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Medication saved successfully!")),
@@ -238,6 +240,7 @@ Future<void> scanMedicationLabel() async {
 
       fetchMedications(scannedName);
     } else {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Error scanning medication.")),
       );

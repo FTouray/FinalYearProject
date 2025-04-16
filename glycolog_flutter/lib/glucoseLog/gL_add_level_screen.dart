@@ -121,6 +121,8 @@ class _AddGlucoseLevelScreenState extends State<AddGlucoseLevelScreen> {
         }
       }
 
+    if (!mounted) return;
+
       // Define valid ranges
       double minValue = (measurementUnit == 'mg/dL') ? 10 : 0.55;
       double maxValue = (measurementUnit == 'mg/dL') ? 600 : 33.3;
@@ -143,6 +145,7 @@ class _AddGlucoseLevelScreenState extends State<AddGlucoseLevelScreen> {
       // Dispose the recognizer when done
       textRecognizer.close();
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to process image: $e')),
       );
@@ -277,6 +280,8 @@ class _AddGlucoseLevelScreenState extends State<AddGlucoseLevelScreen> {
         'meal_context': _mealContext, // Include meal context
       }),
     );
+
+    if (!mounted) return;
 
     if (response.statusCode == 201) {
       ScaffoldMessenger.of(context).showSnackBar(

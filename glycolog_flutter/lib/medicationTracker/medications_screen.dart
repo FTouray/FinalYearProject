@@ -91,6 +91,7 @@ class _MedicationsScreenState extends State<MedicationsScreen> {
       );
 
       if (response.statusCode == 200) {
+         if (!mounted) return;
         setState(() {
           medications.removeAt(index);
         });
@@ -101,6 +102,7 @@ class _MedicationsScreenState extends State<MedicationsScreen> {
         throw Exception("Failed to delete medication");
       }
     } catch (e) {
+       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Error: $e")),
       );
@@ -129,6 +131,7 @@ class _MedicationsScreenState extends State<MedicationsScreen> {
       );
 
       if (response.statusCode == 200) {
+         if (!mounted) return;
         setState(() {
           // Store the *full* ISO string locally
           medications[index]['last_taken'] = nowIsoString;
@@ -140,6 +143,7 @@ class _MedicationsScreenState extends State<MedicationsScreen> {
         throw Exception("Failed to update medication");
       }
     } catch (e) {
+       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Error: $e")),
       );

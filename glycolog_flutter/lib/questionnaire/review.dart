@@ -122,7 +122,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
                           subtitle: Text(
                               'Feeling: ${exercise['post_exercise_feeling']}'),
                         );
-                      }).toList(),
+                      }),
                       const Divider(),
                       const Text(
                         'Symptom Check:',

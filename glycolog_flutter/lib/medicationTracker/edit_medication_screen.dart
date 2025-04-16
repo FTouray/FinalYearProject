@@ -55,8 +55,10 @@ class _EditMedicationScreenState extends State<EditMedicationScreen> {
     );
 
     if (response.statusCode == 200) {
+      if (!mounted) return;
       Navigator.pop(context, true);
     } else {
+      if (!mounted) return;
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text("Failed to update")));
     }
@@ -90,8 +92,10 @@ class _EditMedicationScreenState extends State<EditMedicationScreen> {
     );
 
     if (response.statusCode == 200) {
+      if (!mounted) return;
       Navigator.pop(context, true);
     } else {
+      if (!mounted) return;
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text("Delete failed")));
     }

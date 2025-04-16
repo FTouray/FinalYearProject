@@ -297,6 +297,8 @@ class _SymptomStepScreenState extends State<SymptomStepScreen> {
         body: jsonEncode(data),
       );
 
+      if (!mounted) return;
+
       if (response.statusCode == 201) {
         Navigator.pushNamed(context, '/glucose-step');
       } else {
@@ -309,6 +311,7 @@ class _SymptomStepScreenState extends State<SymptomStepScreen> {
             .showSnackBar(SnackBar(content: Text(message)));
       }
     } catch (e) {
+       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('An error occurred: $e')),
       );

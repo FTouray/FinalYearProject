@@ -71,6 +71,8 @@ class _AnimatedQuizPageState extends State<AnimatedQuizPage> {
       body: json.encode({'answers': answers}),
     );
 
+    if (!mounted) return;
+
     if (res.statusCode == 200) {
       final result = json.decode(res.body);
       Navigator.pushNamed(context, '/gamification/result', arguments: result);
@@ -79,8 +81,9 @@ class _AnimatedQuizPageState extends State<AnimatedQuizPage> {
 
   @override
   Widget build(BuildContext context) {
-    if (loading)
+    if (loading) {
       return Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
     final question = quizzes[current];
     final options = List<String>.from(question['options']);
     options.shuffle();

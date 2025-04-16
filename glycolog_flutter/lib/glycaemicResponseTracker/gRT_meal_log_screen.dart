@@ -61,6 +61,7 @@ class _MealSelectionScreenState extends State<MealSelectionScreen> {
 
       if (token == null || token.isEmpty) {
         print('No access token found');
+        if (!mounted) return;
         await AuthService().logout(context);
         return;
       }
@@ -94,6 +95,7 @@ class _MealSelectionScreenState extends State<MealSelectionScreen> {
 
       if (token == null) {
         print('No access token found');
+        if (!mounted) return;
         await AuthService().logout(context);
         return;
       }

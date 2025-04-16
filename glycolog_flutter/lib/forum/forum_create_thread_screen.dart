@@ -7,8 +7,7 @@ import 'dart:convert';
 class ForumCreateThreadScreen extends StatefulWidget {
   final int categoryId;
 
-  const ForumCreateThreadScreen({Key? key, required this.categoryId})
-      : super(key: key);
+  const ForumCreateThreadScreen({super.key, required this.categoryId});
 
   @override
   State<ForumCreateThreadScreen> createState() =>
@@ -48,6 +47,8 @@ class _ForumCreateThreadScreenState extends State<ForumCreateThreadScreen> {
         "title": title,
       }),
     );
+
+     if (!mounted) return;
 
     setState(() => isSubmitting = false);
 

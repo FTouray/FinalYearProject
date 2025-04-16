@@ -175,6 +175,7 @@ class _MealStepScreenState extends State<MealStepScreen> {
       );
 
       if (response.statusCode == 201) {
+        if (!mounted) return;
         Navigator.pushNamed(context, '/exercise-step');
       } else {
         final error = jsonDecode(response.body);

@@ -41,6 +41,7 @@ Future<void> _setup() async {
 
   void _loadDisplayName() async {
     final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
     final firstNameArg = ModalRoute.of(context)?.settings.arguments as String?;
     final storedName = prefs.getString('first_name');
 
@@ -63,6 +64,7 @@ Future<void> _setup() async {
   Future<void> _checkAuthentication() async {
     AuthService authService = AuthService();
     String? token = await authService.getAccessToken();
+    if (!mounted) return;
     if (token == null) {
       await authService.logout(context);
     } else {
@@ -74,6 +76,7 @@ Future<void> _setup() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     if (!(prefs.getBool('wasAppOpened') ?? false)) {
       await prefs.setBool('wasAppOpened', true);
+      if (!mounted) return;
       _showFeelingPopup(context);
     }
   }
@@ -140,6 +143,9 @@ Future<void> _setup() async {
         },
         body: json.encode({'feeling': feeling}),
       );
+
+      if (!mounted) return;
+
       if (res.statusCode == 201) Navigator.pushNamed(context, '/symptom-step');
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(

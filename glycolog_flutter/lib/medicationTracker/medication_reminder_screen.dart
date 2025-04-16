@@ -76,6 +76,9 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
 
     if (response.statusCode == 201) {
       await _addCalendarEvents();
+      
+      if (!mounted) return;
+
       showDialog(
         context: context,
         builder: (_) => AlertDialog(
@@ -88,8 +91,11 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
             ),
           ],
         ),
-      ).then((_) => Navigator.pop(context));
+       ).then((_) {
+        if (mounted) Navigator.pop(context); // 👈 Also check again here
+      });
     } else {
+      if (!mounted) return;
       print("Failed to set reminder: ${response.body}");
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Failed to set reminder")),

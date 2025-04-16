@@ -85,6 +85,8 @@ Future<void> _refreshTrendSummary() async {
         headers: {"Authorization": "Bearer $token"},
       );
 
+      if (!mounted) return;
+
       setState(() {
         trendData = jsonDecode(refreshed.body)["trend"];
       });
@@ -93,6 +95,7 @@ Future<void> _refreshTrendSummary() async {
         const SnackBar(content: Text("Health trend summary refreshed.")),
       );
     } catch (e) {
+      if (!mounted) return;
       print("Error refreshing trend summary: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Failed to refresh health summary.")),
@@ -146,6 +149,7 @@ Future<void> _refreshTrendSummary() async {
     } catch (e) {
       print("Dashboard load failed: $e");
 
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Could not load dashboard data.")),
       );
@@ -203,6 +207,8 @@ Future<void> _loadPastTrends() async {
         Uri.parse("$apiUrl/health/trends/?period_type=$trendType"),
         headers: {"Authorization": "Bearer $token"},
       );
+
+      if (!mounted) return; 
 
       final data = jsonDecode(res.body);
       final List<Map<String, dynamic>> trends =
@@ -264,7 +270,7 @@ Future<void> _loadPastTrends() async {
                                           const SizedBox(height: 4),
                                           Text(
                                             expanded
-                                                ? trend['ai_summary'] : trend['ai_summary'].toString().split("\n").take(3).join("\n") + "...",
+                                                ? trend['ai_summary'] : "${trend['ai_summary'].toString().split("\n").take(3).join("\n")}...",
                                             style: const TextStyle(
                                                 fontStyle: FontStyle.italic),
                                           ),
@@ -302,6 +308,7 @@ Future<void> _loadPastTrends() async {
         );
       }
     } catch (e) {
+      if (!mounted) return;
       print("Failed to load past trends: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Could not load previous summaries.")),
@@ -316,6 +323,8 @@ Future<void> _loadPastTrends() async {
       firstDate: DateTime.now().subtract(const Duration(days: 30)),
       lastDate: DateTime.now(),
     );
+
+    if (!mounted) return; 
 
     if (picked != null) {
       final String pickedDateStr = picked.toIso8601String().split("T").first;
@@ -336,7 +345,7 @@ Future<void> _loadPastTrends() async {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        "${entry['activity_type']?.toString().capitalize() ?? 'Activity'}",
+                        entry['activity_type']?.toString().capitalize() ?? 'Activity',
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
@@ -348,7 +357,7 @@ Future<void> _loadPastTrends() async {
                           .where((e) =>
                               e.key != 'date' && e.key != 'activity_type')
                           .map((e) => _buildFormattedEntry(e.key, e.value))
-                          .toList(),
+                          ,
                       const Divider(height: 20),
                     ],
                   );
@@ -365,6 +374,35 @@ Future<void> _loadPastTrends() async {
     }
   }
 
+void _refreshSummary() async {
+    setState(() => isRefreshingSummary = true);
+
+    final token = await AuthService().getAccessToken();
+
+    final refreshed = await http.get(
+      Uri.parse("$apiUrl/health/trends/$trendType/?refresh=true"),
+      headers: {"Authorization": "Bearer $token"},
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      trendData = jsonDecode(refreshed.body)["trend"];
+      isRefreshingSummary = false;
+    });
+
+    _scrollController.animateTo(
+      0,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+    );
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("Health summary successfully refreshed!"),
+      ),
+    );
+  }
 
 
 Widget _buildTrendSummary() {
@@ -448,34 +486,7 @@ Widget _buildTrendSummary() {
                   runSpacing: 8,
                   children: [
                     TextButton.icon(
-                      onPressed: isRefreshingSummary
-                          ? null
-                          : () async {
-                              setState(() => isRefreshingSummary = true);
-                              final token =
-                                  await AuthService().getAccessToken();
-                              final refreshed = await http.get(
-                                Uri.parse(
-                                    "$apiUrl/health/trends/$trendType/?refresh=true"),
-                                headers: {"Authorization": "Bearer $token"},
-                              );
-                              setState(() {
-                                trendData = jsonDecode(refreshed.body)["trend"];
-                                isRefreshingSummary = false;
-                              });
-
-                              _scrollController.animateTo(
-                                0,
-                                duration: const Duration(milliseconds: 300),
-                                curve: Curves.easeOut,
-                              );
-
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                    content: Text(
-                                        "Health summary successfully refreshed!")),
-                              );
-                            },
+                      onPressed: isRefreshingSummary ? null : _refreshSummary,
                       icon: isRefreshingSummary
                           ? const SizedBox(
                               height: 16,
@@ -649,8 +660,9 @@ Widget _buildGraph(String title, String metric, Color color) {
                                 interval: 1,
                                 getTitlesWidget: (value, _) {
                                   final index = value.toInt();
-                                  if (index < 0 || index >= history.length)
+                                  if (index < 0 || index >= history.length) {
                                     return const SizedBox();
+                                  }
                                   final date = history[index]['date'];
                                   return Text(date.split('-').last); // show day
                                 },
@@ -753,12 +765,12 @@ Widget _buildTodaySummary() {
   }
 
 
-String _formatValue(String label, dynamic value) {
-    if (label.toLowerCase().contains("heart_rate") && value is num) {
-      return value.round().toString();
-    }
-    return value.toString();
-  }
+// String _formatValue(String label, dynamic value) {
+//     if (label.toLowerCase().contains("heart_rate") && value is num) {
+//       return value.round().toString();
+//     }
+//     return value.toString();
+//   }
 
   String _formatDistance(dynamic value) {
     if (value == null) return "0 km";
@@ -794,8 +806,9 @@ String _formatValue(String label, dynamic value) {
             ..._filteredHistory.map((entry) {
               final activityType =
                   (entry['activity_type'] ?? '').toString().toLowerCase();
-              if (activityType.contains("sleep"))
+              if (activityType.contains("sleep")) {
                 return const SizedBox.shrink();
+              }
 
               return ListTile(
                 leading:
