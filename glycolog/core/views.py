@@ -17,9 +17,8 @@ from django.conf import settings
 from core.fitness_ai import generate_ai_recommendation, generate_health_trends
 from core.services.ocr_service import extract_text_from_image, parse_dosage_info
 from core.services.openfda_service import fetch_openfda_drug_details, search_openfda_drugs
-from core.services.reminder_service import schedule_medication_reminder
 from .serializers import ChatMessageSerializer, CommentSerializer, ExerciseCheckSerializer, FoodCategorySerializer, FoodItemSerializer, ForumCategorySerializer, ForumThreadSerializer, GlucoseCheckSerializer, GlucoseLogSerializer, MealCheckSerializer, MealSerializer, MedicationReminderSerializer, MedicationSerializer, PredictiveFeedbackSerializer, QuestionnaireSessionSerializer, RegisterSerializer, LoginSerializer, SettingsSerializer, SymptomCheckSerializer
-from .models import AIHealthTrend, AIRecommendation, Achievement, ChatMessage, Comment, CustomUser, ExerciseCheck, FeelingCheck, FitnessActivity, FoodCategory, FoodItem, ForumCategory, ForumThread, GlucoseCheck, GlucoseLog, GlycaemicResponseTracker, LocalNotificationPrompt, Meal, MealCheck, Medication, MedicationReminder, PersonalInsight, PredictiveFeedback, QuestionnaireSession, Quiz, QuizAttempt, QuizSet, SymptomCheck, UserProfile, UserProgress  
+from .models import AIHealthTrend, AIRecommendation, Achievement, ChatMessage, Comment, CustomUser, ExerciseCheck, FeelingCheck, FitnessActivity, FoodCategory, FoodItem, ForumCategory, ForumThread, GlucoseCheck, GlucoseLog, GlycaemicResponseTracker, Meal, MealCheck, Medication, MedicationReminder, PersonalInsight, PredictiveFeedback, QuestionnaireSession, Quiz, QuizAttempt, QuizSet, SymptomCheck, UserProfile, UserProgress  
 from django.contrib.auth import get_user_model
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.permissions import AllowAny
@@ -197,6 +196,19 @@ def glucose_log_details(request, id):
     log = get_object_or_404(GlucoseLog, id=id, user=request.user)  # Ensure the log belongs to the user
     serializer = GlucoseLogSerializer(log)
     return Response(serializer.data, status=status.HTTP_200_OK)
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def combined_glucose_timeline(request):
+    user = request.user
+    logs = GlucoseLog.objects.filter(user=user).values("glucose_level", "timestamp")
+    checks = GlucoseCheck.objects.filter(session__user=user).values("glucose_level", "timestamp")
+
+    combined = list(logs) + list(checks)
+    combined_sorted = sorted(combined, key=lambda x: x["timestamp"])
+
+    return Response(combined_sorted, status=200)
+
 
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])  # Ensure the user is authenticated
@@ -751,6 +763,7 @@ def get_ai_health_trends(request, period_type="weekly"):
         "avg_heart_rate": latest_trend.avg_heart_rate,
         "total_exercise_sessions": latest_trend.total_exercise_sessions,
         "ai_summary": latest_trend.ai_summary,
+        "ai_summary_items": latest_trend.ai_summary_items,
     }
     return JsonResponse({"trend": data})
 
@@ -773,6 +786,7 @@ def get_all_ai_health_trends(request):
             "avg_heart_rate": trend.avg_heart_rate,
             "total_exercise_sessions": trend.total_exercise_sessions,
             "ai_summary": trend.ai_summary,
+            "ai_summary_items": trend.ai_summary_items,
         })
 
     return JsonResponse({"trends": trend_list})
@@ -988,38 +1002,6 @@ def chat_history(request):
     ]
     return JsonResponse({"chat_history": data, "page": page, "per_page": per_page})
 
-@api_view(["GET"])
-@permission_classes([IsAuthenticated])
-def get_local_notifications(request):
-    """Return pending local notifications for the user."""
-    user = request.user
-    notifications = LocalNotificationPrompt.objects.filter(user=user, is_sent=False)
-
-    data = [
-        {"id": notif.id, "message": notif.message}
-        for notif in notifications
-    ]
-
-    # Mark notifications as sent so they are not resent
-    notifications.update(is_sent=True)
-
-    return JsonResponse({"notifications": data})
-
-@api_view(["POST"])
-@permission_classes([IsAuthenticated])
-def queue_local_notification(request):
-    """Queue a local notification to be shown in the app."""
-    user_id = request.data.get("user_id")
-    message = request.data.get("message")
-
-    if not user_id or not message:
-        return JsonResponse({"error": "User ID and message are required."}, status=400)
-
-    user = get_object_or_404(CustomUser, id=user_id)
-
-    LocalNotificationPrompt.objects.create(user=user, message=message)
-
-    return JsonResponse({"message": "Local notification queued successfully."})
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
@@ -1047,37 +1029,45 @@ def get_medication_details_openfda(request):
 @permission_classes([IsAuthenticated])
 def set_reminder(request):
     """
-    Expects JSON like:
+    Example JSON:
     {
       "medication_id": 123,
-      "day_of_week": 4,   # (1=Monday, 4=Thursday, etc.)
-      "hour": 16,
-      "minute": 0,
-      "repeat_weeks": 4
+      "frequency_type": "monthly",
+      "interval": 1,
+      "duration": 3,
+      "day_of_month": 15,
+      "hour": 10,
+      "minute": 0
     }
     """
     user = request.user
-    medication_id = request.data.get("medication_id")
-    day_of_week = request.data.get("day_of_week")
-    hour = request.data.get("hour")
-    minute = request.data.get("minute")
-    repeat_weeks = request.data.get("repeat_weeks", 4)
+    data = request.data
 
-    if not medication_id or day_of_week is None or hour is None or minute is None:
-        return Response({"error": "Missing required fields."}, status=400)
+    required = ["medication_id", "frequency_type", "interval", "duration", "hour", "minute"]
+    missing = [f for f in required if f not in data]
 
-    medication = get_object_or_404(Medication, id=medication_id, user=user)
+    if missing:
+        return Response({"error": f"Missing fields: {', '.join(missing)}"}, status=400)
+
+    medication = get_object_or_404(Medication, id=data["medication_id"], user=user)
 
     reminder = MedicationReminder.objects.create(
         user=user,
         medication=medication,
-        day_of_week=day_of_week,
-        hour=hour,
-        minute=minute,
-        repeat_weeks=repeat_weeks
+        frequency_type=data["frequency_type"],
+        interval=int(data["interval"]),
+        duration=int(data["duration"]),
+        hour=int(data["hour"]),
+        minute=int(data["minute"]),
+        day_of_week=data.get("day_of_week"),
+        day_of_month=data.get("day_of_month")
     )
 
-    return Response({"message": "Reminder set successfully!", "reminder_id": reminder.id}, status=201)
+    return Response({
+        "message": "Reminder set successfully!",
+        "reminder_id": reminder.id
+    }, status=201)
+
 
 
 @api_view(["GET"])
@@ -1589,16 +1579,27 @@ def list_all_quizsets_and_progress(request):
         p.quiz_set.id: {"completed": p.completed, "score": p.score, "xp_earned": p.xp_earned}
         for p in UserProgress.objects.filter(user=request.user)
     }
-    data = [
-        {
+    completed_levels = [
+        qs.level for qs in quiz_sets if progress_map.get(qs.id, {}).get("completed")
+    ]
+    max_completed = max(completed_levels) if completed_levels else 0
+    max_unlocked_level = max_completed + 1
+
+    # Return quizsets with unlock logic
+    data = []
+    for qs in quiz_sets:
+        level = qs.level
+        progress = progress_map.get(qs.id, {"completed": False, "score": 0, "xp_earned": 0})
+        unlocked = level <= max_unlocked_level
+        data.append({
             "id": qs.id,
             "title": qs.title,
             "description": qs.description,
-            "level": qs.level,
-            "progress": progress_map.get(qs.id, {"completed": False, "score": 0, "xp_earned": 0})
-        }
-        for qs in quiz_sets
-    ]
+            "level": level,
+            "progress": progress,
+            "unlocked": unlocked
+        })
+
     return JsonResponse(data, safe=False)
 
 

@@ -3,9 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-
 import 'package:Glycolog/services/auth_service.dart';
-
 import 'forum_thread_list_screen.dart';
 
 class ForumHomeScreen extends StatefulWidget {
@@ -30,17 +28,13 @@ class _ForumHomeScreenState extends State<ForumHomeScreen> {
   Future<void> fetchCategories() async {
     setState(() {
       isLoading = true;
-      errorMessage = null; // reset error
+      errorMessage = null;
     });
 
     try {
       final token = await AuthService().getAccessToken();
-      final headers = {
-        'Content-Type': 'application/json',
-      };
-      if (token != null) {
-        headers['Authorization'] = 'Bearer $token';
-      }
+      final headers = {'Content-Type': 'application/json'};
+      if (token != null) headers['Authorization'] = 'Bearer $token';
 
       final response = await http.get(
         Uri.parse("$apiUrl/forum/categories/"),
@@ -57,27 +51,26 @@ class _ForumHomeScreenState extends State<ForumHomeScreen> {
         });
       } else {
         setState(() {
-          errorMessage =
-              "Failed to load categories (status code ${response.statusCode})";
+          errorMessage = "Failed to load categories (${response.statusCode})";
           isLoading = false;
         });
       }
     } catch (e) {
       setState(() {
-        errorMessage = "Error fetching categories: $e";
+        errorMessage = "Error: $e";
         isLoading = false;
       });
     }
   }
 
   Future<void> _createCategoryDialog() async {
-    final TextEditingController nameController = TextEditingController();
-    final TextEditingController descController = TextEditingController();
+    final nameController = TextEditingController();
+    final descController = TextEditingController();
 
     final result = await showDialog<String>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text("Create Category"),
+        title: const Text("📝 Create a New Category"),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -93,9 +86,8 @@ class _ForumHomeScreenState extends State<ForumHomeScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel"),
-          ),
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Cancel")),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, "create"),
             child: const Text("Create"),
@@ -105,44 +97,31 @@ class _ForumHomeScreenState extends State<ForumHomeScreen> {
     );
 
     if (result == "create" && nameController.text.trim().isNotEmpty) {
-      try {
-        final token = await AuthService().getAccessToken();
-        final headers = {
-          'Content-Type': 'application/json',
-        };
-        if (token != null) {
-          headers['Authorization'] = 'Bearer $token';
-        }
+      final token = await AuthService().getAccessToken();
+      final headers = {'Content-Type': 'application/json'};
+      if (token != null) headers['Authorization'] = 'Bearer $token';
 
-        final payload = {
-          "name": nameController.text.trim(),
-          "description": descController.text.trim(),
-        };
+      final payload = {
+        "name": nameController.text.trim(),
+        "description": descController.text.trim(),
+      };
 
-        final response = await http.post(
-          Uri.parse("$apiUrl/forum/category/create/"),
-          headers: headers,
-          body: jsonEncode(payload),
-        );
+      final response = await http.post(
+        Uri.parse("$apiUrl/forum/category/create/"),
+        headers: headers,
+        body: jsonEncode(payload),
+      );
 
-        if (!mounted) return;
-
-        if (response.statusCode == 201) {
-          await fetchCategories();
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Category created successfully!")),
-          );
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                  "Failed to create category (code ${response.statusCode})"),
-            ),
-          );
-        }
-      } catch (e) {
+      if (response.statusCode == 201) {
+        await fetchCategories();
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error creating category: $e")),
+          const SnackBar(content: Text("✅ Category created!")),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content:
+                  Text("⚠️ Failed to create (code ${response.statusCode})")),
         );
       }
     }
@@ -151,7 +130,7 @@ class _ForumHomeScreenState extends State<ForumHomeScreen> {
   @override
   Widget build(BuildContext context) {
     return BaseScaffoldScreen(
-      selectedIndex: 1, // Forum tab index
+      selectedIndex: 1,
       onItemTapped: (index) {
         final routes = ['/home', '/forum', '/settings'];
         if (index >= 0 && index < routes.length) {
@@ -160,79 +139,82 @@ class _ForumHomeScreenState extends State<ForumHomeScreen> {
       },
       body: Scaffold(
         appBar: AppBar(
-          title: const Text("Community Forum"),
+          title: const Text("💬 Community Forum"),
           actions: [
             IconButton(
-              icon: const Icon(Icons.refresh),
-              onPressed: fetchCategories,
-              tooltip: "Refresh",
-            ),
+                icon: const Icon(Icons.refresh), onPressed: fetchCategories),
           ],
         ),
-        body: Builder(
-          builder: (ctx) {
-            if (isLoading) {
-              return const Center(child: CircularProgressIndicator());
-            }
-
-            if (errorMessage != null) {
-              return Center(
-                child: Text(
-                  errorMessage!,
-                  style: const TextStyle(color: Colors.red, fontSize: 16),
-                ),
-              );
-            }
-
-            if (categories.isEmpty) {
-              return Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text(
-                      "No categories found.\nBe the first to create one!",
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 18),
-                    ),
-                    const SizedBox(height: 20),
-                    ElevatedButton.icon(
-                      onPressed: _createCategoryDialog,
-                      icon: const Icon(Icons.add),
-                      label: const Text("Create Category"),
-                    ),
-                  ],
-                ),
-              );
-            }
-
-            return ListView.builder(
-              itemCount: categories.length,
-              itemBuilder: (context, index) {
-                final category = categories[index];
-                return ListTile(
-                  title: Text(category['name'] ?? 'Unnamed Category'),
-                  subtitle: Text(category['description'] ?? ''),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => ForumThreadListScreen(
-                        categoryId: category['id'],
-                        categoryName: category['name'],
-                      ),
-                    ),
-                  ),
-                );
-              },
-            );
-          },
+        body: Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : errorMessage != null
+                  ? Center(
+                      child: Text(errorMessage!,
+                          style:
+                              const TextStyle(color: Colors.red, fontSize: 16)),
+                    )
+                  : categories.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Text("No categories found 💤",
+                                  style: TextStyle(fontSize: 18)),
+                              const SizedBox(height: 16),
+                              ElevatedButton.icon(
+                                icon: const Icon(Icons.add),
+                                label: const Text("Create a Category"),
+                                onPressed: _createCategoryDialog,
+                              ),
+                            ],
+                          ),
+                        )
+                      : ListView.builder(
+                          itemCount: categories.length,
+                          itemBuilder: (context, index) {
+                            final category = categories[index];
+                            return Card(
+                              margin: const EdgeInsets.symmetric(vertical: 8),
+                              child: ListTile(
+                                contentPadding: const EdgeInsets.all(12),
+                                title: Text(
+                                  category['name'] ?? 'Unnamed Category',
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16),
+                                ),
+                                subtitle: Text(
+                                  category['description'] ??
+                                      'No description provided.',
+                                  style: const TextStyle(fontSize: 14),
+                                ),
+                                leading:
+                                    const Icon(Icons.forum, color: Colors.blue),
+                                trailing: const Icon(Icons.arrow_forward_ios,
+                                    size: 16),
+                                onTap: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => ForumThreadListScreen(
+                                      categoryId: category['id'],
+                                      categoryName: category['name'],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
         ),
-        floatingActionButton: FloatingActionButton(
+        floatingActionButton: FloatingActionButton.extended(
           onPressed: _createCategoryDialog,
-          child: const Icon(Icons.add),
-          tooltip: "Create a New Category",
+          label: const Text("New Category"),
+          icon: const Icon(Icons.add),
+          backgroundColor: Colors.blueAccent,
         ),
       ),
     );
   }
-
 }

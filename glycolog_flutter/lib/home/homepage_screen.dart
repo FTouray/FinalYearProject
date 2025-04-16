@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:Glycolog/home/predictive_feedback_widget.dart';
+import 'package:Glycolog/home/personal_trends_widget.dart';
 import 'package:Glycolog/learning/gamification_dashboard_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -188,14 +188,16 @@ Future<void> _setup() async {
                 ),
               ),
             ),
-            PredictiveFeedbackWidget(),
+
+            // 🧠 AI-driven health reflections
+            PersonalTrendsWidget(),
             const SizedBox(height: 16),
+
             const Text(
-              "Here’s what you can explore today:",
-              style: TextStyle(fontSize: 16, color: Colors.black54),
+              "🩺 Quick Actions",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-            GamificationDashboardCard(),
-            const SizedBox(height: 24),
+            const SizedBox(height: 6),
             _buildFeatureItem(
               "💬 Not Feeling Well",
               "Let us know how you’re feeling.",
@@ -211,6 +213,13 @@ Future<void> _setup() async {
               "See how your meals affect your glucose.",
               () => Navigator.pushNamed(context, '/glycaemic-response-main'),
             ),
+
+            const SizedBox(height: 24),
+            const Text(
+              "📁 Health Overview",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 6),
             _buildFeatureItem(
               "🏃‍♂️ Fitness Summary",
               "See how far you’ve moved this week.",
@@ -226,6 +235,15 @@ Future<void> _setup() async {
               "Reflections from your data.",
               () => Navigator.pushNamed(context, '/insights'),
             ),
+
+            const SizedBox(height: 24),
+            const Text(
+              "🎓 Learn & Improve",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 6),
+            GamificationDashboardCard(),
+            const SizedBox(height: 6),
             _buildFeatureItem(
               "🎮 Learning Adventure",
               "Take on interactive diabetes challenges!",

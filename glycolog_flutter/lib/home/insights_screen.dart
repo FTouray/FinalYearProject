@@ -34,7 +34,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
     await fetchInsights();
   }
 
-  Future<void> fetchInsights() async {
+ Future<void> fetchInsights() async {
     final token = await AuthService().getAccessToken();
     if (token == null) return;
 
@@ -50,60 +50,103 @@ class _InsightsScreenState extends State<InsightsScreen> {
       );
 
       if (summaryRes.statusCode == 200 && trendRes.statusCode == 200) {
+        final summaryData = json.decode(summaryRes.body);
+        final trendData = json.decode(trendRes.body);
+
         setState(() {
           insightsData = {
-            ...json.decode(summaryRes.body),
-            "trend": json.decode(trendRes.body)['trend'],
+            ...summaryData,
+            "trend": trendData['trend'] ?? {},
           };
           isLoading = false;
         });
       } else {
-        print("Failed to load insights.");
+        setState(() {
+          isLoading = false;
+          insightsData = {}; // mark it as loaded, but empty
+        });
       }
     } catch (e) {
       print("Error fetching insights: $e");
+      setState(() {
+        isLoading = false;
+        insightsData = {}; // fallback in case of error
+      });
     }
   }
 
-  Future<void> generatePdf() async {
+Future<void> generatePdf() async {
     final pdf = pw.Document();
     final trend = insightsData!['trend'];
     final avgGlucose = insightsData?['glucose']?['average']?.toDouble();
     final aiInsight = insightsData?['ai_insight'] ?? "No insights available.";
-
+    final summaryItems =
+        List<Map<String, dynamic>>.from(trend['ai_summary_items'] ?? []);
+    summaryItems.sort((a, b) => (b['score'] ?? 0).compareTo(a['score'] ?? 0));
     final formattedGlucose = await formatGlucoseDynamic(avgGlucose);
 
-    print("AI_INSIGHT: $aiInsight");
+    pw.Widget divider() => pw.Divider(thickness: 0.8, color: PdfColors.grey300);
 
     pdf.addPage(
       pw.MultiPage(
         build: (pw.Context context) => [
-          pw.Text("🧠 Personal Insights Summary",
+          pw.Text("Personal Insights Summary",
               style:
                   pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold)),
-          pw.Text("Generated: ${DateTime.now().toLocal()}",
+          pw.Text("Generated on: ${DateTime.now().toLocal()}",
               style: pw.TextStyle(fontSize: 12, color: PdfColors.grey)),
           pw.SizedBox(height: 20),
-          pw.Text("📊 Health Trend", style: pw.TextStyle(fontSize: 18)),
-          pw.Text("Glucose Avg: $formattedGlucose $_selectedUnit"),
-          pw.Text("Steps: ${trend['avg_steps']}"),
-          pw.Text("Sleep: ${trend['avg_sleep_hours']} hrs"),
-          pw.Text("Heart Rate: ${trend['avg_heart_rate']} bpm"),
-          pw.Text("Sessions: ${trend['total_exercise_sessions']}"),
-          pw.SizedBox(height: 16),
-          pw.Text("Summary: ", style: pw.TextStyle(fontSize: 18)),
-          pw.Text("${trend['ai_summary']}"),
-          pw.SizedBox(height: 16),
-          pw.Text("✨ AI Summary Insights", style: pw.TextStyle(fontSize: 18)),
-          pw.Text(aiInsight),
-          pw.SizedBox(height: 16),
-          pw.Text("🎯 Focus Area", style: pw.TextStyle(fontSize: 18)),
+
+          // Health Overview Section
+          pw.Text("Health Trend Overview",
+              style:
+                  pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+          pw.SizedBox(height: 8),
+          pw.Bullet(text: "Glucose Average: $formattedGlucose $_selectedUnit"),
+          pw.Bullet(text: "Steps: ${trend['avg_steps']}"),
+          pw.Bullet(text: "Sleep: ${trend['avg_sleep_hours']} hrs"),
+          pw.Bullet(text: "Heart Rate: ${trend['avg_heart_rate']} bpm"),
+          pw.Bullet(
+              text: "Exercise Sessions: ${trend['total_exercise_sessions']}"),
+          pw.SizedBox(height: 12),
+          divider(),
+
+          // AI Summary Items
+          pw.SizedBox(height: 10),
+          pw.Text("Key AI Recommendations",
+              style:
+                  pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+          pw.SizedBox(height: 8),
+          if (summaryItems.isNotEmpty)
+            ...summaryItems.map((item) => pw.Bullet(
+                  text: "[${item['score']}] ${item['text']}",
+                ))
+          else
+            pw.Text("No AI highlights available."),
+          pw.SizedBox(height: 12),
+          divider(),
+
+          // Full AI Text
+          pw.SizedBox(height: 10),
+          pw.Text("Full AI Summary",
+              style:
+                  pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+          pw.SizedBox(height: 6),
+          pw.Text(aiInsight, style: pw.TextStyle(fontSize: 13)),
+          pw.SizedBox(height: 12),
+          divider(),
+
+          // Focus Area
+          pw.SizedBox(height: 10),
+          pw.Text("Focus Area",
+              style:
+                  pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+          pw.SizedBox(height: 6),
           pw.Text("Avg Glucose Prediction: $formattedGlucose $_selectedUnit"),
           pw.Text("Focus: Maintain steady glucose, prioritize rest."),
         ],
       ),
     );
-
 
     await Printing.layoutPdf(
       name:
@@ -121,47 +164,236 @@ class _InsightsScreenState extends State<InsightsScreen> {
           IconButton(
             icon: const Icon(Icons.download),
             tooltip: "Download PDF",
-            onPressed: isLoading ? null : generatePdf,
+            onPressed:
+                isLoading || insightsData?.isEmpty == true ? null : generatePdf,
           ),
         ],
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
-          : ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                _buildTrendCard(insightsData!['trend']),
-                const SizedBox(height: 20),
-                _buildAIInsight(insightsData!['ai_insight']),
-                const SizedBox(height: 20),
-                _buildFocusAreas(insightsData!),
-              ],
-            ),
+          : (insightsData == null || insightsData!.isEmpty)
+              ? _buildEmptyState()
+              : ListView(
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    _buildTrendCard(insightsData!['trend']),
+                    const SizedBox(height: 20),
+                    _buildAIInsight(insightsData!['ai_insight']),
+                    const SizedBox(height: 20),
+                    _buildFocusAreas(insightsData!),
+                    const SizedBox(height: 20),
+                    TextButton.icon(
+                      icon: const Icon(Icons.download),
+                      label: const Text("Export to PDF"),
+                      onPressed: generatePdf,
+                    ),
+                  ],
+                ),
     );
   }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: const [
+            Icon(Icons.insights_outlined, size: 60, color: Colors.grey),
+            SizedBox(height: 16),
+            Text(
+              "No insights available yet.",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: 8),
+            Text(
+              "Start logging your glucose, meals, and activities to generate personalised insights!",
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 14, color: Colors.grey),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
 
   Widget _buildTrendCard(Map trend) {
     return FutureBuilder<String>(
       future: formatGlucoseDynamic(trend['avg_glucose_level']?.toDouble()),
       builder: (context, snapshot) {
         final formattedGlucose = snapshot.data ?? '-';
+        final List<dynamic> aiSummaryItems =
+            List.from(trend['ai_summary_items'] ?? []);
+        aiSummaryItems
+            .sort((a, b) => (b['score'] ?? 0).compareTo(a['score'] ?? 0));
+        final aiSummaryText = trend['ai_summary'] ?? "No summary available.";
+
+        bool showFullSummary = false;
+
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Card(
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+              elevation: 2,
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "📊 Weekly Health Snapshot",
+                      style:
+                          TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Flexible(
+                            child: _trendTile("🩺 Glucose",
+                                "$formattedGlucose $_selectedUnit")),
+                        const SizedBox(width: 16),
+                        Flexible(
+                            child: _trendTile("🚶 Steps",
+                                trend['avg_steps']?.toString() ?? "-")),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        _trendTile(
+                            "🛌 Sleep", "${trend['avg_sleep_hours']} hrs"),
+                        _trendTile("❤️ BPM", "${trend['avg_heart_rate']} bpm"),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    _trendTile("🏋️‍♀️ Sessions",
+                        trend['total_exercise_sessions'].toString()),
+                    const Divider(height: 24),
+                    const Text(
+                      "💡 AI Highlights",
+                      style:
+                          TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 8),
+                    if (aiSummaryItems.isEmpty)
+                      const Text("No recommendations yet.")
+                    else
+                      ...aiSummaryItems.take(3).map((item) => Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4.0),
+                            child: Text(
+                              "• ${item['text']}",
+                              style: TextStyle(
+                                color: item['score'] == 3
+                                    ? Colors.red[800]
+                                    : item['score'] == 2
+                                        ? Colors.orange[800]
+                                        : Colors.black87,
+                                fontWeight: item['score'] == 3
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                                fontSize: 14,
+                              ),
+                            ),
+                          )),
+                    const SizedBox(height: 12),
+                    if (aiSummaryItems.length > 3 || aiSummaryText.isNotEmpty)
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: TextButton.icon(
+                          onPressed: () => setState(
+                              () => showFullSummary = !showFullSummary),
+                          icon: const Icon(Icons.insights),
+                          label: Text(showFullSummary
+                              ? "Hide Full Summary"
+                              : "View Full Summary"),
+                        ),
+                      ),
+                    if (showFullSummary)
+                      Container(
+                        margin: const EdgeInsets.only(top: 8),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          aiSummaryText,
+                          style: const TextStyle(
+                              fontSize: 13, color: Colors.black87),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+
+  Widget _trendTile(String label, String value) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 15,
+            color: Colors.teal,
+          ),
+        ),
+      ],
+    );
+  }
+
+
+  Widget _buildAIInsight(String aiInsight) {
+    final lines =
+        aiInsight.split('\n').where((l) => l.trim().isNotEmpty).toList();
+    final bool isLong = lines.length > 4;
+    bool showAll = false;
+
+    return StatefulBuilder(
+      builder: (context, setState) {
+        final display = showAll ? lines : lines.take(4).toList();
         return Card(
+          color: Colors.blue.shade50,
           child: Padding(
             padding: const EdgeInsets.all(16.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text("📊 Weekly Health Trend",
+                const Text("🧠 AI Coach Summary",
                     style:
                         TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
                 const SizedBox(height: 10),
-                Text("Glucose: $formattedGlucose $_selectedUnit"),
-                Text("Steps: ${trend['avg_steps']}"),
-                Text("Sleep: ${trend['avg_sleep_hours']} hrs"),
-                Text("Heart Rate: ${trend['avg_heart_rate']} bpm"),
-                Text("Sessions: ${trend['total_exercise_sessions']}"),
-                const SizedBox(height: 10),
-                Text("Summary: ${trend['ai_summary']}"),
+                ...display.map((line) => Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4.0),
+                      child:
+                          Text("• $line", style: const TextStyle(fontSize: 14)),
+                    )),
+                if (isLong)
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton(
+                      child: Text(showAll ? "Show Less" : "Show More"),
+                      onPressed: () => setState(() => showAll = !showAll),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -170,23 +402,6 @@ class _InsightsScreenState extends State<InsightsScreen> {
     );
   }
 
-  Widget _buildAIInsight(String aiInsight) {
-    return Card(
-      color: Colors.blue.shade50,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text("🧠 AI Summary Insight",
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-            const SizedBox(height: 10),
-            Text(aiInsight),
-          ],
-        ),
-      ),
-    );
-  }
 
   Widget _buildFocusAreas(Map data) {
     final glucoseInfo = data['glucose'] ?? {};

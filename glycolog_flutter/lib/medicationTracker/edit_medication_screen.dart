@@ -3,6 +3,8 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:Glycolog/services/auth_service.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:device_calendar/device_calendar.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class EditMedicationScreen extends StatefulWidget {
   final Map<String, dynamic> medication;
@@ -20,6 +22,7 @@ class _EditMedicationScreenState extends State<EditMedicationScreen> {
   DateTime? lastTaken;
 
   final String? apiUrl = dotenv.env['API_URL'];
+  final DeviceCalendarPlugin _calendarPlugin = DeviceCalendarPlugin();
 
   @override
   void initState() {
@@ -62,6 +65,24 @@ class _EditMedicationScreenState extends State<EditMedicationScreen> {
   Future<void> deleteMedication() async {
     final token = await AuthService().getAccessToken();
     if (token == null) return;
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final eventKey = 'eventId_med${widget.medication["id"]}';
+      final eventId = prefs.getString(eventKey);
+
+      if (eventId != null) {
+        final calendars = await _calendarPlugin.retrieveCalendars();
+        final calendarId = calendars.data?.first.id;
+
+        if (calendarId != null) {
+          await _calendarPlugin.deleteEvent(calendarId, eventId);
+          await prefs.remove(eventKey);
+        }
+      }
+    } catch (e) {
+      debugPrint("Error removing calendar event: $e");
+    }
 
     final response = await http.delete(
       Uri.parse('$apiUrl/medications/delete/${widget.medication['id']}/'),

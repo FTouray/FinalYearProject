@@ -142,20 +142,7 @@ class HealthSyncService {
     if (workouts.isEmpty) {
       print("⚠️ No workouts found. Creating fallback workout entry.");
 
-      return [
-        {
-          "activity_type": "General Activity",
-          "start_time": fallbackStart.toIso8601String(),
-          "end_time": fallbackEnd.toIso8601String(),
-          "duration_minutes": fallbackEnd.difference(fallbackStart).inMinutes,
-          "steps": totalSteps,
-          "heart_rate": avgHeartRate ?? 0,
-          "calories_burned": 0,
-          "distance_km": 0,
-          "sleep_hours": sleepHours,
-          "is_fallback": true,
-        }
-      ];
+      return [];
     }
 
     // Map each workout

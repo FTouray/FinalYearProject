@@ -10,7 +10,11 @@ class ForumThreadListScreen extends StatefulWidget {
   final int categoryId;
   final String categoryName;
 
-  const ForumThreadListScreen({Key? key, required this.categoryId, required this.categoryName}) : super(key: key);
+  const ForumThreadListScreen({
+    Key? key,
+    required this.categoryId,
+    required this.categoryName,
+  }) : super(key: key);
 
   @override
   State<ForumThreadListScreen> createState() => _ForumThreadListScreenState();
@@ -19,7 +23,7 @@ class ForumThreadListScreen extends StatefulWidget {
 class _ForumThreadListScreenState extends State<ForumThreadListScreen> {
   List threads = [];
   bool isLoading = true;
-  final String? apiUrl = dotenv.env['API_URL']; 
+  final String? apiUrl = dotenv.env['API_URL'];
 
   Future<void> fetchThreads() async {
     final token = await AuthService().getAccessToken();
@@ -46,7 +50,6 @@ class _ForumThreadListScreenState extends State<ForumThreadListScreen> {
     }
   }
 
-
   @override
   void initState() {
     super.initState();
@@ -60,40 +63,106 @@ class _ForumThreadListScreenState extends State<ForumThreadListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(widget.categoryName)),
+      appBar: AppBar(
+        title: Text(widget.categoryName),
+        backgroundColor: Colors.blueAccent,
+      ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
-          : ListView.builder(
-              itemCount: threads.length,
-              itemBuilder: (context, index) {
-                final thread = threads[index];
-                return ListTile(
-                  title: Text(thread['title']),
-                  subtitle: Text("Comments: ${thread['comment_count']}"),
-                  trailing: Text(thread['latest_reply'] ?? "No replies"),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => ForumThreadScreen(
-                        threadId: thread['id'].toString(),
-                        username: "current_user", 
+          : RefreshIndicator(
+              onRefresh: () async => fetchThreads(),
+              child: ListView(
+                children: [
+                  _buildCategoryHeader(),
+                  const SizedBox(height: 10),
+                  if (threads.isEmpty)
+                    const Center(
+                      child: Padding(
+                        padding: EdgeInsets.only(top: 40),
+                        child: Text("No threads yet. Start the discussion!"),
                       ),
                     ),
-                  ),
-                );
-              },
+                  ...threads.map((thread) => _buildThreadCard(thread)).toList(),
+                ],
+              ),
             ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: Colors.blueAccent,
         onPressed: () async {
           await Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => ForumCreateThreadScreen(categoryId: widget.categoryId),
+              builder: (_) =>
+                  ForumCreateThreadScreen(categoryId: widget.categoryId),
             ),
           );
-          refreshThreads(); // Refresh after adding thread
+          refreshThreads();
         },
-        child: const Icon(Icons.add),
+        icon: const Icon(Icons.add),
+        label: const Text("New Thread"),
+      ),
+    );
+  }
+
+  Widget _buildCategoryHeader() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.blueAccent.shade400, Colors.blueAccent.shade700],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.forum, color: Colors.white, size: 28),
+          const SizedBox(height: 8),
+          Text(
+            widget.categoryName,
+            style: const TextStyle(
+                fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            "Explore and join conversations in this topic.",
+            style: TextStyle(color: Colors.white70),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildThreadCard(dynamic thread) {
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: ListTile(
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        leading:
+            const Icon(Icons.chat_bubble_outline, color: Colors.blueAccent),
+        title: Text(
+          thread['title'],
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        subtitle: Text(
+            "💬 ${thread['comment_count']}  •  🕒 ${thread['latest_reply'] ?? "No replies"}"),
+        trailing:
+            const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ForumThreadScreen(
+              threadId: thread['id'].toString(),
+              username: "current_user",
+            ),
+          ),
+        ),
       ),
     );
   }

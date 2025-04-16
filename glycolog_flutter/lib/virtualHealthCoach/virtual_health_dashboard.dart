@@ -126,18 +126,22 @@ Future<void> _refreshTrendSummary() async {
         headers: {"Authorization": "Bearer $token"},
       );
 
+      Map<String, dynamic> trendJson = {};
+      try {
+        trendJson = jsonDecode(trendRes.body);
+      } catch (_) {}
+
       final fullHistory = _mapTrend(jsonDecode(histRes.body)["trend_data"],
           excludeFallback: false)
         ..sort((a, b) => b['date'].compareTo(a['date']));
       final filteredHistory = _mapTrend(jsonDecode(histRes.body)["trend_data"])
         ..sort((a, b) => b['date'].compareTo(a['date']));
 
-
       setState(() {
         todayData = jsonDecode(todayRes.body);
-        trendData = jsonDecode(trendRes.body)["trend"];
-        history = fullHistory; // used for graphs
-        _filteredHistory = filteredHistory; // used for summaries
+        trendData = trendJson["trend"] ?? {};
+        history = fullHistory;
+        _filteredHistory = filteredHistory;
       });
     } catch (e) {
       print("Dashboard load failed: $e");
@@ -148,7 +152,8 @@ Future<void> _refreshTrendSummary() async {
     }
 
     setState(() => isLoading = false);
-  }
+    }
+
 
 List<Map<String, dynamic>> _mapTrend(Map<String, dynamic> trend,
       {bool excludeFallback = true}) {
@@ -365,22 +370,12 @@ Future<void> _loadPastTrends() async {
 Widget _buildTrendSummary() {
     if (trendData == null) return const SizedBox();
 
-    String formatDate(String isoDate) {
-      try {
-        final dt = DateTime.parse(isoDate);
-        return "${dt.day} ${_monthName(dt.month)} ${dt.year}";
-      } catch (e) {
-        return isoDate;
-      }
-    }
-
-    final String start = formatDate(trendData!['start_date']);
-    final String end = formatDate(trendData!['end_date']);
+    final String start = _formatDate(trendData!['start_date']);
+    final String end = _formatDate(trendData!['end_date']);
     final DateTime? endDate = DateTime.tryParse(trendData!['end_date']);
     final int daysOld =
         endDate != null ? DateTime.now().difference(endDate).inDays : 999;
 
-    // Badge logic
     Color badgeColor;
     String badgeText;
     if (daysOld < 7) {
@@ -399,126 +394,171 @@ Widget _buildTrendSummary() {
     final int sessions = trendData!['total_exercise_sessions'] ?? 0;
     final double? hr = trendData!['avg_heart_rate']?.toDouble();
     final double? glucose = trendData!['avg_glucose_level']?.toDouble();
-    final String? summary = trendData!['ai_summary'];
+    final String summary = trendData!['ai_summary']?.toString() ?? '';
+    final List<dynamic> aiItems =
+        List.from(trendData!['ai_summary_items'] ?? []);
+    aiItems.sort(
+        (a, b) => (b['score'] ?? 0).compareTo(a['score'] ?? 0)); // Prioritize
 
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 10),
-      child: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+    bool showFullSummary = false;
+
+    return StatefulBuilder(
+      builder: (context, setState) {
+        return Card(
+          margin: const EdgeInsets.symmetric(vertical: 10),
+          child: Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text("Weekly Health Summary",
-                    style:
-                        TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                const SizedBox(width: 10),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: badgeColor,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text(
-                    badgeText,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.black87,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text("Period: $start to $end"),
-            Text("• Avg Steps: $steps"),
-            Text("• Avg Sleep: ${sleep.toStringAsFixed(1)} hrs"),
-            Text("• Avg Heart Rate: ${hr?.round() ?? 'N/A'} bpm"),
-            Text(
-                "• Avg Glucose: ${glucose?.toStringAsFixed(1) ?? 'N/A'} mg/dL"),
-            Text("• Exercise Sessions: $sessions"),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                TextButton.icon(
-                  onPressed: isRefreshingSummary
-                      ? null
-                      : () async {
-                          setState(() => isRefreshingSummary = true);
-                          final token = await AuthService().getAccessToken();
-                          final refreshed = await http.get(
-                            Uri.parse(
-                                "$apiUrl/health/trends/$trendType/?refresh=true"),
-                            headers: {"Authorization": "Bearer $token"},
-                          );
-                          setState(() {
-                            trendData = jsonDecode(refreshed.body)["trend"];
-                            isRefreshingSummary = false;
-                          });
-
-                          _scrollController.animateTo(
-                            0,
-                            duration: const Duration(milliseconds: 300),
-                            curve: Curves.easeOut,
-                          );
-
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                                content: Text(
-                                    "Health summary successfully refreshed!")),
-                          );
-                        },
-                  icon: isRefreshingSummary
-                      ? const SizedBox(
-                          height: 16,
-                          width: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.refresh),
-                  label: const Text("Refresh Summary"),
-                ),
-                TextButton.icon(
-                  onPressed: _loadPastTrends,
-                  icon: const Icon(Icons.history),
-                  label: const Text("View Previous Summaries"),
-                ),
-              ],
-            ),
-
-
-            if (summary != null && summary.trim().isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.grey.shade300),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                Row(
                   children: [
-                    const Text("AI Coach Insights:",
+                    const Text("Weekly Health Summary",
                         style: TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 14)),
-                    const SizedBox(height: 6),
-                    Text(summary.trim(),
-                        style: const TextStyle(fontStyle: FontStyle.italic)),
+                            fontWeight: FontWeight.bold, fontSize: 16)),
+                    const SizedBox(width: 10),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: badgeColor,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        badgeText,
+                        style: const TextStyle(
+                            fontSize: 12, fontWeight: FontWeight.w500),
+                      ),
+                    ),
                   ],
                 ),
-              ),
-            ],
-          ],
-        ),
-      ),
+                const SizedBox(height: 8),
+                Text("Period: $start to $end"),
+                Text("• Avg Steps: $steps"),
+                Text("• Avg Sleep: ${sleep.toStringAsFixed(1)} hrs"),
+                Text("• Avg Heart Rate: ${hr?.round() ?? 'N/A'} bpm"),
+                Text(
+                    "• Avg Glucose: ${glucose?.toStringAsFixed(1) ?? 'N/A'} mg/dL"),
+                Text("• Exercise Sessions: $sessions"),
+                const SizedBox(height: 12),
+
+                // Controls
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    TextButton.icon(
+                      onPressed: isRefreshingSummary
+                          ? null
+                          : () async {
+                              setState(() => isRefreshingSummary = true);
+                              final token =
+                                  await AuthService().getAccessToken();
+                              final refreshed = await http.get(
+                                Uri.parse(
+                                    "$apiUrl/health/trends/$trendType/?refresh=true"),
+                                headers: {"Authorization": "Bearer $token"},
+                              );
+                              setState(() {
+                                trendData = jsonDecode(refreshed.body)["trend"];
+                                isRefreshingSummary = false;
+                              });
+
+                              _scrollController.animateTo(
+                                0,
+                                duration: const Duration(milliseconds: 300),
+                                curve: Curves.easeOut,
+                              );
+
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                    content: Text(
+                                        "Health summary successfully refreshed!")),
+                              );
+                            },
+                      icon: isRefreshingSummary
+                          ? const SizedBox(
+                              height: 16,
+                              width: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.refresh),
+                      label: const Text("Refresh Summary"),
+                    ),
+                    TextButton.icon(
+                      onPressed: _loadPastTrends,
+                      icon: const Icon(Icons.history),
+                      label: const Text("View Previous Summaries"),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 12),
+
+                const Text("💡 Key AI Recommendations",
+                    style: TextStyle(fontWeight: FontWeight.w600)),
+
+                const SizedBox(height: 6),
+
+                if (aiItems.isEmpty)
+                  const Text("No AI insights available.")
+                else
+                  ...aiItems.take(3).map((item) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4.0),
+                        child: Text(
+                          "• ${item['text']}",
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: item['score'] == 3
+                                ? FontWeight.bold
+                                : FontWeight.normal,
+                            color: item['score'] == 3
+                                ? Colors.red[800]
+                                : item['score'] == 2
+                                    ? Colors.orange[800]
+                                    : Colors.black87,
+                          ),
+                        ),
+                      )),
+
+                if (summary.trim().isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      icon: const Icon(Icons.notes),
+                      label: Text(showFullSummary
+                          ? "Hide Full Summary"
+                          : "View Full Summary"),
+                      onPressed: () =>
+                          setState(() => showFullSummary = !showFullSummary),
+                    ),
+                  ),
+                ],
+
+                if (showFullSummary)
+                  Container(
+                    margin: const EdgeInsets.only(top: 8),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    child: Text(
+                      summary.trim(),
+                      style:
+                          const TextStyle(fontSize: 13, color: Colors.black87),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
+
 
 
 Widget _buildGraph(String title, String metric, Color color) {
@@ -892,6 +932,11 @@ String _formatValue(String label, dynamic value) {
   
   @override
   Widget build(BuildContext context) {
+    final isEmptyState = !isLoading &&
+        (todayData == null || todayData!.isEmpty) &&
+        (trendData == null || trendData!.isEmpty) &&
+        history.isEmpty;
+
     return BaseScaffoldScreen(
       selectedIndex: 0,
       onItemTapped: (index) {
@@ -902,7 +947,7 @@ String _formatValue(String label, dynamic value) {
       },
       body: Scaffold(
         appBar: AppBar(
-          title: const Text("Health Coach Dashboard"),
+          title: const Text("Fitness Summary Dashboard"),
           backgroundColor: Colors.blue[800],
           actions: [
             IconButton(
@@ -932,47 +977,56 @@ String _formatValue(String label, dynamic value) {
         ),
         body: isLoading
             ? const Center(child: CircularProgressIndicator())
-            : RefreshIndicator(
-                onRefresh: () async {
-                  final token = await AuthService().getAccessToken();
-                  if (token != null) await _syncHealthData(token);
-                  await _loadDashboard(token!);
-                },
-                child: ListView(
-                  controller: _scrollController,
-                  padding: const EdgeInsets.all(12),
-                  children: [
-                    _buildTodaySummary(),
-                    _buildTrendSummary(),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8.0),
-                      child: DropdownButton<String>(
-                        value: trendType,
-                        items: ['weekly', 'monthly'].map((type) {
-                          return DropdownMenuItem<String>(
-                            value: type,
-                            child: Text("View $type trend"),
-                          );
-                        }).toList(),
-                        onChanged: (value) async {
-                          if (value != null) {
-                            setState(() => trendType = value);
-                            final token = await AuthService().getAccessToken();
-                            await _loadDashboard(token!);
-                          }
-                        },
-                      ),
+            : isEmptyState
+                ? const Center(
+                    child: Text(
+                      "📭 No health data available.\nConnect your device and sync to begin.",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 16, color: Colors.black54),
                     ),
-                    _buildGraph("Step Trend", "steps", Colors.blue),
-                    _buildGraph(
-                        "Heart Rate Trend", "heart_rate", Colors.redAccent),
-                    _buildGraph("Sleep Trend", "sleep_hours", Colors.purple),
-                    _buildHistorySection(),
-                  ],
-                ),
-              ),
+                  )
+                : RefreshIndicator(
+                    onRefresh: () async {
+                      final token = await AuthService().getAccessToken();
+                      if (token != null) await _syncHealthData(token);
+                      await _loadDashboard(token!);
+                    },
+                    child: ListView(
+                      controller: _scrollController,
+                      padding: const EdgeInsets.all(12),
+                      children: [
+                        _buildTodaySummary(),
+                        _buildTrendSummary(),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8.0),
+                          child: DropdownButton<String>(
+                            value: trendType,
+                            items: ['weekly', 'monthly'].map((type) {
+                              return DropdownMenuItem<String>(
+                                value: type,
+                                child: Text("View $type trend"),
+                              );
+                            }).toList(),
+                            onChanged: (value) async {
+                              if (value != null) {
+                                setState(() => trendType = value);
+                                final token =
+                                    await AuthService().getAccessToken();
+                                await _loadDashboard(token!);
+                              }
+                            },
+                          ),
+                        ),
+                        _buildGraph("Step Trend", "steps", Colors.blue),
+                        _buildGraph(
+                            "Heart Rate Trend", "heart_rate", Colors.redAccent),
+                        _buildGraph(
+                            "Sleep Trend", "sleep_hours", Colors.purple),
+                        _buildHistorySection(),
+                      ],
+                    ),
+                  ),
       ),
     );
   }
-
 }

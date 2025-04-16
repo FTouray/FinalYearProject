@@ -1,11 +1,11 @@
 from django.urls import path
 from .views import ( MedicationListView, MedicationReminderListView, 
-    chat_with_virtual_coach, create_category, create_comment, create_thread, delete_medication, exercise_step, 
+    chat_with_virtual_coach, combined_glucose_timeline, create_category, create_comment, create_thread, delete_medication, exercise_step, 
     chat_history, fetch_medications_from_openfda, get_ai_health_trends, get_all_ai_health_trends, get_insights_summary_with_ai, get_last_synced_workout, get_predictive_feedback, get_quizset_quizzes, get_user_profile, get_user_profile_detail, latest_fitness_entry,
-    get_local_notifications, get_medication_reminders, leaderboard, list_ai_recommendations,
+    get_medication_reminders, leaderboard, list_ai_recommendations,
     get_saved_medications, list_all_quizsets_and_progress, list_comments_for_thread, list_forum_categories, list_past_insights, list_quiz_attempts, list_threads_by_category, list_user_achievements, submit_quiz, today_fitness_summary, meal_step, glucose_step, glycaemic_response_main,
     list_categories, list_food_items_by_category, log_glucose, log_meal, meal_log_detail,
-    meal_log_history, questionnaire_data_visualization, queue_local_notification, register_user,
+    meal_log_history, questionnaire_data_visualization, register_user,
     login_user, review_answers, save_medication, scan_medication, set_reminder, settings_view,
     glucose_log_details, glucose_log_history, start_questionnaire, log_health_entry,
     symptom_step, update_medication, get_dashboard_summary, update_profile
@@ -27,6 +27,7 @@ urlpatterns = [
     path("glucose-log/", log_glucose, name="glucose-log"),
     path("glucose-log/history/", glucose_log_history, name="glucose-log-history"),
     path("glucose-log/<int:logIDR>/", glucose_log_details, name="glucose-log-details"),
+    path("glucose/combined-timeline/", combined_glucose_timeline, name="combined_glucose_timeline"),
 
     # Settings
     path("settings/", settings_view, name="settings"),
@@ -69,10 +70,6 @@ urlpatterns = [
     # Health Trends
     path("health/trends/<str:period_type>/", get_ai_health_trends, name="get_ai_health_trends"),
     path("health/trends/", get_all_ai_health_trends, name="get_all_trend_summaries"),
-
-    # Notifications
-    path("notifications/", get_local_notifications, name="get_local_notifications"),
-    path("notifications/queue/", queue_local_notification, name="queue_local_notification"),
 
     # Medication Support
     path("medications/search/", fetch_medications_from_openfda, name="fetch-medications"),

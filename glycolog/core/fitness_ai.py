@@ -4,6 +4,7 @@ from django.db.models import Avg, Sum, Count
 from openai import OpenAI
 from core.models import AIHealthTrend, FitnessActivity, CustomUser, GlucoseCheck, GlucoseLog
 from django.db.models import Q
+import re
 
 
 
@@ -129,7 +130,13 @@ def generate_health_trends(user, period_type="weekly"):
     - Diabetes-specific analysis of glucose trends
     - Personalized, safe fitness & wellness recommendations
 
-    Output in bullet points. Use clear, friendly language.
+    Return your output in bullet point format. **Add a priority score from 1 to 3 for each bullet** based on urgency or importance:
+    - 3 = Must address soon
+    - 2 = Important but not critical
+    - 1 = Good to know or long-term
+
+    Format each bullet like:
+    [3] Try to walk 5,000+ steps daily to maintain glucose stability.
     """
     print("Sending prompt to GPT...")
 
@@ -141,7 +148,8 @@ def generate_health_trends(user, period_type="weekly"):
         ],
     )
 
-    summary = response.choices[0].message.content
+    summary = response.choices[0].message.content.strip()
+    parsed_summary = parse_ai_summary_with_scores(summary)
     print("AI Summary:")
     print(summary)
 
@@ -158,12 +166,20 @@ def generate_health_trends(user, period_type="weekly"):
             "avg_glucose_level": avg_glucose,
             "total_exercise_sessions": total_sessions,
             "ai_summary": summary,
+            "ai_summary_items": parsed_summary,
         },
     )
 
     print("Trend saved.\n")
     return summary
 
+def parse_ai_summary_with_scores(summary_text):
+    pattern = r"\[(\d+)\]\s+(.*)"
+    parsed = re.findall(pattern, summary_text)
+    return [
+        {"score": int(score), "text": text.strip()}
+        for score, text in parsed
+    ]
 
 def generate_system_wide_health_trends():
     return generate_health_trends(user=None, period_type="weekly"), generate_health_trends(user=None, period_type="monthly")

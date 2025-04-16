@@ -17,50 +17,86 @@ class ForumCreateThreadScreen extends StatefulWidget {
 
 class _ForumCreateThreadScreenState extends State<ForumCreateThreadScreen> {
   final TextEditingController _titleController = TextEditingController();
-  final String? apiUrl = dotenv.env['API_URL']; 
+  final String? apiUrl = dotenv.env['API_URL'];
+  bool isSubmitting = false;
+  String? errorText;
 
   Future<void> createThread() async {
-  final token = await AuthService().getAccessToken(); 
-  final headers = {
-    'Content-Type': 'application/json',
-  };
-  if (token != null) {
-    headers['Authorization'] = 'Bearer $token'; 
+    final title = _titleController.text.trim();
+
+    if (title.isEmpty) {
+      setState(() => errorText = "Title cannot be empty.");
+      return;
+    }
+
+    setState(() {
+      isSubmitting = true;
+      errorText = null;
+    });
+
+    final token = await AuthService().getAccessToken();
+    final headers = {
+      'Content-Type': 'application/json',
+      if (token != null) 'Authorization': 'Bearer $token',
+    };
+
+    final response = await http.post(
+      Uri.parse("$apiUrl/forum/threads/create/"),
+      headers: headers,
+      body: jsonEncode({
+        "category_id": widget.categoryId,
+        "title": title,
+      }),
+    );
+
+    setState(() => isSubmitting = false);
+
+    if (response.statusCode == 201) {
+      Navigator.pop(context);
+    } else {
+      setState(() {
+        errorText = "Failed to create thread (code ${response.statusCode})";
+      });
+    }
   }
-
-  final response = await http.post(
-    Uri.parse("$apiUrl/forum/threads/create/"),
-    headers: headers,
-    body: jsonEncode({
-      "category_id": widget.categoryId,
-      "title": _titleController.text,
-    }),
-  );
-
-  if (response.statusCode == 201) {
-    Navigator.pop(context); 
-  } else {
-    print("Failed to create thread: ${response.statusCode} - ${response.body}");
-  }
-}
-
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("New Thread")),
+      appBar: AppBar(
+        title: const Text("📝 Create Thread"),
+        backgroundColor: Colors.blueAccent,
+      ),
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(20.0),
         child: Column(
           children: [
             TextField(
               controller: _titleController,
-              decoration: const InputDecoration(labelText: "Thread Title"),
+              decoration: InputDecoration(
+                labelText: "Thread Title",
+                hintText: "What’s your topic?",
+                prefixIcon: const Icon(Icons.title),
+                errorText: errorText,
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
             ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: createThread,
-              child: const Text("Create"),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: isSubmitting ? null : createThread,
+                icon: const Icon(Icons.send),
+                label: Text(isSubmitting ? "Creating..." : "Create Thread"),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blueAccent,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  textStyle: const TextStyle(fontSize: 16),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
             ),
           ],
         ),

@@ -316,13 +316,16 @@ class MedicationSerializer(serializers.ModelSerializer):
         fields = ['id', 'user', 'name', 'fda_id', 'generic_name', 'dosage', 'frequency', 'last_taken']
 
 class MedicationReminderSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = MedicationReminder
-        fields = ["id", "medication", "day_of_week", "hour", "minute", "repeat_weeks", "created_at"]
+    medication_name = serializers.CharField(source="medication.name", read_only=True)
 
     class Meta:
         model = MedicationReminder
-        fields = ['id', 'user', 'medication', 'medication_name', 'reminder_time', 'status']
+        fields = [
+            'id', 'user', 'medication', 'medication_name',
+            'frequency_type', 'interval', 'duration',
+            'day_of_week', 'day_of_month',
+            'hour', 'minute', 'created_at'
+        ]
 
 class ForumCategorySerializer(serializers.ModelSerializer):
     class Meta:

@@ -1,12 +1,12 @@
 import 'package:Glycolog/home/base_screen.dart';
-import 'package:Glycolog/services/reminder_service.dart';
+import 'package:device_calendar/device_calendar.dart';
 import 'package:flutter/material.dart';
 import 'package:Glycolog/services/auth_service.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-// Import your utils.dart
-import 'package:Glycolog/utils.dart'; // Adjust this path to match your project structure
+import 'package:Glycolog/utils.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class MedicationsScreen extends StatefulWidget {
   const MedicationsScreen({super.key});
@@ -20,6 +20,7 @@ class _MedicationsScreenState extends State<MedicationsScreen> {
   bool isLoading = true;
   String? errorMessage;
   final String? apiUrl = dotenv.env['API_URL'];
+  final DeviceCalendarPlugin _calendarPlugin = DeviceCalendarPlugin();
 
   @override
   void initState() {
@@ -68,6 +69,22 @@ class _MedicationsScreenState extends State<MedicationsScreen> {
     if (token == null) return;
 
     try {
+      // Delete calendar event first
+      final prefs = await SharedPreferences.getInstance();
+      final eventKey = 'eventId_med$id';
+      final eventId = prefs.getString(eventKey);
+
+      if (eventId != null) {
+        final calendars = await _calendarPlugin.retrieveCalendars();
+        final calendarId = calendars.data?.first.id;
+
+        if (calendarId != null) {
+          await _calendarPlugin.deleteEvent(calendarId, eventId);
+          await prefs.remove(eventKey);
+        }
+      }
+
+      // Now delete from backend
       final response = await http.delete(
         Uri.parse('$apiUrl/medications/delete/$id/'),
         headers: {'Authorization': 'Bearer $token'},
@@ -78,7 +95,7 @@ class _MedicationsScreenState extends State<MedicationsScreen> {
           medications.removeAt(index);
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Medication deleted")),
+          const SnackBar(content: Text("Medication and reminder deleted")),
         );
       } else {
         throw Exception("Failed to delete medication");

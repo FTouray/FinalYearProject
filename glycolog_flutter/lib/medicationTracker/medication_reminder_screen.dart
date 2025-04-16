@@ -1,9 +1,10 @@
 import 'package:Glycolog/services/auth_service.dart';
-import 'package:Glycolog/services/reminder_service.dart';
+import 'package:device_calendar/device_calendar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class MedicationReminderScreen extends StatefulWidget {
   final Map<String, dynamic> medication;
@@ -18,7 +19,12 @@ class MedicationReminderScreen extends StatefulWidget {
 class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
   TimeOfDay selectedTime = TimeOfDay.now();
   String selectedDay = "Monday";
-  int repeatWeeks = 4;
+  String frequencyType = "Weekly";
+  int repeatInterval = 1;
+  int repeatDuration = 4;
+
+  final DeviceCalendarPlugin _calendarPlugin = DeviceCalendarPlugin();
+  String? _calendarId;
 
   final List<String> daysOfWeek = [
     "Monday",
@@ -30,11 +36,24 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
     "Sunday"
   ];
 
-  Future<void> submitReminderToServer() async {
-    // Convert day string to integer: Monday=1, Tuesday=2, ...
-    final dayInt = _dayStringToInt(selectedDay);
+  final List<String> frequencyTypes = ["Daily", "Weekly", "Monthly"];
 
-    // Suppose you store your token in some AuthService
+  @override
+  void initState() {
+    super.initState();
+    _requestCalendarPermissions();
+  }
+
+  Future<void> _requestCalendarPermissions() async {
+    final result = await _calendarPlugin.requestPermissions();
+    if (result.isSuccess && result.data == true) {
+      final calendarsResult = await _calendarPlugin.retrieveCalendars();
+      _calendarId = calendarsResult.data!.first.id;
+    }
+  }
+
+  Future<void> submitReminderToServer() async {
+    final dayInt = _dayStringToInt(selectedDay);
     final token = await AuthService().getAccessToken();
     if (token == null) return;
 
@@ -52,22 +71,87 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
         "day_of_week": dayInt,
         "hour": selectedTime.hour,
         "minute": selectedTime.minute,
-        "repeat_weeks": repeatWeeks
+        "repeat_weeks": repeatDuration
       }),
     );
 
     if (response.statusCode == 201) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Reminder set on server successfully!")),
-      );
-      // await ReminderService.syncRemindersWithLocalNotifications();
-      // Navigator.pop(context, true);
-      Navigator.pop(context);
+      await _addCalendarEvents();
+      showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text("Reminder Added"),
+          content: const Text(
+              "Your medication reminders have been added to your calendar."),
+          actions: [
+            TextButton(
+              child: const Text("OK"),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ],
+        ),
+      ).then((_) => Navigator.pop(context));
     } else {
       print("Failed to set reminder: ${response.body}");
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Failed to set reminder")),
       );
+    }
+  }
+
+  Future<void> _addCalendarEvents() async {
+    if (_calendarId == null) return;
+
+    final now = DateTime.now();
+    final dayOffset = (_dayStringToInt(selectedDay) - now.weekday + 7) % 7;
+
+    DateTime startDate = DateTime(now.year, now.month, now.day)
+        .add(Duration(days: dayOffset))
+        .copyWith(hour: selectedTime.hour, minute: selectedTime.minute);
+
+    final endDate = startDate.add(const Duration(minutes: 5));
+
+    RecurrenceFrequency frequency;
+    switch (frequencyType) {
+      case "Daily":
+        frequency = RecurrenceFrequency.Daily;
+        break;
+      case "Monthly":
+        frequency = RecurrenceFrequency.Monthly;
+        break;
+      case "Weekly":
+      default:
+        frequency = RecurrenceFrequency.Weekly;
+    }
+
+    final event = Event(
+      _calendarId,
+      title: 'Take ${widget.medication['name']}',
+      description: 'Medication reminder from Glycolog',
+      start: TZDateTime.from(startDate, local),
+      end: TZDateTime.from(endDate, local),
+      recurrenceRule: RecurrenceRule(
+        frequency,
+        interval: repeatInterval,
+        endDate: TZDateTime.from(
+          frequency == RecurrenceFrequency.Daily
+              ? startDate.add(Duration(days: repeatInterval * repeatDuration))
+              : frequency == RecurrenceFrequency.Weekly
+                  ? startDate
+                      .add(Duration(days: repeatInterval * 7 * repeatDuration))
+                  : startDate.add(
+                      Duration(days: 30 * repeatInterval * repeatDuration)),
+          local,
+        ),
+      ),
+    );
+
+    final result = await _calendarPlugin.createOrUpdateEvent(event);
+
+    if (result?.isSuccess == true && result?.data != null) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(
+          'eventId_med${widget.medication["id"]}', result!.data!);
     }
   }
 
@@ -101,24 +185,13 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            // Day of week
             DropdownButton<String>(
               value: selectedDay,
               items: daysOfWeek
-                  .map((day) => DropdownMenuItem(
-                        value: day,
-                        child: Text(day),
-                      ))
+                  .map((day) => DropdownMenuItem(value: day, child: Text(day)))
                   .toList(),
-              onChanged: (value) {
-                if (value != null) {
-                  setState(() {
-                    selectedDay = value;
-                  });
-                }
-              },
+              onChanged: (value) => setState(() => selectedDay = value!),
             ),
-            // Time
             ListTile(
               title: const Text("Reminder Time"),
               subtitle: Text(selectedTime.format(context)),
@@ -135,25 +208,43 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
                 },
               ),
             ),
-            // Repeat Weeks
+            DropdownButton<String>(
+              value: frequencyType,
+              items: frequencyTypes
+                  .map((type) =>
+                      DropdownMenuItem(value: type, child: Text(type)))
+                  .toList(),
+              onChanged: (value) => setState(() => frequencyType = value!),
+            ),
             Row(
               children: [
-                const Text("Repeat for (weeks):"),
+                const Text("Repeat every: "),
                 const SizedBox(width: 10),
                 DropdownButton<int>(
-                  value: repeatWeeks,
-                  items: [1, 2, 3, 4, 5, 6, 8, 12].map((val) {
-                    return DropdownMenuItem<int>(
-                      value: val,
-                      child: Text("$val"),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
-                    if (value != null) {
-                      setState(() => repeatWeeks = value);
-                    }
-                  },
-                )
+                  value: repeatInterval,
+                  items: List.generate(30, (index) => index + 1)
+                      .map((val) =>
+                          DropdownMenuItem(value: val, child: Text("$val")))
+                      .toList(),
+                  onChanged: (value) => setState(() => repeatInterval = value!),
+                ),
+                const SizedBox(width: 10),
+                Text(frequencyType.toLowerCase()),
+              ],
+            ),
+            Row(
+              children: [
+                const Text("Repeat for: "),
+                const SizedBox(width: 10),
+                DropdownButton<int>(
+                  value: repeatDuration,
+                  items: [1, 2, 3, 4, 6, 8, 12]
+                      .map((val) => DropdownMenuItem(
+                          value: val,
+                          child: Text("$val ${frequencyType.toLowerCase()}s")))
+                      .toList(),
+                  onChanged: (value) => setState(() => repeatDuration = value!),
+                ),
               ],
             ),
             const SizedBox(height: 20),

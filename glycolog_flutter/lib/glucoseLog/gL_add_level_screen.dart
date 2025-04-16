@@ -330,7 +330,7 @@ class _AddGlucoseLevelScreenState extends State<AddGlucoseLevelScreen> {
               icon: const Icon(Icons.camera_alt),
               label: const Text('Scan Glucose Meter'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue[800],
+                backgroundColor: Colors.blueAccent[800],
                 padding:
                     const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
                 shape: RoundedRectangleBorder(

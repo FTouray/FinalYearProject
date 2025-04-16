@@ -36,7 +36,6 @@ class _GRTMainScreenState extends State<GRTMainScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     _fetchGlycaemicData(); 
-    // _fetchInsights();
   }
 
   Future<void> _fetchGlycaemicData() async {
@@ -97,47 +96,7 @@ class _GRTMainScreenState extends State<GRTMainScreen> {
     }
   }
 
- Future<void> _fetchInsights() async {
-    String? token = await AuthService().getAccessToken();
-    try {
-      final response = await http.get(
-        Uri.parse('$apiUrl/glycaemic-response-analysis'),
-        headers: {
-          'Authorization': 'Bearer $token',
-        },
-      );
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-
-        setState(() {
-          insights = data['insights'].map((insight) {
-            double avgGlucose = insight['avg_glucose_level'];
-            if (measurementUnit == 'mmol/L') {
-              convertToMmolL(avgGlucose);
-            }
-            return {
-              ...insight,
-              'avg_glucose_level': avgGlucose.toStringAsFixed(1),
-              'glucose_unit': measurementUnit,
-            };
-          }).toList();
-          isLoading = false;
-        });
-      } else {
-        setState(() {
-          errorMessage = 'Failed to load insights';
-          isLoading = false;
-        });
-      }
-    } catch (error) {
-      setState(() {
-        errorMessage = 'An error occurred: $error';
-        isLoading = false;
-      });
-    }
-  }
-
-
+ 
   @override
 Widget build(BuildContext context) {
   final screenWidth = MediaQuery.of(context).size.width;
@@ -280,43 +239,6 @@ Widget build(BuildContext context) {
                 ),
 
                 const SizedBox(height: 30),
-
-                // Feedback Section
-                Container(
-                  padding: const EdgeInsets.all(16.0),
-                  width: screenWidth,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16.0),
-                    boxShadow: [
-                      BoxShadow(
-                        blurRadius: 8,
-                        color: Colors.grey.shade300,
-                        spreadRadius: 3,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    children: [
-                      Text(
-                        "Post-Meal Feedback",
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.blue[800],
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      ElevatedButton(
-                        onPressed: () {
-                          Navigator.pushNamed(context, '/grt-feedback');
-                        },
-                        child: const Text("Log Feedback"),
-                      ),
-                    ],
-                  ),
-                ),
               ],
             ),
           ),

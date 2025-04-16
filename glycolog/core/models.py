@@ -362,6 +362,7 @@ class AIHealthTrend(models.Model):
     avg_heart_rate = models.FloatField(null=True, blank=True)
     total_exercise_sessions = models.IntegerField(null=True, blank=True)
     ai_summary = models.TextField(null=True, blank=True)  # AI-generated trend analysis
+    ai_summary_items = models.JSONField(null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -392,34 +393,6 @@ class AIRecommendation(models.Model):
     def __str__(self):
         return f"AI Recommendation for {self.user.username} - {self.generated_at.strftime('%Y-%m-%d %H:%M:%S')}"
 
-class LocalNotificationPrompt(models.Model):
-    """Stores local notifications for users."""
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
-    message = models.TextField()
-    created_at = models.DateTimeField(auto_now_add=True)
-    is_sent = models.BooleanField(default=False)  # Mark if sent
-
-    def __str__(self):
-        return f"{self.user.username} - {self.message}"
-
-class UserNotification(models.Model):
-    """Stores push notifications sent to users."""
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="notifications")
-    message = models.TextField()
-    notification_type = models.CharField(
-        max_length=20,
-        choices=[
-            ("health_alert", "Health Alert"),
-            ("reminder", "Reminder"),
-            ("motivation", "Motivation"),
-        ],
-        default="health_alert",
-    )
-    is_sent = models.BooleanField(default=False)
-    timestamp = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f"{self.user.username} - {self.notification_type} - {self.timestamp}"
 
 # Model to store medication details
 class Medication(models.Model):
@@ -435,18 +408,28 @@ class Medication(models.Model):
         return f"{self.name} ({self.dosage})"
 
 class MedicationReminder(models.Model):
+    FREQUENCY_CHOICES = (
+        ('daily', 'Daily'),
+        ('weekly', 'Weekly'),
+        ('monthly', 'Monthly'),
+    )
+
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     medication = models.ForeignKey(Medication, on_delete=models.CASCADE)
-    day_of_week = models.IntegerField()  # Monday=1, Tuesday=2, ...
+    frequency_type = models.CharField(max_length=10, choices=FREQUENCY_CHOICES, default='weekly')
+    interval = models.PositiveIntegerField(default=1, help_text="Repeat every X days/weeks/months")
+    duration = models.PositiveIntegerField(default=4, help_text="Total duration of reminder in frequency units")
+    day_of_week = models.IntegerField(null=True, blank=True) 
+    day_of_month = models.IntegerField(null=True, blank=True)
     hour = models.IntegerField(default=0)
     minute = models.IntegerField(default=0)
-    repeat_weeks = models.IntegerField(default=4)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"Reminder for {self.medication.name} on day={self.day_of_week} at {self.hour}:{self.minute}"
+        return f"Reminder for {self.medication.name} ({self.frequency_type}, every {self.interval})"
+
 
 class ForumCategory(models.Model):
     name = models.CharField(max_length=100)
