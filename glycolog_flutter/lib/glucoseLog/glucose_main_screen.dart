@@ -13,10 +13,10 @@ class GlucoseLogScreen extends StatefulWidget {
   const GlucoseLogScreen({super.key});
 
   @override
-  _GlucoseLogScreenState createState() => _GlucoseLogScreenState();
+  GlucoseLogScreenState createState() => GlucoseLogScreenState();
 }
 
-class _GlucoseLogScreenState extends State<GlucoseLogScreen> {
+class GlucoseLogScreenState extends State<GlucoseLogScreen> {
   double? lastLog; // Changed to nullable double for safety
   double? averageLog; // Changed to nullable double for safety
   List<Map<String, dynamic>> glucoseLogs =

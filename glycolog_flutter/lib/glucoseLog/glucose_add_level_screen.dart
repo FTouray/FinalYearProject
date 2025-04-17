@@ -8,7 +8,7 @@ import 'package:glycolog/services/auth_service.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'dart:convert';
-import 'gl_confirmation_screen.dart';
+import 'glucose_confirmation_screen.dart';
 import 'package:glycolog/utils.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 

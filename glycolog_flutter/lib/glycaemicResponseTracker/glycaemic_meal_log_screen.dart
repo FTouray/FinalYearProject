@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:glycolog/glycaemicResponseTracker/gRT_meal_confirmation_screen.dart';
+import 'package:glycolog/glycaemicResponseTracker/glycaemic_meal_confirmation_screen.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';

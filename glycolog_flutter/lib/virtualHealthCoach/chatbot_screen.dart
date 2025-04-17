@@ -24,7 +24,6 @@ class ChatbotScreenState extends State<ChatbotScreen> {
   @override
   void initState() {
     super.initState();
-    _fetchPreferredGlucoseUnit();
     _loadInitialMessages();
 
     _scrollController.addListener(() {
@@ -36,15 +35,6 @@ class ChatbotScreenState extends State<ChatbotScreen> {
       }
     });
   }
-
-Future<void> _fetchPreferredGlucoseUnit() async {
-    final prefs = await SharedPreferences.getInstance();
-    final savedUnit = prefs.getString('selectedUnit');
-
-    setState(() {
-    });
-  }
-
 
   Future<void> _loadInitialMessages() async {
     _messages.clear();
@@ -96,13 +86,17 @@ Future<void> _fetchPreferredGlucoseUnit() async {
     String? token = await _getAccessToken();
     if (token == null) return;
 
+    final prefs = await SharedPreferences.getInstance();
+    final unit = prefs.getString('selectedUnit') ?? 'mg/dL';
+
     final response = await http.post(
       Uri.parse('$apiUrl/dashboard/chat/'),
       headers: {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
       },
-      body: jsonEncode({'message': message}),
+      body: jsonEncode({'message': message, 'unit': unit,
+      }),
     );
 
     if (response.statusCode == 200) {

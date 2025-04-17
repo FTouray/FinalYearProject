@@ -11,11 +11,11 @@ class GlucoseLogHistoryScreen extends StatefulWidget {
   const GlucoseLogHistoryScreen({super.key});
 
   @override
-  _GlucoseLogHistoryScreenState createState() =>
-      _GlucoseLogHistoryScreenState();
+  GlucoseLogHistoryScreenState createState() =>
+      GlucoseLogHistoryScreenState();
 }
 
-class _GlucoseLogHistoryScreenState extends State<GlucoseLogHistoryScreen> {
+class GlucoseLogHistoryScreenState extends State<GlucoseLogHistoryScreen> {
   List<Map<String, dynamic>> glucoseLogs = [];
   List<Map<String, dynamic>> filteredLogs = [];
   String measurementUnit = 'mg/dL';

@@ -1,4 +1,4 @@
-import 'package:glycolog/glycaemicResponseTracker/gRT_history_detail_screen.dart';
+import 'package:glycolog/glycaemicResponseTracker/glycaemic_history_detail_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:glycolog/services/auth_service.dart';
 import 'package:http/http.dart' as http;

@@ -1,10 +1,10 @@
 import 'dart:convert';
-import 'package:glycolog/glycaemicResponseTracker/gRT_main_screen.dart';
+import 'package:glycolog/glycaemicResponseTracker/glycaemic_main_screen.dart';
 import 'package:glycolog/services/auth_service.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
-import 'grt_meal_log_screen.dart';
+import 'glycaemic_meal_log_screen.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class MealConfirmationScreen extends StatefulWidget {
