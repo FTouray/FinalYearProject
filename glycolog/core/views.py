@@ -17,6 +17,7 @@ from django.conf import settings
 from core.fitness_ai import generate_ai_recommendation, generate_health_trends
 from core.services.ocr_service import extract_text_from_image, parse_dosage_info
 from core.services.openfda_service import fetch_openfda_drug_details, search_openfda_drugs
+from core.prediction.glucose_prediction import predict_glucose
 from .serializers import ChatMessageSerializer, CommentSerializer, ExerciseCheckSerializer, FoodCategorySerializer, FoodItemSerializer, ForumCategorySerializer, ForumThreadSerializer, GlucoseCheckSerializer, GlucoseLogSerializer, MealCheckSerializer, MealSerializer, MedicationReminderSerializer, MedicationSerializer, PredictiveFeedbackSerializer, QuestionnaireSessionSerializer, RegisterSerializer, LoginSerializer, SettingsSerializer, SymptomCheckSerializer
 from .models import AIHealthTrend, AIRecommendation, Achievement, ChatMessage, Comment, CustomUser, ExerciseCheck, FeelingCheck, FitnessActivity, FoodCategory, FoodItem, ForumCategory, ForumThread, GlucoseCheck, GlucoseLog, GlycaemicResponseTracker, Meal, MealCheck, Medication, MedicationReminder, PersonalInsight, PredictiveFeedback, QuestionnaireSession, Quiz, QuizAttempt, QuizSet, SymptomCheck, UserProfile, UserProgress  
 from django.contrib.auth import get_user_model
@@ -949,8 +950,11 @@ def chat_with_virtual_coach(request):
         {"role": msg.sender, "content": msg.message} for msg in past_messages
     ]
 
+    client_unit = request.data.get("unit")
     user_settings = getattr(user, "settings", None)
-    preferred_unit = user_settings.glucose_unit if user_settings else "mg/dL"
+    preferred_unit = client_unit if client_unit in ["mg/dL", "mmol/L"] else (
+        user_settings.glucose_unit if user_settings else "mg/dL"
+    )
 
     latest_glucose_log = GlucoseLog.objects.filter(user=user).order_by("-timestamp").first()
 
@@ -1713,3 +1717,9 @@ def get_predictive_feedback(request):
     }
 
     return Response({'predictive_feedback': summary})
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def glucose_prediction_view(request):
+    result = predict_glucose(request.user, 6)
+    return Response(result)

@@ -1,7 +1,7 @@
 from django.urls import path
 from .views import ( MedicationListView, MedicationReminderListView, 
     chat_with_virtual_coach, combined_glucose_timeline, create_category, create_comment, create_thread, delete_medication, exercise_step, 
-    chat_history, fetch_medications_from_openfda, get_ai_health_trends, get_all_ai_health_trends, get_insights_summary_with_ai, get_last_synced_workout, get_predictive_feedback, get_quizset_quizzes, get_user_profile, get_user_profile_detail, latest_fitness_entry,
+    chat_history, fetch_medications_from_openfda, get_ai_health_trends, get_all_ai_health_trends, get_insights_summary_with_ai, get_last_synced_workout, get_predictive_feedback, get_quizset_quizzes, get_user_profile, get_user_profile_detail, glucose_prediction_view, latest_fitness_entry,
     get_medication_reminders, leaderboard, list_ai_recommendations,
     get_saved_medications, list_all_quizsets_and_progress, list_comments_for_thread, list_forum_categories, list_past_insights, list_quiz_attempts, list_threads_by_category, list_user_achievements, submit_quiz, today_fitness_summary, meal_step, glucose_step, glycaemic_response_main,
     list_categories, list_food_items_by_category, log_glucose, log_meal, meal_log_detail,
@@ -102,4 +102,5 @@ urlpatterns = [
     path('gamification/attempts/', list_quiz_attempts, name='list_quiz_attempts'),
 
     path('predictive-feedback/', get_predictive_feedback, name='predictive-feedback'),
+    path('glucose-prediction/', glucose_prediction_view, name='glucose_prediction'),
 ]

@@ -27,6 +27,8 @@ class GlucoseLogScreenState extends State<GlucoseLogScreen> {
   List<FlSpot> graphData = []; // Define graphData variable
   List<FlSpot> fullGlucoseGraphData = [];
   List<Map<String, dynamic>> fullGlucoseLogs = [];
+  List<Map<String, dynamic>> glucosePredictions = [];
+  String? predictionError;
 
   @override
   void initState() {
@@ -39,6 +41,7 @@ class GlucoseLogScreenState extends State<GlucoseLogScreen> {
     super.didChangeDependencies();
     fetchGlucoseLogs(); // Fetch the glucose logs when the screen is displayed
     fetchFullGlucoseTimeline();
+    fetchGlucosePredictions();
   }
 
   // Fetch user's preferred measurement unit
@@ -215,6 +218,50 @@ class GlucoseLogScreenState extends State<GlucoseLogScreen> {
       } catch (e) {
         print("Failed to fetch glucose timeline: $e");
       }
+    }
+  }
+
+Future<void> fetchGlucosePredictions() async {
+    String? token = await AuthService().getAccessToken();
+    final apiUrl = dotenv.env['API_URL'];
+
+    if (token != null) {
+      try {
+        final response = await http.get(
+          Uri.parse('$apiUrl/glucose-prediction/'),
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+        );
+
+        if (response.statusCode == 200) {
+          final data = json.decode(response.body);
+          if (data['status'] == 'success') {
+            setState(() {
+              glucosePredictions =
+                  List<Map<String, dynamic>>.from(data['predictions']);
+            });
+          } else {
+            setState(() {
+              predictionError =
+                  data['message'] ?? 'Unable to fetch predictions.';
+            });
+          }
+        } else {
+          setState(() {
+            predictionError = 'Failed to load predictions.';
+          });
+        }
+      } catch (e) {
+        setState(() {
+          predictionError = 'An error occurred: $e';
+        });
+      }
+    } else {
+      setState(() {
+        predictionError = 'No valid token found. Please log in again.';
+      });
     }
   }
 
@@ -396,6 +443,8 @@ class GlucoseLogScreenState extends State<GlucoseLogScreen> {
                       ],
                     ),
                   ),
+                  const SizedBox(height: 30),
+                  buildPredictionCard(screenWidth),
 
                   const SizedBox(height: 30),
                   // Glucose Log Today Title
@@ -753,6 +802,166 @@ class GlucoseLogScreenState extends State<GlucoseLogScreen> {
       ),
     );
   }
+
+  Widget buildPredictionCard(double screenWidth) {
+    const double spikeThresholdMg = 180;
+    const double spikeThresholdMmol = 10.0;
+
+    double getThreshold() =>
+        measurementUnit == "mmol/L" ? spikeThresholdMmol : spikeThresholdMg;
+
+    bool isSpike(double value) => value > getThreshold();
+
+    if (predictionError != null) {
+      return Container(
+        width: screenWidth,
+        padding: const EdgeInsets.all(16.0),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16.0),
+          boxShadow: [
+            BoxShadow(
+              blurRadius: 8,
+              color: Colors.grey.shade300,
+              spreadRadius: 3,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Text(
+          predictionError!,
+          style: const TextStyle(color: Colors.red),
+        ),
+      );
+    }
+
+    if (glucosePredictions.isEmpty) {
+      return Container(
+        width: screenWidth,
+        padding: const EdgeInsets.all(16.0),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16.0),
+          boxShadow: [
+            BoxShadow(
+              blurRadius: 8,
+              color: Colors.grey.shade300,
+              spreadRadius: 3,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    return Container(
+      width: screenWidth,
+      padding: const EdgeInsets.all(16.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16.0),
+        boxShadow: [
+          BoxShadow(
+            blurRadius: 8,
+            color: Colors.grey.shade300,
+            spreadRadius: 3,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "🔮 Glucose Predictions",
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.blue[800],
+            ),
+          ),
+          const SizedBox(height: 10),
+          ...glucosePredictions.map((prediction) {
+            final dateTime = DateTime.parse(prediction['ds']);
+            final formattedTime = DateFormat('HH:mm').format(dateTime);
+
+            double yhat = double.tryParse(prediction['yhat'].toString()) ?? 0;
+            double yhatLower =
+                double.tryParse(prediction['yhat_lower'].toString()) ?? 0;
+            double yhatUpper =
+                double.tryParse(prediction['yhat_upper'].toString()) ?? 0;
+
+            // Convert to mmol if necessary
+            if (measurementUnit == 'mmol/L') {
+              yhat /= 18.01559;
+              yhatLower /= 18.01559;
+              yhatUpper /= 18.01559;
+            }
+
+            final isSpiking = isSpike(yhat);
+
+            return Container(
+              padding:
+                  const EdgeInsets.symmetric(vertical: 8.0, horizontal: 12.0),
+              margin: const EdgeInsets.only(bottom: 8.0),
+              decoration: BoxDecoration(
+                color: isSpiking ? Colors.red.shade50 : Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: isSpiking ? Colors.red.shade300 : Colors.grey.shade300,
+                  width: 1.5,
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    formattedTime,
+                    style: const TextStyle(
+                        fontSize: 14, fontWeight: FontWeight.w500),
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        "${yhat.toStringAsFixed(1)} $measurementUnit",
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: isSpiking ? Colors.red[700] : Colors.black,
+                        ),
+                      ),
+                      Text(
+                        "Range: ${yhatLower.toStringAsFixed(1)} - ${yhatUpper.toStringAsFixed(1)}",
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                      if (isSpiking)
+                        const Padding(
+                          padding: EdgeInsets.only(top: 4.0),
+                          child: Text(
+                            "⚠️ Spike likely",
+                            style: TextStyle(
+                              color: Colors.red,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
 }
 
 // Widget to display circular data points with click functionality
