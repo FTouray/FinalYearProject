@@ -159,15 +159,14 @@ class _QuizResultPageState extends State<QuizResultPage> {
                     ElevatedButton.icon(
                       icon: Icon(Icons.home),
                       label: Text("Back to Home"),
-                      onPressed: () => Navigator.popUntil(
-                          context, (route) => route.settings.name == '/home'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.indigo,
-                        foregroundColor: Colors.white,
-                        padding:
-                            EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                      ),
-                    )
+                      onPressed: () {
+                        Navigator.pushNamedAndRemoveUntil(
+                          context,
+                          '/home',
+                          (route) => false,
+                        );
+                      },
+                    ),
                   ],
                 )
               ],

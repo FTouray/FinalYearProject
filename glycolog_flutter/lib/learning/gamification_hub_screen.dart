@@ -91,9 +91,7 @@ class GamificationGameHubState extends State<GamificationGameHub> {
                         final title = quizSets[index]['title'];
                         final completed =
                             quizSets[index]['progress']['completed'];
-                        final unlocked = index == 0 ||
-                            quizSets[index - 1]['progress']['completed'];
-
+                        final unlocked = quizSets[index]['unlocked'] ?? false;
                         return Card(
                           elevation: 4,
                           color: completed

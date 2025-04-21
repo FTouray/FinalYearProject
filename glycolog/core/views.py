@@ -1546,7 +1546,7 @@ def submit_quiz(request, quizset_id):
         }
     )
     progress.score = percentage
-    progress.completed = percentage >= 70
+    progress.completed = True
     progress.xp_earned = xp_awarded
     progress.save()
 
@@ -1574,38 +1574,47 @@ def submit_quiz(request, quizset_id):
         "review": detailed_results
     })
 
-
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def list_all_quizsets_and_progress(request):
     quiz_sets = QuizSet.objects.all().order_by("level")
     progress_map = {
-        p.quiz_set.id: {"completed": p.completed, "score": p.score, "xp_earned": p.xp_earned}
+        p.quiz_set.id: {
+            "completed": p.completed,
+            "score": p.score,
+            "xp_earned": p.xp_earned
+        }
         for p in UserProgress.objects.filter(user=request.user)
     }
-    completed_levels = [
-        qs.level for qs in quiz_sets if progress_map.get(qs.id, {}).get("completed")
-    ]
-    max_completed = max(completed_levels) if completed_levels else 0
-    max_unlocked_level = max_completed + 1
 
-    # Return quizsets with unlock logic
+    completed_ids = {
+        qs.id for qs in quiz_sets
+        if progress_map.get(qs.id, {}).get("completed")
+    }
+
     data = []
-    for qs in quiz_sets:
-        level = qs.level
+    for i, qs in enumerate(quiz_sets):
         progress = progress_map.get(qs.id, {"completed": False, "score": 0, "xp_earned": 0})
-        unlocked = level <= max_unlocked_level
+        if i == 0:
+            unlocked = True
+        else:
+            prev_qs = quiz_sets[i - 1]
+            unlocked = prev_qs.id in completed_ids
+
+        # if already completed, always unlocked
+        if progress["completed"]:
+            unlocked = True
+
         data.append({
             "id": qs.id,
             "title": qs.title,
             "description": qs.description,
-            "level": level,
+            "level": qs.level,
             "progress": progress,
-            "unlocked": unlocked
+            "unlocked": unlocked,
         })
 
     return JsonResponse(data, safe=False)
-
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
