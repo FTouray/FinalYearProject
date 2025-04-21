@@ -69,17 +69,34 @@ class MedicationsScreenState extends State<MedicationsScreen> {
     if (token == null) return;
 
     try {
-      // Delete calendar event first
       final prefs = await SharedPreferences.getInstance();
       final eventKey = 'eventId_med$id';
       final eventId = prefs.getString(eventKey);
 
       if (eventId != null) {
-        final calendars = await _calendarPlugin.retrieveCalendars();
-        final calendarId = calendars.data?.first.id;
+        final calendarResult = await _calendarPlugin.retrieveCalendars();
+        final calendarId = calendarResult.data?.first.id;
 
         if (calendarId != null) {
-          await _calendarPlugin.deleteEvent(calendarId, eventId);
+          final now = DateTime.now();
+          final retrieveResult = await _calendarPlugin.retrieveEvents(
+            calendarId,
+            RetrieveEventsParams(
+              startDate: now,
+              endDate: now.add(const Duration(days: 365)), // Look ahead 1 year
+              eventIds: [eventId],
+            ),
+          );
+
+          if (retrieveResult.isSuccess && retrieveResult.data != null) {
+            for (final event in retrieveResult.data!) {
+              if (event.start!.isAfter(now)) {
+                await _calendarPlugin.deleteEvent(calendarId, event.eventId!);
+                print("Deleted future event: ${event.eventId}");
+              }
+            }
+          }
+
           await prefs.remove(eventKey);
         }
       }
@@ -91,23 +108,23 @@ class MedicationsScreenState extends State<MedicationsScreen> {
       );
 
       if (response.statusCode == 200) {
-         if (!mounted) return;
-        setState(() {
-          medications.removeAt(index);
-        });
+        if (!mounted) return;
+        setState(() => medications.removeAt(index));
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Medication and reminder deleted")),
+          const SnackBar(
+              content: Text("Medication and future reminders deleted")),
         );
       } else {
         throw Exception("Failed to delete medication");
       }
     } catch (e) {
-       if (!mounted) return;
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Error: $e")),
       );
     }
   }
+
 
   /// Marks medication as taken "now" in ISO8601 format,
   /// then updates local list so the UI is in sync.
@@ -272,16 +289,31 @@ class MedicationsScreenState extends State<MedicationsScreen> {
               itemBuilder: (context, index) =>
                   _buildMedicationCard(medications[index], index),
             ),
+           
+          Positioned(
+            bottom: 80,
+            right: 16,
+            child: FloatingActionButton.extended(
+              heroTag: 'reminder_history_fab',
+              onPressed: () =>
+                  Navigator.pushNamed(context, '/reminder-history'),
+              label: const Text("Reminder History"),
+              icon: const Icon(Icons.history),
+              backgroundColor: Colors.orange[800],
+            ),
+          ),
           Positioned(
             bottom: 16,
             right: 16,
             child: FloatingActionButton.extended(
+              heroTag: 'add_med_fab',
               onPressed: () => Navigator.pushNamed(context, '/add-medication'),
               label: const Text("Add Medication"),
               icon: const Icon(Icons.add),
-              backgroundColor: Colors.blue[800],
+              backgroundColor: Colors.blueAccent[800],
             ),
           ),
+         
         ],
       ),
     );

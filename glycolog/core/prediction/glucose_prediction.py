@@ -1,4 +1,5 @@
 from core.models import GlucoseLog, GlucoseCheck
+from datetime import datetime, timedelta
 from django.utils.timezone import now
 from prophet import Prophet
 import pandas as pd
@@ -34,12 +35,14 @@ def predict_glucose(user, future_hours):
     model = Prophet()
     model.fit(df)
 
-    periods = future_hours // 2
-    future = model.make_future_dataframe(periods=future_hours, freq='2H')
-    forecast = model.predict(future)
+    now_rounded = datetime.now().replace(minute=0, second=0, microsecond=0)
 
-    # Format output
-    predictions = forecast[['ds', 'yhat', 'yhat_lower', 'yhat_upper']].tail(periods)
+    future_times = [now_rounded + timedelta(hours=2 * i) for i in range(1, future_hours + 1)]
+    future = pd.DataFrame({'ds': future_times})
+
+    forecast = model.predict(future)
+    predictions = forecast[['ds', 'yhat', 'yhat_lower', 'yhat_upper']]
+
     return {
         "status": "success",
         "predictions": predictions.to_dict(orient="records")

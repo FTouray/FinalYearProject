@@ -7,6 +7,7 @@ import 'package:glycolog/learning/gamification_hub_screen.dart';
 import 'package:glycolog/learning/quiz_attempt_history.dart';
 import 'package:glycolog/learning/quiz_attempt_review.dart';
 import 'package:glycolog/learning/quiz_result.dart';
+import 'package:glycolog/medicationTracker/reminder_history.dart';
 import 'package:glycolog/services/health_sync_service.dart';
 import 'glycaemicResponseTracker/glycaemic_history_detail_screen.dart';
 import 'package:glycolog/glycaemicResponseTracker/glycaemic_meal_log_history_screen.dart';
@@ -217,7 +218,8 @@ class MyAppState extends State<MyApp> {
           final review =
               ModalRoute.of(context)!.settings.arguments as List<dynamic>;
           return QuizAttemptReviewPage(review: review);
-        }
+        },
+        '/reminder-history': (context) => const ReminderHistoryScreen(),
       },
       onGenerateRoute: (settings) {
         switch (settings.name) {

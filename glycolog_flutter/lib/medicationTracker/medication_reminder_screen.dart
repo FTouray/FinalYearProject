@@ -140,6 +140,7 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
       });
     } else {
       print("❌ Failed to set reminder: ${response.body}");
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Failed to set reminder")),
       );
@@ -150,6 +151,22 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
     if (_selectedCalendarId == null) {
       print("❗ No calendar selected");
       return;
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    final eventKey = 'eventId_med${widget.medication["id"]}';
+    final oldEventId = prefs.getString(eventKey);
+
+    if (oldEventId != null) {
+      final deleteResult =
+          await _calendarPlugin.deleteEvent(_selectedCalendarId!, oldEventId);
+      if (deleteResult.isSuccess && deleteResult.data == true) {
+        print("Deleted old event ID: $oldEventId");
+        await prefs.remove(eventKey);
+      } else {
+        print(
+            "Failed to delete previous event: ${deleteResult.errors}");
+      }
     }
 
     final now = DateTime.now();
@@ -202,16 +219,13 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
     final result = await _calendarPlugin.createOrUpdateEvent(event);
 
     if (result?.isSuccess == true && result?.data != null) {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(
-        'eventId_med${widget.medication["id"]}',
-        result!.data!,
-      );
+      await prefs.setString(eventKey, result!.data!);
       print("✅ Event created with ID: ${result.data}");
     } else {
       print("❌ Failed to create event: ${result?.errors}");
     }
   }
+
 
   @override
   Widget build(BuildContext context) {

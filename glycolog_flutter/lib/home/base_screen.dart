@@ -5,6 +5,7 @@ class BaseScaffoldScreen extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onItemTapped;
   final Widget body;
+  final bool showGlucoseAlert;
   final AuthService authService = AuthService();
 
   BaseScaffoldScreen({
@@ -12,6 +13,7 @@ class BaseScaffoldScreen extends StatelessWidget {
     required this.selectedIndex,
     required this.onItemTapped,
     required this.body,
+    this.showGlucoseAlert = false,
   });
 
   @override
@@ -40,14 +42,42 @@ class BaseScaffoldScreen extends StatelessWidget {
         unselectedItemColor: Colors.blue[200],
         currentIndex: selectedIndex,
         onTap: onItemTapped,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.people), label: 'Community'),
+        items: [
           BottomNavigationBarItem(
-              icon: Icon(Icons.account_circle), label: 'Profile'),
+            icon: Stack(
+              children: [
+                const Icon(Icons.home),
+                if (showGlucoseAlert)
+                  Positioned(
+                    right: 0,
+                    top: 0,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: const BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.warning,
+                        size: 14,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            label: 'Home',
+          ),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.people),
+            label: 'Community',
+          ),
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.account_circle),
+            label: 'Profile',
+          ),
         ],
       ),
     );
   }
-  
 }

@@ -29,6 +29,7 @@ class GlucoseLogScreenState extends State<GlucoseLogScreen> {
   List<Map<String, dynamic>> fullGlucoseLogs = [];
   List<Map<String, dynamic>> glucosePredictions = [];
   String? predictionError;
+  bool isInsulinDependent = false;
 
   @override
   void initState() {
@@ -50,6 +51,7 @@ class GlucoseLogScreenState extends State<GlucoseLogScreen> {
     setState(() {
       measurementUnit =
           prefs.getString('selectedUnit') ?? 'mg/dL'; // Default to mg/dL
+      isInsulinDependent = prefs.getBool('isInsulinDependent') ?? false;
     });
   }
 
@@ -265,6 +267,19 @@ Future<void> fetchGlucosePredictions() async {
     }
   }
 
+  bool isPredictionSpikeLikely() {
+    const spikeThresholdMg = 180;
+    const spikeThresholdMmol = 10.0;
+
+    final threshold =
+        measurementUnit == 'mmol/L' ? spikeThresholdMmol : spikeThresholdMg;
+
+    return glucosePredictions.any((pred) {
+      final yhat = double.tryParse(pred['yhat'].toString()) ?? 0;
+      final converted = measurementUnit == 'mmol/L' ? yhat / 18.01559 : yhat;
+      return converted > threshold;
+    });
+  }
 
   // Add a new glucose log entry
   void addNewLog(Map<String, dynamic> newLog) {
@@ -359,9 +374,11 @@ Future<void> fetchGlucosePredictions() async {
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
+    final bool showGlucoseAlert = glucosePredictions.isNotEmpty && isPredictionSpikeLikely();
 
     return BaseScaffoldScreen(
       selectedIndex: 0,
+      showGlucoseAlert: showGlucoseAlert,
       onItemTapped: (index) {
         final routes = ['/home', '/forum', '/settings'];
         if (index >= 0 && index < routes.length) {
@@ -805,29 +822,21 @@ Future<void> fetchGlucosePredictions() async {
 
   Widget buildPredictionCard(double screenWidth) {
     const double spikeThresholdMg = 180;
+    const double lowThresholdMg = 70;
     const double spikeThresholdMmol = 10.0;
+    const double lowThresholdMmol = 3.9;
 
-    double getThreshold() =>
+    final double highThreshold =
         measurementUnit == "mmol/L" ? spikeThresholdMmol : spikeThresholdMg;
+    final double lowThreshold =
+        measurementUnit == "mmol/L" ? lowThresholdMmol : lowThresholdMg;
 
-    bool isSpike(double value) => value > getThreshold();
+    bool isSpike(double value) => value > highThreshold;
+    bool isLow(double value) => value < lowThreshold;
 
     if (predictionError != null) {
-      return Container(
-        width: screenWidth,
-        padding: const EdgeInsets.all(16.0),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16.0),
-          boxShadow: [
-            BoxShadow(
-              blurRadius: 8,
-              color: Colors.grey.shade300,
-              spreadRadius: 3,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
+      return _buildCardContainer(
+        screenWidth,
         child: Text(
           predictionError!,
           style: const TextStyle(color: Colors.red),
@@ -836,43 +845,40 @@ Future<void> fetchGlucosePredictions() async {
     }
 
     if (glucosePredictions.isEmpty) {
-      return Container(
-        width: screenWidth,
-        padding: const EdgeInsets.all(16.0),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16.0),
-          boxShadow: [
-            BoxShadow(
-              blurRadius: 8,
-              color: Colors.grey.shade300,
-              spreadRadius: 3,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
+      return _buildCardContainer(
+        screenWidth,
         child: const Center(child: CircularProgressIndicator()),
       );
     }
 
-    return Container(
-      width: screenWidth,
-      padding: const EdgeInsets.all(16.0),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16.0),
-        boxShadow: [
-          BoxShadow(
-            blurRadius: 8,
-            color: Colors.grey.shade300,
-            spreadRadius: 3,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
+    return _buildCardContainer(
+      screenWidth,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (isPredictionSpikeLikely())
+            Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.red.shade300),
+              ),
+              child: Row(
+                children: const [
+                  Icon(Icons.warning_amber_rounded, color: Colors.red),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      "Predicted spike detected in the next few hours. Review your insulin or meal plans.",
+                      style: TextStyle(
+                          color: Colors.red, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           Text(
             "🔮 Glucose Predictions",
             style: TextStyle(
@@ -892,26 +898,38 @@ Future<void> fetchGlucosePredictions() async {
             double yhatUpper =
                 double.tryParse(prediction['yhat_upper'].toString()) ?? 0;
 
-            // Convert to mmol if necessary
+            // Convert to mmol if needed
             if (measurementUnit == 'mmol/L') {
               yhat /= 18.01559;
               yhatLower /= 18.01559;
               yhatUpper /= 18.01559;
             }
 
-            final isSpiking = isSpike(yhat);
+            final bool spiking = isSpike(yhat);
+            final bool low = isLow(yhat);
+
+            Color backgroundColor;
+            Color borderColor;
+
+            if (low) {
+              backgroundColor = Colors.orange.shade50;
+              borderColor = Colors.orange.shade300;
+            } else if (spiking) {
+              backgroundColor = Colors.red.shade50;
+              borderColor = Colors.red.shade300;
+            } else {
+              backgroundColor = Colors.grey.shade100;
+              borderColor = Colors.grey.shade300;
+            }
 
             return Container(
               padding:
                   const EdgeInsets.symmetric(vertical: 8.0, horizontal: 12.0),
               margin: const EdgeInsets.only(bottom: 8.0),
               decoration: BoxDecoration(
-                color: isSpiking ? Colors.red.shade50 : Colors.grey.shade100,
+                color: backgroundColor,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: isSpiking ? Colors.red.shade300 : Colors.grey.shade300,
-                  width: 1.5,
-                ),
+                border: Border.all(color: borderColor, width: 1.5),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -929,7 +947,11 @@ Future<void> fetchGlucosePredictions() async {
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.bold,
-                          color: isSpiking ? Colors.red[700] : Colors.black,
+                          color: spiking
+                              ? Colors.red[700]
+                              : low
+                                  ? Colors.orange[700]
+                                  : Colors.black,
                         ),
                       ),
                       Text(
@@ -939,13 +961,17 @@ Future<void> fetchGlucosePredictions() async {
                           color: Colors.grey[600],
                         ),
                       ),
-                      if (isSpiking)
-                        const Padding(
-                          padding: EdgeInsets.only(top: 4.0),
+                      if (spiking || low)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4.0),
                           child: Text(
-                            "⚠️ Spike likely",
+                            spiking
+                                ? isInsulinDependent
+                                    ? "⚠️ Spike — consider adjusting insulin"
+                                    : "⚠️ Spike — monitor closely"
+                                : "⚠️ Low — consider eating or resting",
                             style: TextStyle(
-                              color: Colors.red,
+                              color: spiking ? Colors.red : Colors.orange[800],
                               fontWeight: FontWeight.bold,
                               fontSize: 13,
                             ),
@@ -961,6 +987,27 @@ Future<void> fetchGlucosePredictions() async {
       ),
     );
   }
+
+  Widget _buildCardContainer(double width, {required Widget child}) {
+    return Container(
+      width: width,
+      padding: const EdgeInsets.all(16.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16.0),
+        boxShadow: [
+          BoxShadow(
+            blurRadius: 8,
+            color: Colors.grey.shade300,
+            spreadRadius: 3,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+
 
 }
 
