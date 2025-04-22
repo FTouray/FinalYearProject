@@ -19,6 +19,7 @@ class _AnimatedQuizPageState extends State<AnimatedQuizPage> {
   bool loading = true;
   bool submitting = false;
   final String? apiUrl = dotenv.env['API_URL'];
+  List<List<String>> shuffledOptions = [];
 
   @override
   void initState() {
@@ -27,7 +28,7 @@ class _AnimatedQuizPageState extends State<AnimatedQuizPage> {
   }
 
   Future<void> fetchQuiz() async {
-   final token = await AuthService().getAccessToken();
+    final token = await AuthService().getAccessToken();
     if (token == null) return;
 
     final response = await http.get(
@@ -38,7 +39,11 @@ class _AnimatedQuizPageState extends State<AnimatedQuizPage> {
       final data = json.decode(response.body);
       setState(() {
         quizzes = data['quizzes'];
-        quizzes.shuffle();
+        shuffledOptions = quizzes.map<List<String>>((q) {
+          final opts = List<String>.from(q['options']);
+          opts.shuffle();
+          return opts;
+        }).toList();
         answers = List.filled(quizzes.length, null);
         loading = false;
       });
@@ -60,7 +65,6 @@ class _AnimatedQuizPageState extends State<AnimatedQuizPage> {
     setState(() => submitting = true);
     final token = await AuthService().getAccessToken();
     if (token == null) return;
-    print('Submitting token: $token');
 
     final res = await http.post(
       Uri.parse('$apiUrl/gamification/submit-quiz/${widget.level}/'),
@@ -68,7 +72,7 @@ class _AnimatedQuizPageState extends State<AnimatedQuizPage> {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json'
       },
-      body: json.encode({'answers': answers}),
+      body: json.encode({'answers': answers, 'option_order': shuffledOptions}),
     );
 
     if (!mounted) return;
@@ -84,9 +88,9 @@ class _AnimatedQuizPageState extends State<AnimatedQuizPage> {
     if (loading) {
       return Scaffold(body: Center(child: CircularProgressIndicator()));
     }
+
     final question = quizzes[current];
-    final options = List<String>.from(question['options']);
-    options.shuffle();
+    final options = shuffledOptions[current]; // ✅ Use pre-shuffled options
 
     return Scaffold(
       appBar: AppBar(title: Text('Level ${widget.level}')),

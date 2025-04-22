@@ -1,9 +1,9 @@
 from django.urls import path
 from .views import ( MedicationListView, MedicationReminderListView, 
     chat_with_virtual_coach, combined_glucose_timeline, create_category, create_comment, create_thread, delete_medication, exercise_step, 
-    chat_history, fetch_medications_from_openfda, get_ai_health_trends, get_all_ai_health_trends, get_insights_summary_with_ai, get_last_synced_workout, get_predictive_feedback, get_quizset_quizzes, get_user_profile, get_user_profile_detail, glucose_prediction_view, latest_fitness_entry,
+    chat_history, feeling_unwell_dates, fetch_medications_from_openfda, get_ai_health_trends, get_all_ai_health_trends, get_insights_summary_with_ai, get_last_synced_workout, get_predictive_feedback, get_quizset_quizzes, get_user_profile, get_user_profile_detail, glucose_prediction_view, latest_fitness_entry,
     get_medication_reminders, leaderboard, list_ai_recommendations,
-    get_saved_medications, list_all_quizsets_and_progress, list_comments_for_thread, list_forum_categories, list_past_insights, list_quiz_attempts, list_threads_by_category, list_user_achievements, submit_quiz, today_fitness_summary, meal_step, glucose_step, glycaemic_response_main,
+    get_saved_medications, list_all_quizsets_and_progress, list_comments_for_thread, list_forum_categories, list_past_insights, list_quiz_attempts, list_threads_by_category, list_user_achievements, react_to_comment, submit_quiz, today_fitness_summary, meal_step, glucose_step, glycaemic_response_main,
     list_categories, list_food_items_by_category, log_glucose, log_meal, meal_log_detail,
     meal_log_history, questionnaire_data_visualization, register_user,
     login_user, review_answers, save_medication, scan_medication, set_reminder, settings_view,
@@ -66,6 +66,7 @@ urlpatterns = [
     path("health/today/", today_fitness_summary, name="today_fitness_summary"),
     path("health/latest/", latest_fitness_entry, name="latest_fitness_entry"),
     path("health/last-synced/", get_last_synced_workout, name="get_last_synced_workout"),
+    path("health/bad-days/", feeling_unwell_dates, name="feeling_unwell_dates"),
 
     # Health Trends
     path("health/trends/<str:period_type>/", get_ai_health_trends, name="get_ai_health_trends"),
@@ -91,6 +92,7 @@ urlpatterns = [
     path("forum/threads/create/", create_thread, name="create_thread"),
     path("forum/threads/<int:thread_id>/comments/", list_comments_for_thread, name="list_comments_for_thread"),
     path("forum/comments/create/", create_comment, name="create_comment"),
+    path("forum/reactions/", react_to_comment, name="react_to_comment"),
     
     # Quiz
     path('gamification/quizsets/<int:level>/', get_quizset_quizzes, name='get_quizset_quizzes'),

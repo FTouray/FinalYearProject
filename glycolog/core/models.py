@@ -442,6 +442,7 @@ class ForumThread(models.Model):
     category = models.ForeignKey(ForumCategory, on_delete=models.CASCADE, related_name='threads')
     title = models.CharField(max_length=200)
     created_by = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    pinned = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def latest_reply(self):
@@ -461,6 +462,16 @@ class Comment(models.Model):
 
     def __str__(self):
         return f"{self.author.username}: {self.content[:30]}"
+    
+class CommentReaction(models.Model):
+    comment = models.ForeignKey(Comment, on_delete=models.CASCADE, related_name='reactions')
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    emoji = models.CharField(max_length=10)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('comment', 'user')  # One reaction per user per comment
+
 
 class PersonalInsight(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="personal_insights")

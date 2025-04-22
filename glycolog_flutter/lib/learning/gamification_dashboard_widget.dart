@@ -44,12 +44,19 @@ class GamificationDashboardCardState extends State<GamificationDashboardCard> {
       setState(() {
         xp = profile['xp'] ?? 0;
         level = profile['level'] ?? 1;
+        bool foundNext = false;
         for (int i = 0; i < data.length; i++) {
-          if (!data[i]['progress']['completed']) {
+          if (data[i]['progress'] != null &&
+              data[i]['progress']['completed'] == false) {
             nextLevelToContinue = data[i]['level'];
             nextTitle = data[i]['title'];
+            foundNext = true;
             break;
           }
+        }
+        if (!foundNext) {
+          nextLevelToContinue = null;
+          nextTitle = null;
         }
       });
     }

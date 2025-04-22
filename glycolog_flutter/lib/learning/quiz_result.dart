@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:confetti/confetti.dart'; 
+import 'package:confetti/confetti.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:glycolog/services/auth_service.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class QuizResultPage extends StatefulWidget {
   final Map<String, dynamic> result;
@@ -11,6 +15,8 @@ class QuizResultPage extends StatefulWidget {
 
 class _QuizResultPageState extends State<QuizResultPage> {
   late ConfettiController _confettiController;
+  bool nextLevelUnlocked = false;
+  final String? apiUrl = dotenv.env['API_URL'];
 
   @override
   void initState() {
@@ -23,12 +29,34 @@ class _QuizResultPageState extends State<QuizResultPage> {
         _confettiController.play();
       });
     }
+
+    checkNextLevelUnlocked();
   }
 
   @override
   void dispose() {
     _confettiController.dispose();
     super.dispose();
+  }
+
+  Future<void> checkNextLevelUnlocked() async {
+    final token = await AuthService().getAccessToken();
+    if (token == null) return;
+
+    final response = await http.get(
+      Uri.parse('$apiUrl/gamification/quizsets/'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      final unlockedLevels = List<int>.from(data['unlocked_levels'] ?? []);
+      final nextLevel = (widget.result['quiz_set_level'] ?? 1) + 1;
+
+      setState(() {
+        nextLevelUnlocked = unlockedLevels.contains(nextLevel);
+      });
+    }
   }
 
   @override
@@ -119,7 +147,7 @@ class _QuizResultPageState extends State<QuizResultPage> {
                                                 ? Colors.red
                                                 : Colors.grey.shade300)),
                                   ),
-                                  child: ListTile(
+                                                                    child: ListTile(
                                     title: Text(opt),
                                     trailing: isCorrect
                                         ? Icon(Icons.check, color: Colors.green)
@@ -138,8 +166,10 @@ class _QuizResultPageState extends State<QuizResultPage> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                Wrap(
+                  alignment: WrapAlignment.center,
+                  spacing: 12,
+                  runSpacing: 12,
                   children: [
                     ElevatedButton.icon(
                       icon: Icon(Icons.refresh),
@@ -166,9 +196,33 @@ class _QuizResultPageState extends State<QuizResultPage> {
                           (route) => false,
                         );
                       },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.indigo,
+                        foregroundColor: Colors.white,
+                        padding:
+                            EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      ),
                     ),
+                    if (completed && nextLevelUnlocked)
+                      ElevatedButton.icon(
+                        icon: Icon(Icons.arrow_forward),
+                        label: Text("Next Quiz"),
+                        onPressed: () {
+                          Navigator.pushReplacementNamed(
+                            context,
+                            '/gamification/module',
+                            arguments: level + 1,
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 24, vertical: 12),
+                        ),
+                      ),
                   ],
-                )
+                ),
               ],
             ),
           ),
@@ -195,3 +249,5 @@ class _QuizResultPageState extends State<QuizResultPage> {
     );
   }
 }
+
+ 

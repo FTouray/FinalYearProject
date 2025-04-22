@@ -360,6 +360,19 @@ class CommentSerializer(serializers.ModelSerializer):
         model = Comment
         fields = ["id", "username", "message", "timestamp"]
         
+class CommentSerializer(serializers.ModelSerializer):
+    emoji_reactions = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Comment
+        fields = ['id', 'content', 'author', 'created_at', 'emoji_reactions']
+
+    def get_emoji_reactions(self, obj):
+        return [
+            {"emoji": r.emoji, "user": r.user.username}
+            for r in obj.reactions.all()
+        ]
+        
 
 class QuizSerializer(serializers.ModelSerializer):
     options = serializers.SerializerMethodField()

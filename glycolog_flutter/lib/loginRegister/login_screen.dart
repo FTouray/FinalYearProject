@@ -56,6 +56,7 @@ class LoginScreenState extends State<LoginScreen> {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         String firstName = data['first_name']; // API returns the first name
+        String username = data['username'];
         String accessToken = data['access']; // Get the access token
         String refreshToken = data['refresh']; // Get the refresh token
 
@@ -64,6 +65,7 @@ class LoginScreenState extends State<LoginScreen> {
         await prefs.setString('access_token', accessToken);
         await prefs.setString('refresh_token', refreshToken);
         await prefs.setString('first_name', firstName);
+        await prefs.setString('username', username);
 
         setState(() {
           errorMessage = null; // Clear error if login is successful

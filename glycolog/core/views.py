@@ -19,16 +19,14 @@ from core.services.ocr_service import extract_text_from_image, parse_dosage_info
 from core.services.openfda_service import fetch_openfda_drug_details, search_openfda_drugs
 from core.prediction.glucose_prediction import predict_glucose
 from .serializers import ChatMessageSerializer, CommentSerializer, ExerciseCheckSerializer, FoodCategorySerializer, FoodItemSerializer, ForumCategorySerializer, ForumThreadSerializer, GlucoseCheckSerializer, GlucoseLogSerializer, MealCheckSerializer, MealSerializer, MedicationReminderSerializer, MedicationSerializer, PredictiveFeedbackSerializer, QuestionnaireSessionSerializer, RegisterSerializer, LoginSerializer, SettingsSerializer, SymptomCheckSerializer
-from .models import AIHealthTrend, AIRecommendation, Achievement, ChatMessage, Comment, CustomUser, ExerciseCheck, FeelingCheck, FitnessActivity, FoodCategory, FoodItem, ForumCategory, ForumThread, GlucoseCheck, GlucoseLog, GlycaemicResponseTracker, Meal, MealCheck, Medication, MedicationReminder, PersonalInsight, PredictiveFeedback, QuestionnaireSession, Quiz, QuizAttempt, QuizSet, SymptomCheck, UserProfile, UserProgress  
+from .models import AIHealthTrend, AIRecommendation, Achievement, ChatMessage, Comment, CommentReaction, CustomUser, ExerciseCheck, FeelingCheck, FitnessActivity, FoodCategory, FoodItem, ForumCategory, ForumThread, GlucoseCheck, GlucoseLog, GlycaemicResponseTracker, Meal, MealCheck, Medication, MedicationReminder, PersonalInsight, PredictiveFeedback, QuestionnaireSession, Quiz, QuizAttempt, QuizSet, SymptomCheck, UserProfile, UserProgress  
 from django.contrib.auth import get_user_model
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.permissions import AllowAny
 from rest_framework.decorators import api_view, permission_classes
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.csrf import csrf_exempt
-from django.db.models import Q
-from django.db.models import Avg
-import joblib
+from django.db.models import Avg, Count
 import openai
 import os
 from google_auth_oauthlib.flow import Flow
@@ -1230,7 +1228,7 @@ class MedicationReminderListView(ListAPIView):
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def list_threads_by_category(request, category_id):
-    threads = ForumThread.objects.filter(category_id=category_id).order_by("-created_at")
+    threads = ForumThread.objects.filter(category_id=category_id).order_by("-pinned", "-created_at")
     data = [
         {
             "id": thread.id,
@@ -1264,8 +1262,32 @@ def create_thread(request):
 @permission_classes([AllowAny])
 def list_comments_for_thread(request, thread_id):
     comments = Comment.objects.filter(thread_id=thread_id).order_by("created_at")
-    serializer = CommentSerializer(comments, many=True)
-    return JsonResponse(serializer.data, safe=False)
+
+    reaction_counts = (
+        CommentReaction.objects
+        .filter(comment__thread_id=thread_id)
+        .values("comment_id", "emoji")
+        .annotate(count=Count("emoji"))
+    )
+
+    reaction_map = {}
+    for rc in reaction_counts:
+        cid = rc["comment_id"]
+        emoji = rc["emoji"]
+        count = rc["count"]
+        reaction_map.setdefault(cid, []).append({"emoji": emoji, "count": count})
+
+    data = []
+    for c in comments:
+        data.append({
+            "id": c.id,
+            "username": c.author.username,
+            "content": c.content,
+            "created_at": c.created_at.isoformat(),
+            "reactions": reaction_map.get(c.id, [])
+        })
+
+    return JsonResponse(data, safe=False)
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
@@ -1282,18 +1304,44 @@ def create_comment(request):
         author=request.user
     )
 
-    # Broadcast via WebSocket
-    channel_layer = get_channel_layer()
-    async_to_sync(channel_layer.group_send)(
-        f"forum_{thread_id}",
-        {
-            "type": "chat.message",
-            "message": comment.content,
+    return JsonResponse({
+        "message": "Comment added",
+        "comment": {
+            "id": comment.id,
+            "content": comment.content,
             "username": comment.author.username,
+            "created_at": comment.created_at.isoformat(),
         }
+    }, status=201)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def react_to_comment(request):
+    comment_id = request.data.get("comment_id")
+    emoji = request.data.get("emoji")
+
+    if not comment_id or not emoji:
+        return JsonResponse({"error": "Missing comment ID or emoji"}, status=400)
+
+    try:
+        comment = Comment.objects.get(id=comment_id)
+    except Comment.DoesNotExist:
+        return JsonResponse({"error": "Comment not found"}, status=404)
+
+    # Save or update the reaction
+    reaction, created = CommentReaction.objects.update_or_create(
+        comment=comment,
+        user=request.user,
+        defaults={"emoji": emoji}
     )
 
-    return JsonResponse({"message": "Comment added"}, status=201)
+    return JsonResponse({
+        "message": "Reaction added" if created else "Reaction updated",
+        "emoji": emoji,
+        "comment_id": comment_id
+    }, status=201)
+
         
 @api_view(["GET"])
 @permission_classes([AllowAny])
@@ -1513,6 +1561,7 @@ def get_quizset_quizzes(request, level):
 def submit_quiz(request, quizset_id):
     quiz_set = get_object_or_404(QuizSet, pk=quizset_id)
     user_answers = request.data.get("answers", [])
+    option_order = request.data.get("option_order", [])
     questions = Quiz.objects.filter(quiz_set=quiz_set)
     score = 0
 
@@ -1523,13 +1572,15 @@ def submit_quiz(request, quizset_id):
         if is_correct:
             score += 1
 
+        displayed_options = option_order[i] if i < len(option_order) else [question.correct_answer] + question.wrong_answers
+
         detailed_results.append({
             "id": question.id,
             "question": question.question,
             "correct_answer": question.correct_answer,
             "user_answer": user_answer,
             "is_correct": is_correct,
-            "options": [question.correct_answer] + question.wrong_answers
+            "options": displayed_options,
         })
 
     percentage = (score / questions.count()) * 100
@@ -1593,6 +1644,7 @@ def list_all_quizsets_and_progress(request):
     }
 
     data = []
+    unlocked_levels = []
     for i, qs in enumerate(quiz_sets):
         progress = progress_map.get(qs.id, {"completed": False, "score": 0, "xp_earned": 0})
         if i == 0:
@@ -1604,6 +1656,9 @@ def list_all_quizsets_and_progress(request):
         # if already completed, always unlocked
         if progress["completed"]:
             unlocked = True
+        
+        if unlocked:
+            unlocked_levels.append(qs.level)
 
         data.append({
             "id": qs.id,
@@ -1614,7 +1669,10 @@ def list_all_quizsets_and_progress(request):
             "unlocked": unlocked,
         })
 
-    return JsonResponse(data, safe=False)
+    return JsonResponse({
+        "quiz_sets": data,
+        "unlocked_levels": unlocked_levels
+    })
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
@@ -1732,3 +1790,12 @@ def get_predictive_feedback(request):
 def glucose_prediction_view(request):
     result = predict_glucose(request.user, 6)
     return Response(result)
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def feeling_unwell_dates(request):
+    user = request.user
+    dates = FeelingCheck.objects.filter(user=user, feeling="bad") \
+        .values_list("timestamp", flat=True)
+    days = [d.date().isoformat() for d in dates]
+    return JsonResponse({"bad_days": list(set(days))})

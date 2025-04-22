@@ -9,7 +9,8 @@ class ForumHttpService {
 
   ForumHttpService({required this.threadId});
 
-  Future<void> sendMessage(String username, String message) async {
+  Future<Map<String, dynamic>?> sendMessage(
+      String username, String message) async {
     final token = await AuthService().getAccessToken();
     final headers = {
       'Content-Type': 'application/json',
@@ -21,11 +22,18 @@ class ForumHttpService {
       "content": message,
     });
 
-    await http.post(
+    final response = await http.post(
       Uri.parse("$apiUrl/forum/comments/create/"),
       headers: headers,
       body: body,
     );
+
+    if (response.statusCode == 201) {
+      return jsonDecode(response.body);
+    } else {
+      print("Failed to send message: ${response.body}");
+      return null;
+    }
   }
 
   Future<List<Map<String, dynamic>>> fetchMessages() async {
@@ -34,9 +42,34 @@ class ForumHttpService {
     );
 
     if (response.statusCode == 200) {
-      return List<Map<String, dynamic>>.from(jsonDecode(response.body));
+      final raw = jsonDecode(response.body);
+      return List<Map<String, dynamic>>.from(raw.map((msg) => {
+            "id": msg["id"],
+            "username": msg["username"],
+            "content": msg["content"],
+            "timestamp": msg["created_at"],
+            "reactions": List<Map<String, dynamic>>.from(msg["reactions"] ?? [])
+          }));
     } else {
       return [];
     }
   }
+
+  Future<void> sendReaction(int commentId, String emoji) async {
+    final token = await AuthService().getAccessToken();
+    final apiUrl = dotenv.env['API_URL'];
+
+    await http.post(
+      Uri.parse('$apiUrl/forum/reactions/'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'comment_id': commentId,
+        'emoji': emoji,
+      }),
+    );
+  }
+
 }
