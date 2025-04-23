@@ -27,11 +27,15 @@ class QuestionnaireVisualizationScreenState
   final String? apiUrl = dotenv.env['API_URL']; 
 
   @override
-  void initState() {
-    super.initState();
-    _loadPreferredUnit();
-    _fetchQuestionnaireData();
-  }
+void initState() {
+  super.initState();
+  _initializeData();
+}
+
+Future<void> _initializeData() async {
+  await _loadPreferredUnit();     
+  await _fetchQuestionnaireData(); 
+}
 
   Future<void> _loadPreferredUnit() async {
     final prefs = await SharedPreferences.getInstance();
@@ -114,8 +118,9 @@ class QuestionnaireVisualizationScreenState
         'session_id': item['session_id'],
         'date': sessionDate,
         'is_latest': item['is_latest'] ?? false,
-        'glucose_check': _normalizeGlucoseList(
-            item['glucose_check'] ?? [], _preferredGlucoseUnit),
+        'glucose_check': item['glucose_check'] != null && item['glucose_check'].isNotEmpty
+          ? _normalizeGlucoseList(item['glucose_check'], _preferredGlucoseUnit)
+          : [0.0],
         'wellness_score': _mapWellnessToScore(item['feeling_check']),
         'exercise_type':
             item['exercise_check']?.map((e) => e['exercise_type'])?.toList() ??
@@ -136,18 +141,37 @@ class QuestionnaireVisualizationScreenState
                   0.0, (sum, meal) => sum + (meal['weighted_gi'] ?? 0.0)) ??
               0.0,
         },
-        'symptoms': (item['symptom_check'] as List<dynamic>?)
-                ?.expand((symptomCheck) =>
-                    (symptomCheck['symptoms'] as List<dynamic>? ?? []))
-                .toList() ??
-            [],
-        'sleep_hours': (item['symptom_check'] as List?)
-                ?.map((e) => e['sleep_hours'] ?? 0.0)
-                .fold(0.0, (a, b) => a + b) ??
-            0.0,
+        'symptoms': _extractSymptoms(item['symptom_check']),
+        'sleep_hours': _extractSleepHours(item['symptom_check']),
       };
     }).toList();
   }
+
+  List<Map<String, dynamic>> _extractSymptoms(dynamic symptomCheck) {
+  if (symptomCheck is List) {
+    return symptomCheck
+        .expand((s) => (s['symptoms'] as List<dynamic>? ?? []))
+        .cast<Map<String, dynamic>>()
+        .toList();
+  } else if (symptomCheck is Map) {
+    return (symptomCheck['symptoms'] as List<dynamic>? ?? [])
+        .cast<Map<String, dynamic>>();
+  } else {
+    return [];
+  }
+}
+
+double _extractSleepHours(dynamic symptomCheck) {
+  if (symptomCheck is List) {
+    return symptomCheck
+        .map((e) => (e['sleep_hours'] ?? 0.0))
+        .fold(0.0, (a, b) => a + (b as num).toDouble());
+  } else if (symptomCheck is Map) {
+    return (symptomCheck['sleep_hours'] ?? 0.0).toDouble();
+  }
+  return 0.0;
+}
+
 
   List<double> _normalizeGlucoseList(List<dynamic> glucoseChecks, String unit) {
     return glucoseChecks.map((check) {
@@ -307,7 +331,7 @@ class QuestionnaireVisualizationScreenState
           child: SizedBox(
             width:
                 dynamicWidth.clamp(300.0, 1200.0), // Minimum and maximum width
-            height: 300,
+            height: 400,
             child: LineChart(_buildLineChartData()),
           ),
         ),
@@ -336,7 +360,7 @@ class QuestionnaireVisualizationScreenState
           child: SizedBox(
             width:
                 dynamicWidth.clamp(300.0, 1200.0), // Minimum and maximum width
-            height: 300,
+            height: 400,
             child: BarChart(_buildBarChartData()),
           ),
         ),
@@ -363,7 +387,7 @@ class QuestionnaireVisualizationScreenState
           child: SizedBox(
             width:
                 dynamicWidth.clamp(300.0, 1200.0), // Minimum and maximum width
-            height: 300,
+            height: 400,
             child: BarChart(
                 _buildMealBarChartData()), // Refactored stacked bar chart
           ),
@@ -392,7 +416,7 @@ class QuestionnaireVisualizationScreenState
           child: SizedBox(
             width:
                 dynamicWidth.clamp(300.0, 1200.0), // Minimum and maximum width
-            height: 300,
+            height: 400,
             child: LineChart(_buildLineChartSleepVsWellnessData()),
           ),
         ),
@@ -416,7 +440,7 @@ class QuestionnaireVisualizationScreenState
           child: SizedBox(
             width:
                 dynamicWidth.clamp(300.0, 1200.0), // Minimum and maximum width
-            height: 300,
+            height: 400,
             child: LineChart(_buildComprehensiveChartData()),
           ),
         ),
@@ -458,8 +482,10 @@ class QuestionnaireVisualizationScreenState
   }
 
   LineChartData _buildLineChartData() {
-    // Calculate the maximum Y values dynamically with padding
-    final glucoseValues = _questionnaireData
+    final List<Map<String, dynamic>> reversedData =
+        _questionnaireData.reversed.toList();
+
+    final glucoseValues = reversedData
         .where((data) =>
             data['glucose_check'] != null && data['glucose_check'].isNotEmpty)
         .map((data) => (data['glucose_check'][0] ?? 0.0).toDouble())
@@ -469,8 +495,8 @@ class QuestionnaireVisualizationScreenState
         ? glucoseValues.reduce((a, b) => a > b ? a : b)
         : 0.0;
 
-    final maxY = (maxGlucoseLevel * 1.2).ceil(); // Add 20% padding
-    final interval = (maxY / 5).ceil(); // Divide Y-axis into 5 even intervals
+    final maxY = (maxGlucoseLevel * 1.2).ceil();
+    final interval = (maxY / 5).ceil();
 
     return LineChartData(
       gridData: FlGridData(show: true),
@@ -479,69 +505,59 @@ class QuestionnaireVisualizationScreenState
           sideTitles: SideTitles(
             showTitles: true,
             reservedSize: 40,
-            interval: interval.toDouble(), // Set fixed intervals for the y-axis
-            getTitlesWidget: (value, meta) {
-              return Text(
-                '${value.toInt()}',
-                style: const TextStyle(fontSize: 10),
-              );
-            },
+            interval: interval.toDouble(),
+            getTitlesWidget: (value, _) => Text(
+              '${value.toInt()}',
+              style: const TextStyle(fontSize: 10),
+            ),
           ),
           axisNameWidget: const RotatedBox(
-            quarterTurns: 1, // Rotate the title vertically
+            quarterTurns: 1,
             child: Text(
               'Glucose Level',
               style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold),
             ),
           ),
-          axisNameSize: 20, // Space for the y-axis title
+          axisNameSize: 20,
         ),
         bottomTitles: AxisTitles(
           sideTitles: SideTitles(
             showTitles: true,
             reservedSize: 40,
-            interval: 1, // Show every session
-            getTitlesWidget: (value, meta) {
-              final index = value.toInt();
-              if (index < 0 || index >= _questionnaireData.length) {
+            interval: 1,
+            getTitlesWidget: (value, _) {
+              final reverseIndex = reversedData.length - 1 - value.toInt();
+              if (reverseIndex < 0 || reverseIndex >= reversedData.length) {
                 return const SizedBox.shrink();
               }
-
-              final sessionId = _questionnaireData[index]['session_id'];
-
+              final sessionId = reversedData[reverseIndex]['session_id'];
               return Transform.translate(
                 offset: const Offset(0, 8),
-                child: Transform.rotate(
-                  angle: 0, // No rotation
-                  child: Text(
-                    'S$sessionId',
-                    style: const TextStyle(fontSize: 10),
-                  ),
+                child: Text(
+                  'S$sessionId',
+                  style: const TextStyle(fontSize: 10),
                 ),
               );
             },
           ),
           axisNameWidget: const Padding(
-            padding:
-                EdgeInsets.only(top: 16), // Add space between labels and title
+            padding: EdgeInsets.only(top: 16),
             child: Text(
               'Questionnaire Sessions',
               style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-              textAlign: TextAlign.center,
             ),
           ),
-          axisNameSize: 20, // Space for the x-axis title
+          axisNameSize: 20,
         ),
       ),
       lineBarsData: [
         LineChartBarData(
-          spots:
-              _questionnaireData.reversed.toList().asMap().entries.map((entry) {
-            final index = entry.key.toDouble();
-             final glucoseList = entry.value['glucose_check'] ?? [];
+          spots: reversedData.asMap().entries.map((entry) {
+            final reverseIndex = reversedData.length - 1 - entry.key;
+            final glucoseList = entry.value['glucose_check'] ?? [];
             final value =
                 glucoseList.isNotEmpty ? glucoseList[0].toDouble() : 0.0;
-            return FlSpot(index, value);
+            return FlSpot(reverseIndex.toDouble(), value);
           }).toList(),
           isCurved: true,
           color: Colors.blue,
@@ -550,8 +566,8 @@ class QuestionnaireVisualizationScreenState
             show: true,
             gradient: LinearGradient(
               colors: [
-                Colors.blue.withValues(alpha: 0.4),
-                Colors.blue.withValues(alpha: 0.1),
+                Colors.blue.withAlpha(100),
+                Colors.blue.withAlpha(30),
               ],
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
@@ -560,20 +576,20 @@ class QuestionnaireVisualizationScreenState
         ),
       ],
       minY: 0.0,
-      maxY: maxY.toDouble(), // Set dynamic max Y value
+      maxY: maxY.toDouble(),
       lineTouchData: LineTouchData(
         touchTooltipData: LineTouchTooltipData(
           tooltipPadding:
               const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           tooltipRoundedRadius: 8,
           tooltipBorder:
-              BorderSide(color: Colors.white.withValues(alpha: 0.8), width: 1),
+              BorderSide(color: Colors.white.withAlpha(200), width: 1),
           tooltipMargin: 16,
-          getTooltipColor: (touchedSpot) => Colors.grey.withValues(alpha: 0.8),
+          getTooltipColor: (_) => Colors.grey.withAlpha(200),
           getTooltipItems: (touchedSpots) {
             return touchedSpots.map((spot) {
               final index = spot.spotIndex;
-              final data = _questionnaireData[index];
+              final data = reversedData[index];
               final timestamp = data['date'].toString();
               final formattedDate = formatTimestamp(timestamp);
               final glucoseLevel = data['glucose_check'][0];
@@ -591,6 +607,7 @@ class QuestionnaireVisualizationScreenState
       ),
     );
   }
+
 
   BarChartData _buildBarChartData() {
     // Calculate the maximum Y value dynamically with padding
@@ -1144,12 +1161,12 @@ class QuestionnaireVisualizationScreenState
       // Create bars only for symptoms in this session
       final List<BarChartRodData> bars = symptomNames.map((symptomName) {
         final symptomData = sessionData['symptoms'].firstWhere(
-            (symptom) => symptom['symptom'] == symptomName,
-            orElse: () => null);
+          (symptom) => symptom['symptom'] == symptomName,
+          orElse: () => <String, dynamic>{},
+        );
 
-        final severity = symptomData != null
-            ? (symptomData['severity'] as num).toDouble()
-            : 0.0;
+        final severity = (symptomData['severity'] ?? 0).toDouble();
+
 
         return BarChartRodData(
           toY: severity,

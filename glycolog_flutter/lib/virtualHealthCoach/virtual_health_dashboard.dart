@@ -28,6 +28,7 @@ class _VirtualHealthDashboardState extends State<VirtualHealthDashboard> {
   List<Map<String, dynamic>> _filteredHistory = [];
   bool isRefreshingSummary = false;
   final ScrollController _scrollController = ScrollController(); // Add to state
+  Set<String> _badDays = {};
 
 
 IconData _getActivityIcon(String activityType) {
@@ -64,6 +65,7 @@ IconData _getActivityIcon(String activityType) {
 
     await _syncHealthData(token);
     await _loadDashboard(token);
+    await _loadBadFeelingDays();
 
     // Auto-refresh trend if outdated
     final String? trendEnd = trendData?['end_date'];
@@ -235,7 +237,7 @@ Future<void> _loadPastTrends() async {
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                     subtitle: Text(
-                      "Steps: ${trend['avg_steps']}, Sleep: ${trend['avg_sleep_hours']} hrs, Glucose: ${trend['avg_glucose_level']?.toStringAsFixed(1) ?? 'N/A'}",
+                      "Steps: ${trend['avg_steps']}, Glucose: ${trend['avg_glucose_level']?.toStringAsFixed(1) ?? 'N/A'}",
                     ),
                     onTap: () {
                         bool expanded = false;
@@ -250,8 +252,6 @@ Future<void> _loadPastTrends() async {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text("Steps: ${trend['avg_steps']}"),
-                                    Text(
-                                        "Sleep: ${trend['avg_sleep_hours']} hrs"),
                                     Text(
                                         "Heart Rate: ${trend['avg_heart_rate']?.round() ?? 'N/A'} bpm"),
                                     Text(
@@ -404,15 +404,35 @@ void _refreshSummary() async {
     );
   }
 
+Future<void> _loadBadFeelingDays() async {
+    final token = await AuthService().getAccessToken();
+    if (token == null) return;
+
+    final response = await http.get(
+      Uri.parse("$apiUrl/health/bad-days/"),
+      headers: {"Authorization": "Bearer $token"},
+    );
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      setState(() {
+        _badDays = Set<String>.from(data["bad_days"]);
+        print("Bad feeling days loaded: $_badDays");
+      });
+    }
+  }
 
 Widget _buildTrendSummary() {
     if (trendData == null) return const SizedBox();
 
-    final String start = _formatDate(trendData!['start_date']);
-    final String end = _formatDate(trendData!['end_date']);
-    final DateTime? endDate = DateTime.tryParse(trendData!['end_date']);
+    final startStr = trendData?['start_date'] as String? ?? '';
+    final endStr = trendData?['end_date'] as String? ?? '';
+
+    final String start = _formatDate(startStr);
+    final String end = _formatDate(endStr);
+    final DateTime? endDate = (endStr.isNotEmpty) ? DateTime.tryParse(endStr) : null;
     final int daysOld =
-        endDate != null ? DateTime.now().difference(endDate).inDays : 999;
+        (endDate != null) ? DateTime.now().difference(endDate).inDays : 999;
 
     Color badgeColor;
     String badgeText;
@@ -428,11 +448,10 @@ Widget _buildTrendSummary() {
     }
 
     final int steps = trendData!['avg_steps'] ?? 0;
-    final double sleep = (trendData!['avg_sleep_hours'] ?? 0).toDouble();
     final int sessions = trendData!['total_exercise_sessions'] ?? 0;
     final double? hr = trendData!['avg_heart_rate']?.toDouble();
     final double? glucose = trendData!['avg_glucose_level']?.toDouble();
-    final String summary = trendData!['ai_summary']?.toString() ?? '';
+    final String summary = (trendData?['ai_summary'] ?? '').toString();
     final List<dynamic> aiItems =
         List.from(trendData!['ai_summary_items'] ?? []);
     aiItems.sort(
@@ -473,7 +492,6 @@ Widget _buildTrendSummary() {
                 const SizedBox(height: 8),
                 Text("Period: $start to $end"),
                 Text("• Avg Steps: $steps"),
-                Text("• Avg Sleep: ${sleep.toStringAsFixed(1)} hrs"),
                 Text("• Avg Heart Rate: ${hr?.round() ?? 'N/A'} bpm"),
                 Text(
                     "• Avg Glucose: ${glucose?.toStringAsFixed(1) ?? 'N/A'} mg/dL"),
@@ -570,15 +588,11 @@ Widget _buildTrendSummary() {
     );
   }
 
-
-
 Widget _buildGraph(String title, String metric, Color color) {
     String getYAxisLabel(String metric) {
       switch (metric) {
         case 'heart_rate':
           return 'bpm';
-        case 'sleep_hours':
-          return 'hrs';
         case 'steps':
           return 'steps';
         default:
@@ -586,13 +600,52 @@ Widget _buildGraph(String title, String metric, Color color) {
       }
     }
 
-    // Extract y-values and compute dynamic chart height
-    final yValues = history
-        .map((e) => (e[metric] is num) ? (e[metric] as num).toDouble() : 0.0)
-        .toList();
+    final Set<String> allDates = {
+      ...history.map((e) => e['date'] as String),
+      ..._badDays,
+    };
+
+    final List<String> sortedDates = allDates.toList()
+      ..sort((a, b) => b.compareTo(a)); // reverse order
+
+    final Map<String, int> dateToX = {
+      for (int i = 0; i < sortedDates.length; i++) sortedDates[i]: i,
+    };
+
+    final List<FlSpot> spots = sortedDates.map((date) {
+      final entry = history.firstWhere(
+        (e) => e['date'] == date,
+        orElse: () => {},
+      );
+      final value =
+          (entry[metric] is num) ? (entry[metric] as num).toDouble() : 0.0;
+      return FlSpot(dateToX[date]!.toDouble(), value);
+    }).toList();
+
+    final yValues = spots.map((e) => e.y).toList();
     final maxY =
         yValues.isNotEmpty ? yValues.reduce((a, b) => a > b ? a : b) : 100;
     final chartHeight = (maxY > 200) ? 400.0 : (maxY > 100 ? 350.0 : 300.0);
+    const double extraVerticalSpace = 100;
+    final double panelHeight = chartHeight + extraVerticalSpace;
+
+    final List<VerticalLine> unwellLines = _badDays
+        .where(dateToX.containsKey)
+        .map(
+          (date) => VerticalLine(
+            x: dateToX[date]!.toDouble(),
+            color: Colors.red.withValues(alpha: 0.35),
+            strokeWidth: 3,
+            dashArray: [6, 4],
+            label: VerticalLineLabel(
+              show: true,
+              alignment: Alignment.topRight,
+              style: const TextStyle(fontSize: 10, color: Colors.red),
+              labelResolver: (_) => 'Unwell',
+            ),
+          ),
+        )
+        .toList();
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 12),
@@ -608,7 +661,8 @@ Widget _buildGraph(String title, String metric, Color color) {
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: SizedBox(
-                width: (history.length * 50).toDouble().clamp(300, 1200),
+                width: (sortedDates.length * 50).toDouble().clamp(300, 1200),
+                height: panelHeight,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -621,81 +675,101 @@ Widget _buildGraph(String title, String metric, Color color) {
                       height: chartHeight,
                       child: LineChart(
                         LineChartData(
-                          clipData:
-                              FlClipData.none(), // tooltips allowed outside
+                          clipData: FlClipData.none(),
+                          extraLinesData:
+                              ExtraLinesData(verticalLines: unwellLines),
                           lineTouchData: LineTouchData(
+                            handleBuiltInTouches: true,
                             touchTooltipData: LineTouchTooltipData(
-                              getTooltipColor: (touchedSpot) => Colors.grey.withValues(alpha: 0.8),
+                              getTooltipColor: (_) =>
+                                  Colors.grey.withValues(alpha: 0.8),
                               tooltipRoundedRadius: 8,
                               tooltipMargin: 12,
-                              fitInsideHorizontally: false,
-                              fitInsideVertically: false,
+                              fitInsideHorizontally: true,
+                              fitInsideVertically: true,
                               getTooltipItems: (touchedSpots) {
                                 return touchedSpots.map((spot) {
-                                  final entry = history[spot.x.toInt()];
-                                  final date = entry['date'];
-                                  final type =
-                                      entry['activity_type'] ?? "Workout";
-                                  final time = entry['start_time'] != null
-                                      ? _formatDateTime(
-                                          entry['start_time'].toString())
-                                      : "";
+                                  final date = sortedDates[spot.x.toInt()];
+                                  final entry = history.firstWhere(
+                                    (e) => e['date'] == date,
+                                    orElse: () => {'date': date},
+                                  );
+                                  final hasData = entry.containsKey(metric) && entry[metric] != null;
+                                  final value = hasData ? (entry[metric] as num).toDouble() : 0.0;
                                   final yLabel = getYAxisLabel(metric);
+
                                   return LineTooltipItem(
-                                    "Activity: ${type.toString().capitalize()}\n"
-                                    "Date: $date ${time.isNotEmpty ? '\nTime: $time' : ''}\n"
-                                    "${metric.replaceAll('_', ' ').capitalize()}: ${spot.y.toStringAsFixed(1)} $yLabel",
+                                    hasData
+                                        ? "Activity: ${entry['activity_type']?.toString().capitalize() ?? 'Workout'}\n"
+                                          "Date: $date\n"
+                                          "${metric.replaceAll('_', ' ').capitalize()}: ${value.toStringAsFixed(1)} $yLabel"
+                                        : "Date: $date\nNo workout recorded.",
                                     const TextStyle(color: Colors.white),
                                   );
                                 }).toList();
                               },
                             ),
-                            handleBuiltInTouches: true,
                           ),
                           titlesData: FlTitlesData(
                             bottomTitles: AxisTitles(
                               sideTitles: SideTitles(
                                 showTitles: true,
-                                reservedSize: 32,
+                                reservedSize: 42,
                                 interval: 1,
                                 getTitlesWidget: (value, _) {
                                   final index = value.toInt();
-                                  if (index < 0 || index >= history.length) {
+                                  if (index < 0 ||
+                                      index >= sortedDates.length) {
                                     return const SizedBox();
                                   }
-                                  final date = history[index]['date'];
-                                  return Text(date.split('-').last); // show day
+
+                                  final date = sortedDates[index];
+                                  final formatted = () {
+                                    try {
+                                      final parts = date.split("-");
+                                      return "${parts[2]}/${parts[1]}"; // dd/MM
+                                    } catch (_) {
+                                      return "";
+                                    }
+                                  }();
+
+                                  final isUnwell = _badDays.contains(date);
+
+                                  return Column(
+                                    children: [
+                                      if (isUnwell)
+                                        const Icon(Icons.circle,
+                                            color: Colors.red, size: 6),
+                                      Text(formatted,
+                                          style: const TextStyle(fontSize: 10)),
+                                    ],
+                                  );
                                 },
                               ),
                             ),
                             leftTitles: AxisTitles(
                               sideTitles: SideTitles(
-                                showTitles: true,
-                                reservedSize: 40,
-                              ),
+                                  showTitles: true, reservedSize: 40),
                             ),
                             topTitles: AxisTitles(
-                                sideTitles: SideTitles(showTitles: false)),
+                              sideTitles: SideTitles(showTitles: false),
+                            ),
                             rightTitles: AxisTitles(
-                                sideTitles: SideTitles(showTitles: false)),
+                              sideTitles: SideTitles(showTitles: false),
+                            ),
                           ),
                           borderData: FlBorderData(show: true),
                           gridData: FlGridData(show: true),
                           minY: 0,
-                          maxY: maxY + 10, // padding top to prevent clipping
+                          maxY: maxY + 10,
                           lineBarsData: [
                             LineChartBarData(
-                              spots: history.asMap().entries.map((e) {
-                                final value = (e.value[metric] is num)
-                                    ? (e.value[metric] as num).toDouble()
-                                    : 0.0;
-                                return FlSpot(e.key.toDouble(), value);
-                              }).toList(),
+                              spots: spots,
                               isCurved: true,
                               color: color,
                               dotData: FlDotData(show: true),
                               belowBarData: BarAreaData(show: false),
-                            )
+                            ),
                           ],
                         ),
                       ),
@@ -708,14 +782,12 @@ Widget _buildGraph(String title, String metric, Color color) {
                   ],
                 ),
               ),
-            )
+            ),
           ],
         ),
       ),
     );
   }
-
-
 
 Widget _buildTodaySummary() {
     if (todayData == null || todayData!.isEmpty) {
@@ -1018,11 +1090,11 @@ Widget _buildTodaySummary() {
                             },
                           ),
                         ),
-                        _buildGraph("Step Trend", "steps", Colors.blue),
+                        _buildGraph("Step Trend", "steps", Colors.blueAccent),
                         _buildGraph(
-                            "Heart Rate Trend", "heart_rate", Colors.redAccent),
-                        _buildGraph(
-                            "Sleep Trend", "sleep_hours", Colors.purple),
+                            "Heart Rate Trend", "heart_rate", Colors.purpleAccent),
+                        // _buildGraph(
+                        //     "Sleep Trend", "sleep_hours", Colors.purple),
                         _buildHistorySection(),
                       ],
                     ),

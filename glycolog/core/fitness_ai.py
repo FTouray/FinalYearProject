@@ -82,12 +82,12 @@ def generate_health_trends(user, period_type="weekly"):
     # 🧮 Aggregates
     avg_steps = valid_activities.aggregate(Sum("steps"))["steps__sum"] or 0
     avg_hr = valid_activities.aggregate(Avg("heart_rate"))["heart_rate__avg"]
-    avg_sleep = sleep_activities.aggregate(Avg("total_sleep_hours"))["total_sleep_hours__avg"] or 0
+    # avg_sleep = sleep_activities.aggregate(Avg("total_sleep_hours"))["total_sleep_hours__avg"] or 0
     total_sessions = valid_activities.count()
 
     print(f"Avg Steps: {avg_steps}")
     print(f"Avg Heart Rate: {avg_hr}")
-    print(f"Avg Sleep: {avg_sleep}")
+    # print(f"Avg Sleep: {avg_sleep}")
     print(f"Total Exercise Sessions: {total_sessions}")
 
     # 🩸 Glucose
@@ -120,7 +120,6 @@ def generate_health_trends(user, period_type="weekly"):
     The user has diabetes. Below are their {period_type} health trends:
 
     - Total Steps: {avg_steps}
-    - Average Sleep: {avg_sleep:.1f} hrs
     - Average Heart Rate: {avg_hr or 'N/A'} bpm
     - Average Glucose: {avg_glucose or 'N/A'} mg/dL
     - Total Exercise Sessions: {total_sessions}
@@ -161,7 +160,7 @@ def generate_health_trends(user, period_type="weekly"):
         end_date=end_date,
         defaults={
             "avg_steps": avg_steps,
-            "avg_sleep_hours": avg_sleep,
+            # "avg_sleep_hours": avg_sleep,
             "avg_heart_rate": avg_hr,
             "avg_glucose_level": avg_glucose,
             "total_exercise_sessions": total_sessions,

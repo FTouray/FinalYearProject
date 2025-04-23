@@ -22,12 +22,6 @@ class BaseScaffoldScreen extends StatelessWidget {
       appBar: AppBar(
         title: Image.asset('assets/logos/glycolog_logo.png', height: 40),
         centerTitle: true,
-        leading: Builder(
-          builder: (context) => IconButton(
-            icon: const Icon(Icons.menu),
-            onPressed: () => Scaffold.of(context).openDrawer(),
-          ),
-        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),

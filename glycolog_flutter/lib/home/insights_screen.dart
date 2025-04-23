@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:glycolog/questionnaire/data_visualization.dart';
 import 'package:glycolog/utils.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -104,8 +105,8 @@ Future<void> generatePdf() async {
           pw.SizedBox(height: 8),
           pw.Bullet(text: "Glucose Average: $formattedGlucose $_selectedUnit"),
           pw.Bullet(text: "Steps: ${trend['avg_steps']}"),
-          pw.Bullet(text: "Sleep: ${trend['avg_sleep_hours']} hrs"),
-          pw.Bullet(text: "Heart Rate: ${trend['avg_heart_rate']} bpm"),
+          //pw.Bullet(text: "Sleep: ${trend['avg_sleep_hours']} hrs"),
+          pw.Bullet(text: "Heart Rate: ${(trend['avg_heart_rate'] ?? 0).toDouble().toStringAsFixed(2)} bpm"),
           pw.Bullet(
               text: "Exercise Sessions: ${trend['total_exercise_sessions']}"),
           pw.SizedBox(height: 12),
@@ -187,6 +188,20 @@ Future<void> generatePdf() async {
                       label: const Text("Export to PDF"),
                       onPressed: generatePdf,
                     ),
+                    TextButton.icon(
+                      icon: const Icon(Icons.bar_chart),
+                      label: const Text("View Data Visualization"),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                const QuestionnaireVisualizationScreen(),
+                          ),
+                        );
+                      },
+                    ),
+
                   ],
                 ),
     );
@@ -265,14 +280,13 @@ Future<void> generatePdf() async {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        _trendTile(
-                            "🛌 Sleep", "${trend['avg_sleep_hours']} hrs"),
-                        _trendTile("❤️ BPM", "${trend['avg_heart_rate']} bpm"),
+                        // _trendTile(
+                        //     "🛌 Sleep", "${trend['avg_sleep_hours']} hrs"),
+                        _trendTile("❤️ BPM", "${(trend['avg_heart_rate'] ?? 0).toDouble().toStringAsFixed(2)} bpm"),
+                        _trendTile("🏋️‍♀️ Sessions",
+                            trend['total_exercise_sessions'].toString()),
                       ],
-                    ),
-                    const SizedBox(height: 8),
-                    _trendTile("🏋️‍♀️ Sessions",
-                        trend['total_exercise_sessions'].toString()),
+                    ),                    
                     const Divider(height: 24),
                     const Text(
                       "💡 AI Highlights",

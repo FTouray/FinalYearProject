@@ -742,7 +742,7 @@ def list_ai_recommendations(request):
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
-def get_ai_health_trends(request, period_type="weekly"):
+def get_ai_health_trends(request, period_type):
     user = request.user
 
     if request.query_params.get("refresh") == "true":
@@ -770,9 +770,8 @@ def get_ai_health_trends(request, period_type="weekly"):
 @permission_classes([IsAuthenticated])
 def get_all_ai_health_trends(request):
     user = request.user
-    period_type = request.query_params.get("period_type", "weekly")
 
-    trends = AIHealthTrend.objects.filter(user=user, period_type=period_type).order_by("-start_date")
+    trends = AIHealthTrend.objects.filter(user=user).order_by("-start_date")
 
     trend_list = []
     for trend in trends:
@@ -1437,7 +1436,6 @@ def get_insights_summary_with_ai(request):
 
     Activity:
     - Avg steps: {avg_steps}
-    - Avg sleep: {avg_sleep}
     - Exercise sessions: {exercise_sessions}
 
     Medications:
@@ -1793,9 +1791,10 @@ def glucose_prediction_view(request):
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
-def feeling_unwell_dates(request):
+def bad_days_view(request):
     user = request.user
-    dates = FeelingCheck.objects.filter(user=user, feeling="bad") \
-        .values_list("timestamp", flat=True)
-    days = [d.date().isoformat() for d in dates]
-    return JsonResponse({"bad_days": list(set(days))})
+    bad_days = QuestionnaireSession.objects.filter(
+        user=user, completed=True
+    ).dates("created_at", "day")
+    return Response({"bad_days": [d.isoformat() for d in bad_days]})
+
