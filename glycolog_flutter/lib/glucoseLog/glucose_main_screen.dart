@@ -30,6 +30,7 @@ class GlucoseLogScreenState extends State<GlucoseLogScreen> {
   List<Map<String, dynamic>> glucosePredictions = [];
   String? predictionError;
   bool isInsulinDependent = false;
+  List<String> unwellDays = [];
 
   @override
   void initState() {
@@ -41,8 +42,34 @@ class GlucoseLogScreenState extends State<GlucoseLogScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     fetchGlucoseLogs(); // Fetch the glucose logs when the screen is displayed
+    fetchUnwellDays();
     fetchFullGlucoseTimeline();
     fetchGlucosePredictions();
+  }
+
+  Future<void> fetchUnwellDays() async {
+    String? token = await AuthService().getAccessToken();
+    final apiUrl = dotenv.env['API_URL'];
+
+    if (token != null) {
+      try {
+        final response = await http.get(
+          Uri.parse('$apiUrl/health/bad-days/'),
+          headers: {'Authorization': 'Bearer $token'},
+        );
+
+        if (response.statusCode == 200) {
+          final data = json.decode(response.body);
+          setState(() {
+            unwellDays = List<String>.from(data['bad_days'] ?? []);
+          });
+        } else {
+          // Handle error
+        }
+      } catch (e) {
+        // Handle exception
+      }
+    }
   }
 
   // Fetch user's preferred measurement unit
@@ -191,30 +218,36 @@ class GlucoseLogScreenState extends State<GlucoseLogScreen> {
             }
           }
 
-          // Keep only the last 30 days (based on dates)
-          final last30Entries = dailyValues.entries
-              .take(30)
-              .toList()
-              .reversed
-              .toList(); // Show oldest → newest
+          final sortedEntries = dailyValues.entries.toList()
+            ..sort((a, b) => b.key.compareTo(a.key)); // newest first
+          final last30Entries = sortedEntries.take(30).toList();
 
           setState(() {
             fullGlucoseGraphData = [];
             fullGlucoseLogs = [];
 
+            print("📋 Reversed last30Entries order (newest to oldest):");
             for (int i = 0; i < last30Entries.length; i++) {
               final entry = last30Entries[i];
               final date = DateTime.parse(entry.key);
-              final avg =
-                  entry.value.reduce((a, b) => a + b) / entry.value.length;
-              fullGlucoseGraphData.add(FlSpot(i.toDouble(), avg));
+              final avg = entry.value.reduce((a, b) => a + b) / entry.value.length;
+
+              final x = (last30Entries.length - 1 - i).toDouble();
+
+              print("➡️ i: $i, Reversed x: $x, Date: ${date.toIso8601String()}, Avg: ${avg.toStringAsFixed(2)}");
+
+              fullGlucoseGraphData.add(FlSpot(x, avg));
               fullGlucoseLogs.add({
                 "date": date.toIso8601String(),
                 "average": avg,
               });
             }
-          });
 
+            print("✅ Final Graph Data Points:");
+            for (var spot in fullGlucoseGraphData) {
+              print("  FlSpot(x: ${spot.x}, y: ${spot.y.toStringAsFixed(2)})");
+            }
+          });
           print("✅ Final points: ${fullGlucoseGraphData.length}");
         }
       } catch (e) {
@@ -465,14 +498,20 @@ Future<void> fetchGlucosePredictions() async {
 
                   const SizedBox(height: 30),
                   // Glucose Log Today Title
-                  const Padding(
-                    padding: EdgeInsets.only(bottom: 8.0),
+                 const Padding(
+                  padding: EdgeInsets.only(bottom: 8.0),
+                  child: Center(
                     child: Text(
                       "📈 Glucose Today",
-                      style:
-                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue,
+                      ),
                     ),
                   ),
+                ),
 
                   // Graph Section (Glucose Today)
                   AspectRatio(
@@ -552,7 +591,7 @@ Future<void> fetchGlucosePredictions() async {
                                     sideTitles: SideTitles(showTitles: false)),
                               ),
                               minX: 0,
-                              maxX: 24,
+                              maxX: fullGlucoseGraphData.length.toDouble() + 10,
                               minY: 0,
                               maxY: getMaxY(),
                               lineBarsData: getLineChartBarData(),
@@ -600,11 +639,7 @@ Future<void> fetchGlucosePredictions() async {
 
                   const SizedBox(height: 30),
 
-                  const Text(
-                    "📊 Glucose Over Time",
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
-
+                  
                 buildTimelineGlucoseGraph(screenWidth),
 
                   const SizedBox(height: 30),
@@ -681,131 +716,210 @@ Future<void> fetchGlucosePredictions() async {
       return const Center(child: Text("No glucose timeline data available."));
     }
 
-    final double graphHeight = 400;
+    final double graphHeight = 420;
     final pointSpacing = screenWidth < 400 ? 45.0 : 60.0;
     final double graphWidth =
         (fullGlucoseGraphData.length * pointSpacing).clamp(screenWidth, 2400);
     final double maxY =
         fullGlucoseGraphData.map((e) => e.y).reduce((a, b) => a > b ? a : b) +
-            10;
+            20;
+
     final Map<double, DateTime> xDateMap = {
       for (int i = 0; i < fullGlucoseLogs.length; i++)
-        i.toDouble():
-            DateTime.parse(fullGlucoseLogs[i]['date']) // ← safely parsed
+        i.toDouble(): DateTime.parse(fullGlucoseLogs[i]['date']),
     };
 
+    final List<double> unwellXPositions = xDateMap.entries
+        .where((entry) =>
+            unwellDays.contains(DateFormat('yyyy-MM-dd').format(entry.value)))
+        .map((entry) => entry.key)
+        .toList();
 
-    return Container(
-    width: double.infinity,
-    padding: const EdgeInsets.all(16.0),
-    decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16.0),
-          boxShadow: [
-            BoxShadow(
-              blurRadius: 8,
-              color: Colors.grey.shade300,
-              spreadRadius: 3,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        
-        const SizedBox(height: 16),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: SizedBox(
-            width: graphWidth,
-            height: graphHeight,
-            child: LineChart(
-              LineChartData(
-            minY: 0,
-            maxY: maxY,
-            clipData: FlClipData.none(),
-            gridData: FlGridData(show: true),
-            borderData: FlBorderData(show: true),
-            titlesData: FlTitlesData(
-              bottomTitles: AxisTitles(
-                axisNameWidget: const Padding(
-                  padding: EdgeInsets.only(top: 8),
-                  child: Text("Date",
-                      style:
-                          TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                ),
-                 axisNameSize: 30,
-                sideTitles: SideTitles(
-                  showTitles: true,
-                  reservedSize: 50,
-                  interval: 1,
-                  getTitlesWidget: (value, meta) {
-                    final date = xDateMap[value];
-                    if (date == null) return const SizedBox.shrink();
-                    return SideTitleWidget(
-                      meta: meta,
-                      space: 10,
-                      child: Transform.rotate(
-                        angle: -0.6,
-                        alignment: Alignment.topLeft,
+        const SizedBox(height: 24),
+        const Text(
+          "Glucose Over Time (Avg. per Day)",
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Colors.blue,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16.0),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16.0),
+            boxShadow: [
+              BoxShadow(
+                blurRadius: 8,
+                color: Colors.grey.shade300,
+                spreadRadius: 3,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: SizedBox(
+              width: graphWidth,
+              height: graphHeight,
+              child: LineChart(
+                LineChartData(
+                  minX: 0,
+                  maxX: fullGlucoseGraphData.length.toDouble() - 1,
+                  minY: 0,
+                  maxY: maxY,
+                  clipData: FlClipData.none(),
+                  gridData: FlGridData(show: true),
+                  borderData: FlBorderData(show: true),
+                  titlesData: FlTitlesData(
+                    topTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 24, // 👈 adds space at the top
+                        getTitlesWidget: (_, __) => const SizedBox.shrink(),
+                      ),
+                    ),
+                    bottomTitles: AxisTitles(
+                      axisNameWidget: const Padding(
+                        padding: EdgeInsets.only(top: 8),
                         child: Text(
-                          DateFormat('MM/dd').format(date),
+                          "Date",
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                      axisNameSize: 30,
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 50,
+                        interval: 1,
+                        getTitlesWidget: (value, meta) {
+                          final date = xDateMap[value];
+                          if (date == null) return const SizedBox.shrink();
+                          return SideTitleWidget(
+                            meta: meta,
+                            space: 10,
+                            child: Transform.rotate(
+                              angle: -0.6,
+                              alignment: Alignment.topLeft,
+                              child: Text(
+                                DateFormat('dd/MM').format(date),
+                                style: const TextStyle(fontSize: 10),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    leftTitles: AxisTitles(
+                      axisNameWidget: Text(
+                        'Glucose ($measurementUnit)',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
+                      axisNameSize: 32,
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 42,
+                        interval: 20,
+                        getTitlesWidget: (value, meta) => Text(
+                          '${value.toInt()}',
                           style: const TextStyle(fontSize: 10),
                         ),
                       ),
-                    );
-                  },
-                ),
-              ),
-              leftTitles: AxisTitles(
-                axisNameWidget: Text(
-                  'Glucose ($measurementUnit)',
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold, fontSize: 13),
-                ),
-                axisNameSize: 32,
-                sideTitles: SideTitles(
-                  showTitles: true,
-                  reservedSize: 42,
-                  interval: 20,
-                  getTitlesWidget: (value, meta) => Text('${value.toInt()}',
-                      style: const TextStyle(fontSize: 10)),
-                ),
-              ),
-              topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-              rightTitles:
-                  AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            ),
-            lineBarsData: [
-              LineChartBarData(
-                spots: fullGlucoseGraphData,
-                isCurved: true,
-                color: Colors.orange,
-                barWidth: 3,
-                dotData: FlDotData(show: true),
-                belowBarData: BarAreaData(
-                  show: true,
-                  color: Colors.orange.withValues(alpha: 0.3), 
-                ),
-              ),
-            ],
-            lineTouchData: LineTouchData(
-              enabled: true,
-              touchTooltipData: LineTouchTooltipData(
-               getTooltipColor: (touchedSpot) => Colors.black.withValues(alpha: 0.5), 
-                tooltipRoundedRadius: 8,
-                fitInsideHorizontally: true,
-                fitInsideVertically: true,
-                getTooltipItems: (touchedSpots) {
-                  return touchedSpots.map((spot) {
-                    final date = xDateMap[spot.x] ?? DateTime.now();
-                    return LineTooltipItem(
-                      "${DateFormat('MMM dd').format(date)}\n${spot.y.toStringAsFixed(1)} $measurementUnit",
-                      const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
+                    ),
+                    rightTitles:
+                        AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  ),
+                  lineBarsData: [
+                    LineChartBarData(
+                      spots: fullGlucoseGraphData,
+                      isCurved: true,
+                      color: Colors.orange,
+                      barWidth: 3,
+                      dotData: FlDotData(show: true),
+                      belowBarData: BarAreaData(
+                        show: true,
+                        color: Colors.orange.withAlpha(80),
+                      ),
+                    ),
+                  ],
+                  extraLinesData: ExtraLinesData(
+                    verticalLines: unwellXPositions.map((x) {
+                      return VerticalLine(
+                        x: x,
+                        color: Colors.purple.withOpacity(0.6),
+                        strokeWidth: 2,
+                        dashArray: [4, 4],
+                        label: VerticalLineLabel(
+                          show: true,
+                          alignment: Alignment.topRight,
+                          labelResolver: (_) => 'Unwell',
+                          style: const TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.purple,
                           ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  lineTouchData: LineTouchData(
+                    enabled: true,
+                    touchTooltipData: LineTouchTooltipData(
+                      getTooltipColor: (_) => Colors.black.withAlpha(150),
+                      tooltipRoundedRadius: 8,
+                      fitInsideHorizontally: true,
+                      fitInsideVertically: true,
+                      getTooltipItems: (touchedSpots) {
+                        return touchedSpots.map((spot) {
+                          final date = xDateMap[spot.x];
+                          final dateKey = date != null
+                              ? DateFormat('yyyy-MM-dd').format(date)
+                              : '';
+                          final logsForDay = glucoseLogs.where((log) {
+                            return DateFormat('yyyy-MM-dd')
+                                    .format(DateTime.parse(log['timestamp'])) ==
+                                dateKey;
+                          }).toList();
+
+                          final logDetails = logsForDay.map((log) {
+                            final time = DateFormat('HH:mm')
+                                .format(DateTime.parse(log['timestamp']));
+                            final value = double.tryParse(
+                                    log['glucose_level'].toString()) ??
+                                0.0;
+                            return "🕒 $time - ${value.toStringAsFixed(1)} $measurementUnit";
+                          }).join('\n');
+
+                          final avg = logsForDay.isNotEmpty
+                              ? (logsForDay
+                                          .map((l) =>
+                                              double.tryParse(l['glucose_level']
+                                                  .toString()) ??
+                                              0.0)
+                                          .reduce((a, b) => a + b) /
+                                      logsForDay.length)
+                                  .toStringAsFixed(1)
+                              : '-';
+
+                          return LineTooltipItem(
+                            "${DateFormat('dd MMM').format(date!)}\n\n$logDetails\n\nAvg: $avg $measurementUnit",
+                            const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                            ),
                           );
                         }).toList();
                       },
@@ -815,8 +929,8 @@ Future<void> fetchGlucosePredictions() async {
               ),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -879,12 +993,15 @@ Future<void> fetchGlucosePredictions() async {
                 ],
               ),
             ),
-          Text(
-            "🔮 Glucose Predictions",
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.blue[800],
+          Center(
+            child: Text(
+              "🔮 Glucose Predictions",
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.blue[800],
+              ),
             ),
           ),
           const SizedBox(height: 10),

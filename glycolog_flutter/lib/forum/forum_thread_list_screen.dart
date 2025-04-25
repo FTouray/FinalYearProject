@@ -203,6 +203,7 @@ class _ForumThreadListScreenState extends State<ForumThreadListScreen> {
           final prefs = await SharedPreferences.getInstance();
           final username = prefs.getString('username') ?? 'User';
 
+          if (!mounted) return;
           Navigator.push(
             context,
             MaterialPageRoute(

@@ -4,6 +4,7 @@ import 'package:glycolog/services/auth_service.dart';
 import 'package:flutter/material.dart';
 import 'package:glycolog/home/base_screen.dart';
 import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:glycolog/utils.dart';
@@ -27,6 +28,7 @@ class GRTMainScreenState extends State<GRTMainScreen> {
   List<dynamic> allMealLogs = [];
   List<dynamic> insights = [];
   String measurementUnit = 'mg/dL';
+  List<String> unwellDays = [];
   final String? apiUrl = dotenv.env['API_URL'];
 
   @override
@@ -38,8 +40,39 @@ class GRTMainScreenState extends State<GRTMainScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    fetchUnwellDays();
     _fetchGlycaemicData();
   }
+
+Future<void> fetchUnwellDays() async {
+    String? token = await AuthService().getAccessToken();
+    final apiUrl = dotenv.env['API_URL'];
+
+    if (token != null) {
+      try {
+        final response = await http.get(
+          Uri.parse('$apiUrl/health/bad-days/'),
+          headers: {'Authorization': 'Bearer $token'},
+        );
+
+        if (response.statusCode == 200) {
+          final data = json.decode(response.body);
+          setState(() {
+            unwellDays = List<String>.from(data['bad_days'] ?? [])
+                .map((d) => DateFormat('yyyy-MM-dd').format(DateTime.parse(d)))
+                .toList();
+            print("🩺 Normalized Unwell Days: $unwellDays");
+          });
+        } else {
+          // Handle error
+        }
+      } catch (e) {
+        // Handle exception
+      }
+    }
+  }
+
+
 
   Future<void> _fetchGlycaemicData() async {
     String? token = await AuthService().getAccessToken();
@@ -50,6 +83,7 @@ class GRTMainScreenState extends State<GRTMainScreen> {
           'Authorization': 'Bearer $token',
         },
       );
+
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         setState(() {
@@ -173,7 +207,8 @@ class GRTMainScreenState extends State<GRTMainScreen> {
                       ],
                     ),
                   ),
-                  _buildGIGraph(allMealLogs.take(20).toList().reversed.toList()),
+                  _buildGIGraph(allMealLogs),
+
                   
                   const SizedBox(height: 30),
                   Container(
@@ -284,144 +319,245 @@ class GRTMainScreenState extends State<GRTMainScreen> {
     );
   }
 
- Widget _buildGIGraph(List<dynamic> logs) {
-  if (logs.isEmpty) {
-    return const SizedBox(
-      height: 150,
-      child: Center(child: Text("No GI data to display.")),
+Widget _buildGIGraph(List<dynamic> logs) {
+    if (logs.isEmpty && unwellDays.isEmpty) {
+      return const SizedBox(
+        height: 150,
+        child: Center(child: Text("No GI data to display.")),
+      );
+    }
+
+    final dateFormatter = DateFormat('yyyy-MM-dd');
+    final Map<String, List<Map<String, dynamic>>> dailyGroupedLogs = {};
+    final Map<String, double> averagedGI = {};
+
+    for (var log in logs) {
+      final timestamp = DateTime.tryParse(log['timestamp'] ?? '');
+      final gi = (log['total_glycaemic_index'] as num?)?.toDouble();
+      if (timestamp == null || gi == null) continue;
+
+      final day = dateFormatter.format(timestamp);
+      dailyGroupedLogs.putIfAbsent(day, () => []).add({
+        'timestamp': timestamp,
+        'gi': gi,
+      });
+    }
+
+    for (var entry in dailyGroupedLogs.entries) {
+      final values = entry.value.map((e) => e['gi'] as double).toList();
+      final averageGI = values.reduce((a, b) => a + b) / values.length;
+      averagedGI[entry.key] = averageGI;
+    }
+
+    final sortedGiDates = averagedGI.keys.toList()..sort();
+    if (sortedGiDates.isEmpty) return const SizedBox();
+
+    final mostRecentDate = DateTime.parse(sortedGiDates.last);
+    final earliestDate = mostRecentDate.subtract(const Duration(days: 29));
+    final dateRange = List.generate(
+      30,
+      (i) => dateFormatter.format(earliestDate.add(Duration(days: i))),
     );
-  }
 
-  final spots = logs.asMap().entries.map((e) {
-    final index = e.key;
-    final log = e.value;
-    final gi = (log['total_glycaemic_index'] as num?)?.toDouble() ?? 0.0;
-    return FlSpot(index.toDouble(), gi);
-  }).toList();
+    final List<FlSpot> graphSpots = [];
+    final Map<double, DateTime> xDateMap = {};
+    final List<double> unwellXPositions = [];
 
-  final chartWidth = (logs.length * 60).toDouble().clamp(300, 1200);
-  final maxY = spots.map((e) => e.y).reduce((a, b) => a > b ? a : b) + 20;
+    for (int i = 0; i < dateRange.length; i++) {
+      final dateStr = dateRange[i];
+      final date = DateTime.parse(dateStr);
 
-  return Container(
-    margin: const EdgeInsets.symmetric(vertical: 24),
-    padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(16.0),
-      boxShadow: [
-        BoxShadow(
-          blurRadius: 8,
-          color: Colors.grey.shade300,
-          spreadRadius: 3,
-          offset: const Offset(0, 4),
-        ),
-      ],
-    ),
-    child: Column(
+      final x = (dateRange.length - 1 - i).toDouble();
+      xDateMap[x] = date;
+
+      if (averagedGI.containsKey(dateStr)) {
+        graphSpots.add(FlSpot(x, averagedGI[dateStr]!));
+      }
+
+      if (unwellDays.contains(dateStr)) {
+        unwellXPositions.add(x);
+      }
+    }
+
+    final maxY = graphSpots.isNotEmpty
+        ? graphSpots.map((e) => e.y).reduce((a, b) => a > b ? a : b)
+        : 100;
+    final chartWidth = (dateRange.length * 60).clamp(300, 2400).toDouble();
+    final dateRangeDisplay =
+        "${DateFormat('dd MMM').format(earliestDate)} to ${DateFormat('dd MMM').format(mostRecentDate)}";
+
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          "Glycaemic Index Trend (Last ${logs.length} Meals)",
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: Colors.blue[800],
+        const SizedBox(height: 24), // 👈 spacing between cards and title
+        Center(
+          child: Text(
+            "Glycaemic Index (Daily Avg: $dateRangeDisplay)",
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.blue,
+            ),
           ),
         ),
         const SizedBox(height: 12),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: SizedBox(
-            width: chartWidth.toDouble(),
-            height: 320,
-            child: LineChart(
-              LineChartData(
-                minY: 0,
-                maxY: maxY,
-                clipData: FlClipData.none(),
-                lineTouchData: LineTouchData(
-                  touchTooltipData: LineTouchTooltipData(
-                    getTooltipColor: (touchedSpot) => Colors.blueGrey.shade700..withValues(alpha: 0.5),
-                    tooltipRoundedRadius: 8,
-                    tooltipMargin: 10,
-                    fitInsideHorizontally: true,
-                    fitInsideVertically: true,
-                    getTooltipItems: (touchedSpots) {
-                      return touchedSpots.map((spot) {
-                        final index = spot.x.toInt();
-                        final log = logs[index];
-                        final date = DateTime.tryParse(log['timestamp'] ?? '');
-                        final timeFormatted = date != null
-                            ? "${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}"
-                            : "-";
-                        final carbs = log['total_carbs']?.toStringAsFixed(1) ?? "-";
-                        return LineTooltipItem(
-                          "GI: ${spot.y.toStringAsFixed(1)}\n"
-                          "Time: $timeFormatted\n"
-                          "Carbs: $carbs g",
-                          const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        );
-                      }).toList();
-                    },
+        Container(
+          margin: const EdgeInsets.symmetric(vertical: 12),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16.0),
+            boxShadow: [
+              BoxShadow(
+                blurRadius: 8,
+                color: Colors.grey.shade300,
+                spreadRadius: 3,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: SizedBox(
+              width: chartWidth,
+              height: 440,
+              child: LineChart(
+                LineChartData(
+                  minX: 0,
+                  maxX: dateRange.length.toDouble(),
+                  minY: 0,
+                  maxY: (maxY / 20).ceil() * 20.0,
+                  clipData: FlClipData.none(),
+                  gridData: FlGridData(show: true),
+                  borderData: FlBorderData(show: true),
+                  titlesData: FlTitlesData(
+                    bottomTitles: AxisTitles(
+                      axisNameWidget: const Text(
+                        "Date",
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      axisNameSize: 28,
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        interval: 1,
+                        reservedSize: 42,
+                        getTitlesWidget: (value, _) {
+                          final date = xDateMap[value];
+                          return date == null
+                              ? const SizedBox.shrink()
+                              : Padding(
+                                  padding: const EdgeInsets.only(top: 6),
+                                  child: Text(
+                                    DateFormat('dd/MM').format(date),
+                                    style: const TextStyle(fontSize: 10),
+                                  ),
+                                );
+                        },
+                      ),
+                    ),
+                    leftTitles: AxisTitles(
+                      axisNameWidget: const Text(
+                        "GI Level",
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      axisNameSize: 32,
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 48,
+                        interval: 20,
+                      ),
+                    ),
+                    topTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 20,
+                        getTitlesWidget: (_, __) => const SizedBox.shrink(),
+                      ),
+                    ),
+                    rightTitles: AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
                   ),
-                  handleBuiltInTouches: true,
-                ),
-                titlesData: FlTitlesData(
-                  bottomTitles: AxisTitles(
-                    axisNameWidget: const Text("Meal Date", style: TextStyle(fontWeight: FontWeight.bold)),
-                    axisNameSize: 28,
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      interval: 1,
-                      reservedSize: 42,
-                      getTitlesWidget: (value, _) {
-                        final index = value.toInt();
-                        if (index < 0 || index >= logs.length) return const SizedBox.shrink();
-                        final timestamp = logs[index]['timestamp'];
-                        final date = DateTime.tryParse(timestamp);
-                        return Padding(
-                          padding: const EdgeInsets.only(top: 6),
-                          child: Text(
-                            date != null ? "${date.day}/${date.month}" : '',
-                            style: const TextStyle(fontSize: 10),
+                  lineBarsData: [
+                    LineChartBarData(
+                      spots: graphSpots,
+                      isCurved: true,
+                      barWidth: 3,
+                      color: Colors.blueAccent,
+                      dotData: FlDotData(show: true),
+                    ),
+                  ],
+                  extraLinesData: ExtraLinesData(
+                    verticalLines: unwellXPositions.map((x) {
+                      return VerticalLine(
+                        x: x,
+                        color: Colors.purple.withValues(alpha: 0.6),
+                        strokeWidth: 2,
+                        dashArray: [4, 4],
+                        label: VerticalLineLabel(
+                          show: true,
+                          alignment: Alignment.topRight,
+                          labelResolver: (_) => 'Unwell',
+                          style: const TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.purple,
                           ),
-                        );
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  lineTouchData: LineTouchData(
+                    touchTooltipData: LineTouchTooltipData(
+                      getTooltipColor: (_) =>
+                          Colors.blueGrey.shade700.withAlpha(200),
+                      tooltipRoundedRadius: 8,
+                      tooltipMargin: 10,
+                      fitInsideHorizontally: true,
+                      fitInsideVertically: true,
+                      getTooltipItems: (touchedSpots) {
+                        return touchedSpots
+                            .map((spot) {
+                              final date = xDateMap[spot.x];
+                              if (date == null) return null;
+
+                              final dateKey = dateFormatter.format(date);
+                              final logsForDay =
+                                  dailyGroupedLogs[dateKey] ?? [];
+                              final avgGI =
+                                  averagedGI[dateKey]?.toStringAsFixed(0);
+
+                              final tooltipText = logsForDay.map((log) {
+                                final gi = log['gi'] as double;
+                                final time = log['timestamp'] as DateTime;
+                                final formattedTime =
+                                    "${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}";
+                                return "GI: ${gi.toStringAsFixed(0)}  Time: $formattedTime";
+                              }).join('\n');
+
+                              return LineTooltipItem(
+                                "$tooltipText\n\nAvg: $avgGI GI",
+                                const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              );
+                            })
+                            .whereType<LineTooltipItem>()
+                            .toList();
                       },
                     ),
                   ),
-                  leftTitles: AxisTitles(
-                    axisNameWidget: const Text("GI Level", style: TextStyle(fontWeight: FontWeight.bold)),
-                    axisNameSize: 32,
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 40,
-                    ),
-                  ),
-                  topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
                 ),
-                gridData: FlGridData(show: true),
-                borderData: FlBorderData(show: true),
-                lineBarsData: [
-                  LineChartBarData(
-                    spots: spots,
-                    isCurved: true,
-                    barWidth: 3,
-                    color: Colors.blueAccent,
-                    dotData: FlDotData(show: true),
-                  ),
-                ],
               ),
             ),
           ),
         ),
       ],
-    ),
-  );
-}
+    );
+  }
+
 }
 
 class CircleDisplay extends StatelessWidget {
