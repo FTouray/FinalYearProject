@@ -7,7 +7,7 @@ class Command(BaseCommand):
     help = "Retrain ML model for a specific user"
 
     def add_arguments(self, parser):
-        parser.add_argument("user_id", type=int)
+        parser.add_argument("--user_id", type=int, help="Optional user ID")
 
     def handle(self, *args, **options):
         user = CustomUser.objects.get(id=options["user_id"])

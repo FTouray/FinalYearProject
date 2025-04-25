@@ -25,7 +25,9 @@ class PersonalTrendsWidgetState extends State<PersonalTrendsWidget> {
     super.initState();
     _confettiController =
         ConfettiController(duration: const Duration(seconds: 3));
-    fetchFeedback();
+    maybeRetrainModel().then((_) {
+      fetchFeedback();
+    });
   }
 
   @override
@@ -35,54 +37,210 @@ class PersonalTrendsWidgetState extends State<PersonalTrendsWidget> {
   }
 
   Future<void> fetchFeedback() async {
+  final token = await AuthService().getAccessToken();
+  if (token == null) throw Exception("User is not authenticated.");
+
+  final prefs = await SharedPreferences.getInstance();
+  final glucoseUnit = prefs.getString('selectedUnit') ?? 'mg/dL';
+
+  final res = await http.get(
+    Uri.parse('$apiUrl/predictive-feedback/'),
+    headers: {
+      'Authorization': 'Bearer $token',
+      'Glucose-Unit': glucoseUnit,
+    },
+  );
+
+  if (res.statusCode == 200) {
+    final data = json.decode(res.body);
+    final feedbackData = Map<String, dynamic>.from(data['predictive_feedback'] ?? {});
+
+    final nowTimestamp = DateTime.now();
+    const daysThreshold = 30; 
+
+    List<Map<String, dynamic>> allRaw = List<Map<String, dynamic>>.from(feedbackData['all'] ?? []);
+    allRaw = allRaw.where((item) {
+      final createdAt = DateTime.tryParse(item['timestamp'] ?? '') ?? nowTimestamp;
+      return nowTimestamp.difference(createdAt).inDays <= daysThreshold;
+    }).toList();
+
+    setState(() {
+      feedback = {
+        'positive': feedbackData['positive'] ?? [],
+        'trend': feedbackData['trend'] ?? [],
+        'all': allRaw,
+      };
+      loading = false;
+    });
+
+    if ((feedback['positive'] as List?)?.isNotEmpty ?? false) {
+      _confettiController.play();
+    }
+
+    print("✅ Loaded fresh predictive feedback: $feedback");
+  } else {
+    throw Exception("Failed to load predictive feedback (${res.statusCode}).");
+  }
+}
+
+
+  Future<void> maybeRetrainModel() async {
     final token = await AuthService().getAccessToken();
     if (token == null) throw Exception("User is not authenticated.");
 
-    final prefs = await SharedPreferences.getInstance();
-    final glucoseUnit = prefs.getString('selectedUnit') ?? 'mg/dL';
-
     final res = await http.get(
-      Uri.parse('$apiUrl/predictive-feedback/'),
+      Uri.parse('$apiUrl/check-retrain-model/'),
       headers: {
         'Authorization': 'Bearer $token',
-        'Glucose-Unit': glucoseUnit,
       },
     );
 
     if (res.statusCode == 200) {
       final data = json.decode(res.body);
-      final feedbackData = data['predictive_feedback'] ?? {};
-
-      if ((feedbackData['positive'] as List).isNotEmpty) {
-        _confettiController.play();
-      }
-
-      setState(() {
-        feedback = feedbackData;
-        loading = false;
-      });
+      print("✅ Maybe retrain model response: $data");
+    } else {
+      print("⚠️ Failed to check retrain model (${res.statusCode}).");
     }
   }
 
-  Widget _buildPriorityChip(String level) {
-    final color = {
-      'High': Colors.red,
-      'Medium': Colors.orange,
-      'Low': Colors.green
-    }[level];
+  @override
+  Widget build(BuildContext context) {
+    if (loading) return const Center(child: CircularProgressIndicator());
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      margin: const EdgeInsets.only(left: 8),
-      decoration: BoxDecoration(
-        color: color!.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Text(
-        level,
-        style:
-            TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 11),
-      ),
+    if (feedback.isEmpty || (feedback['all']?.isEmpty ?? true)) {
+      return _buildEmptyState();
+    }
+
+    List<String> positive = List<String>.from(feedback['positive'] ?? []);
+    List<String> trend = List<String>.from(feedback['trend'] ?? []);
+    List<Map<String, dynamic>> allRaw =
+        List<Map<String, dynamic>>.from(feedback['all'] ?? []);
+
+    List<String> shapOnly = allRaw
+        .map((item) => item['text'] as String)
+        .where((text) => !positive.contains(text) && !trend.contains(text))
+        .toList();
+
+    // Group and clean SHAP feedback properly
+    Map<String, Set<String>> symptomReasons = {};
+
+    for (var text in shapOnly) {
+      for (var symptom in [
+        "Fatigue",
+        "Headaches",
+        "Dizziness",
+        "Thirst",
+        "Nausea",
+        "Blurred Vision",
+        "Irritability",
+        "Sweating",
+        "Frequent Urination",
+        "Dry Mouth",
+        "Slow Wound Healing",
+        "Weight Loss",
+        "Increased Hunger",
+        "Shakiness",
+        "Hunger",
+        "Fast Heartbeat"
+      ]) {
+        if (text.toLowerCase().startsWith(symptom.toLowerCase())) {
+          final splitParts = text.split("is more likely");
+          if (splitParts.length > 1) {
+            final reasons = splitParts[1]
+                .replaceAll(".", "")
+                .replaceAll(" and ", ", ")
+                .split(",")
+                .map((s) => s.trim())
+                .where((s) => s.isNotEmpty)
+                .toSet();
+
+            symptomReasons.putIfAbsent(symptom, () => {}).addAll(reasons);
+          }
+          break;
+        }
+      }
+    }
+
+    List<Map<String, dynamic>> processedShap = [];
+    symptomReasons.forEach((symptom, reasons) {
+      final reasonList = reasons.toList();
+      if (reasonList.length > 1) {
+        final lastReason = reasonList.removeLast();
+        final mergedReasons = "${reasonList.join(", ")} and $lastReason";
+        final cleanSentence = "$symptom is more likely $mergedReasons.";
+        final priority = determinePriority(cleanSentence);
+        processedShap.add({"text": cleanSentence, "priority": priority});
+      } else if (reasonList.isNotEmpty) {
+        final cleanSentence = "$symptom is more likely ${reasonList.first}.";
+        final priority = determinePriority(cleanSentence);
+        processedShap.add({"text": cleanSentence, "priority": priority});
+      }
+    });
+
+    processedShap.sort((a, b) {
+      const order = {"High": 0, "Medium": 1, "Low": 2};
+      return order[a['priority']]!.compareTo(order[b['priority']]!);
+    });
+
+    // Also: sort Trends
+    List<Map<String, dynamic>> sortedTrends = trend
+        .map((text) => {"text": text, "priority": determinePriority(text)})
+        .toList();
+
+    sortedTrends.sort((a, b) {
+      const order = {"High": 0, "Medium": 1, "Low": 2};
+      return order[a['priority']]!.compareTo(order[b['priority']]!);
+    });
+
+    return Stack(
+      children: [
+        Card(
+          color: Colors.teal.shade50,
+          margin: const EdgeInsets.only(top: 16),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "📊 Personal Trends & AI Insights",
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                const SizedBox(height: 8),
+                _buildSection("✅ Positive Improvements", positive,
+                    Icons.thumb_up_alt_outlined, Colors.green, (_) => "Low"),
+                _buildGroupedSection(
+                  "📈 Trends & Patterns",
+                  sortedTrends,
+                  Icons.trending_up,
+                  Colors.deepPurple,
+                ),
+                _buildGroupedSection(
+                  "🧠 AI Coach Insights",
+                  processedShap,
+                  Icons.psychology_alt_outlined,
+                  Colors.teal,
+                ),
+              ],
+            ),
+          ),
+        ),
+        Align(
+          alignment: Alignment.topRight,
+          child: ConfettiWidget(
+            confettiController: _confettiController,
+            blastDirectionality: BlastDirectionality.explosive,
+            shouldLoop: false,
+            numberOfParticles: 25,
+            colors: const [
+              Colors.green,
+              Colors.orange,
+              Colors.blue,
+              Colors.pink
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -121,10 +279,7 @@ class PersonalTrendsWidgetState extends State<PersonalTrendsWidget> {
                     style:
                         TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
                 Expanded(
-                  child: Text(
-                    text,
-                    style: const TextStyle(fontSize: 14),
-                  ),
+                  child: Text(text, style: const TextStyle(fontSize: 14)),
                 ),
                 _buildPriorityChip(level),
               ],
@@ -143,85 +298,56 @@ class PersonalTrendsWidgetState extends State<PersonalTrendsWidget> {
     );
   }
 
-  String determinePriority(String text) {
-    text = text.toLowerCase();
-    if (text.contains("frequent") ||
-        text.contains("consistent") ||
-        text.contains("persistent") ||
-        text.contains("high glycaemic index") ||
-        text.contains("elevated glucose")) {
-      return "High";
-    } else if (text.contains("may") ||
-        text.contains("linked") ||
-        text.contains("might") ||
-        text.contains("suggest")) {
-      return "Medium";
-    } else {
-      return "Low";
-    }
-  }
+  Widget _buildGroupedSection(String title, List<Map<String, dynamic>> items,
+      IconData icon, Color color) {
+    if (items.isEmpty) return SizedBox.shrink();
+    final displayItems = showAll ? items : items.take(2).toList();
 
-  @override
-  Widget build(BuildContext context) {
-    if (loading) return const Center(child: CircularProgressIndicator());
-
-    if (feedback.isEmpty || (feedback['all']?.isEmpty ?? true)) {
-      return _buildEmptyState();
-    }
-
-    List<String> positive = List<String>.from(feedback['positive'] ?? []);
-    List<String> trend = List<String>.from(feedback['trend'] ?? []);
-    List allRaw = feedback['all'] ?? [];
-
-    List<String> shapOnly = allRaw
-        .map((item) => item['text'] as String)
-        .where((text) => !positive.contains(text) && !trend.contains(text))
-        .toList();
-
-    return Stack(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Card(
-          color: Colors.teal.shade50,
-          margin: const EdgeInsets.only(top: 16),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Icon(icon, color: color, size: 20),
+            const SizedBox(width: 6),
+            Text(
+              title,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 15,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        ...displayItems.map((item) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 8.0),
+            child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  "📊 Personal Trends & AI Insights",
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                const Text("• ",
+                    style:
+                        TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                Expanded(
+                  child:
+                      Text(item['text'], style: const TextStyle(fontSize: 14)),
                 ),
-                const SizedBox(height: 8),
-                _buildSection("✅ Positive Improvements", positive,
-                    Icons.thumb_up_alt_outlined, Colors.green, (_) => "Low"),
-                _buildSection("📈 Trends & Patterns", trend, Icons.trending_up,
-                    Colors.deepPurple, determinePriority),
-                _buildSection(
-                    "🧠 AI Coach Insights",
-                    shapOnly,
-                    Icons.psychology_alt_outlined,
-                    Colors.teal,
-                    determinePriority),
+                _buildPriorityChip(item['priority']),
               ],
             ),
+          );
+        }),
+        if (items.length > 2)
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton(
+              onPressed: () => setState(() => showAll = !showAll),
+              child: Text(showAll ? "See Less" : "See More"),
+            ),
           ),
-        ),
-        Align(
-          alignment: Alignment.topRight,
-          child: ConfettiWidget(
-            confettiController: _confettiController,
-            blastDirectionality: BlastDirectionality.explosive,
-            shouldLoop: false,
-            numberOfParticles: 25,
-            colors: const [
-              Colors.green,
-              Colors.orange,
-              Colors.blue,
-              Colors.pink
-            ],
-          ),
-        ),
       ],
     );
   }
@@ -254,5 +380,45 @@ class PersonalTrendsWidgetState extends State<PersonalTrendsWidget> {
         ),
       ),
     );
+  }
+
+  Widget _buildPriorityChip(String level) {
+    final color = {
+      'High': Colors.red,
+      'Medium': Colors.orange,
+      'Low': Colors.green
+    }[level];
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      margin: const EdgeInsets.only(left: 8),
+      decoration: BoxDecoration(
+        color: color!.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Text(
+        level,
+        style:
+            TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 11),
+      ),
+    );
+  }
+
+  String determinePriority(String text) {
+    text = text.toLowerCase();
+    if (text.contains("frequent") ||
+        text.contains("consistent") ||
+        text.contains("persistent") ||
+        text.contains("high glycaemic index") ||
+        text.contains("elevated glucose")) {
+      return "High";
+    } else if (text.contains("may") ||
+        text.contains("linked") ||
+        text.contains("might") ||
+        text.contains("suggest")) {
+      return "Medium";
+    } else {
+      return "Low";
+    }
   }
 }

@@ -28,28 +28,32 @@ class GamificationDashboardCardState extends State<GamificationDashboardCard> {
   Future<void> fetchProgress() async {
     final token = await AuthService().getAccessToken();
     if (token == null) throw Exception("User is not authenticated.");
+
     final response = await http.get(
       Uri.parse('$apiUrl/gamification/quizsets/'),
       headers: {'Authorization': 'Bearer $token'},
     );
 
     final profileRes = await http.get(
-      Uri.parse('$apiUrl/user/profile/'), // make sure this exists
+      Uri.parse('$apiUrl/user/profile/'),
       headers: {'Authorization': 'Bearer $token'},
     );
 
     if (response.statusCode == 200 && profileRes.statusCode == 200) {
       final data = json.decode(response.body);
       final profile = json.decode(profileRes.body);
+
+      List quizsets = data['quiz_sets'] ?? []; 
+
       setState(() {
         xp = profile['xp'] ?? 0;
         level = profile['level'] ?? 1;
         bool foundNext = false;
-        for (int i = 0; i < data.length; i++) {
-          if (data[i]['progress'] != null &&
-              data[i]['progress']['completed'] == false) {
-            nextLevelToContinue = data[i]['level'];
-            nextTitle = data[i]['title'];
+        for (int i = 0; i < quizsets.length; i++) {
+          if (quizsets[i]['progress'] != null &&
+              quizsets[i]['progress']['completed'] == false) {
+            nextLevelToContinue = quizsets[i]['level'];
+            nextTitle = quizsets[i]['title'];
             foundNext = true;
             break;
           }
@@ -61,6 +65,7 @@ class GamificationDashboardCardState extends State<GamificationDashboardCard> {
       });
     }
   }
+
 
   @override
   Widget build(BuildContext context) {

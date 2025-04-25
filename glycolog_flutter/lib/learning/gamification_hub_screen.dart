@@ -23,21 +23,27 @@ class GamificationGameHubState extends State<GamificationGameHub> {
   }
 
   Future<void> fetchQuizSets() async {
-    final token = await AuthService().getAccessToken();
-    if (token == null) return;
+  final token = await AuthService().getAccessToken();
+  if (token == null) return;
 
-    final response = await http.get(
-      Uri.parse('$apiUrl/gamification/quizsets/'),
-      headers: {'Authorization': 'Bearer $token'},
-    );
+  final response = await http.get(
+    Uri.parse('$apiUrl/gamification/quizsets/'),
+    headers: {'Authorization': 'Bearer $token'},
+  );
 
-    if (response.statusCode == 200) {
-      setState(() {
-        quizSets = json.decode(response.body);
-        loading = false;
-      });
-    }
+  if (response.statusCode == 200) {
+    final data = json.decode(response.body);
+    setState(() {
+      quizSets = data['quiz_sets'] ?? []; 
+      loading = false;
+    });
+  } else {
+    setState(() {
+      loading = false;
+    });
+    print("⚠️ Failed to fetch quiz sets: ${response.statusCode}");
   }
+}
 
   void _openLevel(int level, bool unlocked) {
     if (unlocked) {

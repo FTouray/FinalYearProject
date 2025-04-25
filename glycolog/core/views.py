@@ -1,4 +1,6 @@
 from datetime import datetime, time, timedelta, timezone
+from django.dispatch import receiver
+from django.db.models.signals import post_save
 from django.utils.timezone import now, timedelta
 import json
 from django.utils import timezone
@@ -37,6 +39,7 @@ from openai import OpenAI
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 import re
+from django.core.management import call_command
 
 
 User = get_user_model()
@@ -143,6 +146,15 @@ def log_glucose(request):
 
         if serializer.is_valid():
             serializer.save()
+            
+            recent = GlucoseLog.objects.filter(user=request.user).order_by("-timestamp")[:10]
+            values = [log.glucose_level for log in recent]
+            if len(values) >= 5:
+                avg = sum(values) / len(values)
+                prev_avg = GlucoseLog.objects.filter(user=request.user).exclude(id__in=[g.id for g in recent]).aggregate(Avg("glucose_level"))["glucose_level__avg"]
+                if prev_avg and abs(avg - prev_avg) > 20:  # or some threshold
+                    call_command("retrain_single_user_model", user_id=request.user.id)
+                
             return Response({"message": "Glucose log created successfully"}, status=status.HTTP_201_CREATED)
         else:
             print("Serializer errors:", serializer.errors) # Log the errors to the console
@@ -1782,6 +1794,44 @@ def get_predictive_feedback(request):
     }
 
     return Response({'predictive_feedback': summary})
+
+@receiver(post_save, sender=QuestionnaireSession)
+def trigger_retraining(sender, instance, created, **kwargs):
+    if created:
+        user = instance.user
+        total_sessions = QuestionnaireSession.objects.filter(user=user).count()
+        if total_sessions % 5 == 0:  # retrain every 5 sessions
+            from django.core.management import call_command
+            call_command("retrain_single_user_model", user_id=user.id)
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def maybe_retrain_model(request):
+    user = request.user
+    retrain_threshold_minutes =  3 * 24 * 60  
+
+    # Get latest feedback or model update time
+    last_feedback = PredictiveFeedback.objects.filter(user=user).order_by("-timestamp").first()
+    last_session = QuestionnaireSession.objects.filter(user=user).order_by("-created_at").last()
+
+    # If no last_session, nothing to retrain
+    if not last_session:
+        return Response({"retrained": False, "reason": "No sessions yet."})
+
+    # If feedback exists, check if enough time passed
+    if last_feedback:
+        time_since_feedback = now() - last_feedback.timestamp
+        if time_since_feedback < timedelta(minutes=retrain_threshold_minutes):
+            return Response({
+                "retrained": False,
+                "reason": f"Last retrain was {int(time_since_feedback.total_seconds() // 60)} minutes ago."
+            })
+
+    # If either no feedback yet or enough time passed → retrain
+    from django.core.management import call_command
+    call_command("retrain_single_user_model", user_id=user.id)
+
+    return Response({"retrained": True})
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
