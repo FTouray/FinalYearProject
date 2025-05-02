@@ -96,7 +96,7 @@ class MealLogHistoryScreenState extends State<MealLogHistoryScreen> {
         }
         if (_endDate != null) {
           dateFilter = dateFilter &&
-              (logDate.isBefore(_endDate!) ||
+              (logDate.isBefore(_endDate!.add(const Duration(days: 1))) ||
                   logDate.isAtSameMomentAs(_endDate!));
         }
         bool giFilter = true;
@@ -163,6 +163,28 @@ class MealLogHistoryScreenState extends State<MealLogHistoryScreen> {
                       ),
                       child: const Text('Apply Filters',
                           style: TextStyle(fontSize: 18, color: Colors.white)),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Center(
+                    child: TextButton(
+                      onPressed: () {
+                        setState(() {
+                          _startDate = null;
+                          _endDate = null;
+                          _minGI = null;
+                          _maxGI = null;
+                          filteredLogs = mealLogs;
+                        });
+                      },
+                      child: const Text(
+                        'Clear Filters',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.red,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 20),

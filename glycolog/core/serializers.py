@@ -4,7 +4,7 @@ from django.contrib.auth import authenticate
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
-from .models import Achievement, ChatMessage, Comment, ExerciseCheck, FeelingCheck, FollowUpQuestion, FoodCategory, FoodItem, ForumCategory, ForumThread, GlucoseCheck, GlycaemicResponseTracker, Insight, Meal, GlucoseLog, MealCheck, Medication, MedicationReminder, PredictiveFeedback, QuestionnaireSession, Quiz, QuizSet, SymptomCheck, UserProfile, UserProgress  
+from .models import Achievement, ChatMessage, Comment, ExerciseCheck, FeelingCheck, FoodCategory, FoodItem, ForumCategory, ForumThread, GlucoseCheck, GlycaemicResponseTracker, Meal, GlucoseLog, MealCheck, Medication, MedicationReminder, PredictiveFeedback, QuestionnaireSession, Quiz, QuizSet, SymptomCheck, UserProfile, UserProgress  
 
 # Get the custom user model
 User = get_user_model()
@@ -299,16 +299,6 @@ class ChatMessageSerializer(serializers.ModelSerializer):
     class Meta:
         model = ChatMessage
         fields = ['id', 'user', 'sender', 'message', 'timestamp']
-
-class FollowUpQuestionSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = FollowUpQuestion
-        fields = ['id', 'question', 'response']
-
-class InsightSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Insight
-        fields = ['id', 'insight', 'timestamp']
         
 class MedicationSerializer(serializers.ModelSerializer):
     class Meta:

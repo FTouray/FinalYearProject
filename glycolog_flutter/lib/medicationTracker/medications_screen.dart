@@ -307,7 +307,13 @@ class MedicationsScreenState extends State<MedicationsScreen> {
             right: 16,
             child: FloatingActionButton.extended(
               heroTag: 'add_med_fab',
-              onPressed: () => Navigator.pushNamed(context, '/add-medication'),
+              onPressed: () {
+                Navigator.pushNamed(context, '/add-medication').then((result) {
+                  if (result == true) {
+                    fetchSavedMedications(); 
+                  }
+                });
+              },
               label: const Text("Add Medication"),
               icon: const Icon(Icons.add),
               backgroundColor: Colors.blueAccent[800],

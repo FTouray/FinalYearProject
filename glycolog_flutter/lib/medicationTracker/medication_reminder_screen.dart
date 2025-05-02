@@ -6,8 +6,8 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/timezone.dart' as tz;
-// ignore: library_prefixes
-import 'package:timezone/data/latest.dart' as tzData;
+import 'package:timezone/data/latest.dart' as tzdata;
+
 
 class MedicationReminderScreen extends StatefulWidget {
   final Map<String, dynamic> medication;
@@ -28,8 +28,6 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
 
   final DeviceCalendarPlugin _calendarPlugin = DeviceCalendarPlugin();
   List<Calendar> _availableCalendars = [];
-  String? _selectedCalendarId;
-  late tz.Location _userLocation;
 
   final List<String> daysOfWeek = [
     "Monday",
@@ -45,46 +43,18 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
   @override
   void initState() {
     super.initState();
-    _initializeTimezone();
     _requestCalendarPermissions();
-  }
-
-  void _initializeTimezone() {
-    tzData.initializeTimeZones();
-    try {
-      _userLocation = tz.getLocation(DateTime.now().timeZoneName);
-    } catch (_) {
-      _userLocation = tz.getLocation('UTC');
-    }
   }
 
   Future<void> _requestCalendarPermissions() async {
     final result = await _calendarPlugin.requestPermissions();
-
     if (result.isSuccess && result.data == true) {
       final calendarsResult = await _calendarPlugin.retrieveCalendars();
-
       if (calendarsResult.isSuccess && calendarsResult.data != null) {
-        final writableCalendars = calendarsResult.data!
-            .where((cal) => cal.isReadOnly == false)
-            .toList();
-
-        if (writableCalendars.isEmpty) {
-          print("⚠️ No writable calendars found.");
-        } else {
-          print("✅ Writable calendars:");
-          for (final cal in writableCalendars) {
-            print(
-                "📅 ${cal.name} | ID: ${cal.id} | Account: ${cal.accountName}");
-          }
-        }
-
         setState(() {
-          _availableCalendars = writableCalendars;
-          if (_availableCalendars.isNotEmpty) {
-            _selectedCalendarId = _availableCalendars.first.id;
-            print("✅ Selected calendar ID: $_selectedCalendarId");
-          }
+          _availableCalendars = calendarsResult.data!
+              .where((cal) => cal.isReadOnly != true)
+              .toList();
         });
       }
     } else {
@@ -93,18 +63,17 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
   }
 
   Future<void> submitReminderToServer() async {
-    if (_selectedCalendarId == null) {
-      print("❗ Reminder not submitted: No calendar selected yet");
+    if (_availableCalendars.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("No calendar selected")),
+        const SnackBar(content: Text("No writable calendars found")),
       );
       return;
     }
 
-    final dayInt = daysOfWeek.indexOf(selectedDay) + 1;
     final token = await AuthService().getAccessToken();
     if (token == null) return;
 
+    final dayInt = daysOfWeek.indexOf(selectedDay) + 1;
     final apiUrl = dotenv.env['API_URL'];
     final url = Uri.parse('$apiUrl/reminders/set/');
 
@@ -141,7 +110,6 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
       });
     } else {
       print("❌ Failed to set reminder: ${response.body}");
-      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Failed to set reminder")),
       );
@@ -149,36 +117,25 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
   }
 
   Future<void> _addCalendarEvents() async {
-    if (_selectedCalendarId == null) {
-      print("❗ No calendar selected");
-      return;
-    }
-
     final prefs = await SharedPreferences.getInstance();
-    final eventKey = 'eventId_med${widget.medication["id"]}';
-    final oldEventId = prefs.getString(eventKey);
+    final eventKeyPrefix = 'eventId_med${widget.medication["id"]}_';
 
-    if (oldEventId != null) {
-      final deleteResult =
-          await _calendarPlugin.deleteEvent(_selectedCalendarId!, oldEventId);
-      if (deleteResult.isSuccess && deleteResult.data == true) {
-        print("Deleted old event ID: $oldEventId");
-        await prefs.remove(eventKey);
-      } else {
-        print(
-            "Failed to delete previous event: ${deleteResult.errors}");
-      }
-    }
+    // Initialise timezone database
+    tzdata.initializeTimeZones();
+    final String timeZoneName = DateTime.now().timeZoneName;
+    final tz.Location local = tz.getLocation(timeZoneName);
 
     final now = DateTime.now();
     final dayOffset = (daysOfWeek.indexOf(selectedDay) - now.weekday + 7) % 7;
-
-    final startDate = DateTime(now.year, now.month, now.day)
-        .add(Duration(days: dayOffset))
-        .copyWith(hour: selectedTime.hour, minute: selectedTime.minute);
-
-    final tzStartDate = tz.TZDateTime.from(startDate, _userLocation);
-    final tzEndDate = tzStartDate.add(const Duration(minutes: 5));
+    final scheduledDate = now.add(Duration(days: dayOffset));
+    final startDate = DateTime(
+      scheduledDate.year,
+      scheduledDate.month,
+      scheduledDate.day,
+      selectedTime.hour,
+      selectedTime.minute,
+    );
+    final endDate = startDate.add(const Duration(minutes: 5));
 
     RecurrenceFrequency frequency;
     switch (frequencyType) {
@@ -193,40 +150,47 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
         frequency = RecurrenceFrequency.Weekly;
     }
 
-    final repeatDays = frequency == RecurrenceFrequency.Weekly
+    final totalDays = frequency == RecurrenceFrequency.Weekly
         ? repeatInterval * 7 * repeatDuration
         : frequency == RecurrenceFrequency.Daily
             ? repeatInterval * repeatDuration
             : 30 * repeatInterval * repeatDuration;
+    final recurrenceEndDate = startDate.add(Duration(days: totalDays));
 
-    final recurrenceEndDate = tz.TZDateTime.from(
-      startDate.add(Duration(days: repeatDays)),
-      _userLocation,
-    );
+    for (final calendar in _availableCalendars) {
+      final eventKey = '$eventKeyPrefix${calendar.id}';
+      final oldEventId = prefs.getString(eventKey);
 
-    final event = Event(
-      _selectedCalendarId,
-      title: 'Take ${widget.medication['name']}',
-      description: 'Medication reminder from Glycolog',
-      start: tzStartDate,
-      end: tzEndDate,
-      recurrenceRule: RecurrenceRule(
-        frequency,
-        interval: repeatInterval,
-        endDate: recurrenceEndDate,
-      ),
-    );
+      if (oldEventId != null) {
+        final deleteResult =
+            await _calendarPlugin.deleteEvent(calendar.id!, oldEventId);
+        if (deleteResult.isSuccess && deleteResult.data == true) {
+          await prefs.remove(eventKey);
+        }
+      }
 
-    final result = await _calendarPlugin.createOrUpdateEvent(event);
+      final event = Event(
+        calendar.id,
+        title: 'Take ${widget.medication['name']}',
+        start: tz.TZDateTime.from(startDate, local),
+        end: tz.TZDateTime.from(endDate, local),
+        recurrenceRule: RecurrenceRule(
+          frequency,
+          interval: repeatInterval,
+          endDate: recurrenceEndDate,
+        ),
+        reminders: [Reminder(minutes: 10)],
+      );
 
-    if (result?.isSuccess == true && result?.data != null) {
-      await prefs.setString(eventKey, result!.data!);
-      print("✅ Event created with ID: ${result.data}");
-    } else {
-      print("❌ Failed to create event: ${result?.errors}");
+      final result = await _calendarPlugin.createOrUpdateEvent(event);
+      if (result?.isSuccess == true && result?.data != null) {
+        await prefs.setString(eventKey, result!.data!);
+        print("✅ Event added to calendar: ${calendar.name ?? 'Unnamed'}");
+      } else {
+        print("❌ Failed to add event to ${calendar.name}: ${result?.errors}");
+      }
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -237,24 +201,11 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            if (_availableCalendars.isNotEmpty && _selectedCalendarId != null)
-              DropdownButton<String>(
-                value: _selectedCalendarId,
-                onChanged: (val) {
-                  setState(() => _selectedCalendarId = val);
-                },
-                items: _availableCalendars.map((cal) {
-                  return DropdownMenuItem(
-                    value: cal.id,
-                    child: Text(cal.name ?? "Unnamed Calendar"),
-                  );
-                }).toList(),
-              ),
             DropdownButton<String>(
               value: selectedDay,
-              items: daysOfWeek.map((day) {
-                return DropdownMenuItem(value: day, child: Text(day));
-              }).toList(),
+              items: daysOfWeek
+                  .map((day) => DropdownMenuItem(value: day, child: Text(day)))
+                  .toList(),
               onChanged: (value) => setState(() => selectedDay = value!),
             ),
             ListTile(
@@ -263,7 +214,7 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
               trailing: IconButton(
                 icon: const Icon(Icons.access_time),
                 onPressed: () async {
-                  TimeOfDay? picked = await showTimePicker(
+                  final picked = await showTimePicker(
                     context: context,
                     initialTime: selectedTime,
                   );
@@ -287,7 +238,7 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
                 const SizedBox(width: 10),
                 DropdownButton<int>(
                   value: repeatInterval,
-                  items: List.generate(30, (index) => index + 1)
+                  items: List.generate(30, (i) => i + 1)
                       .map((val) =>
                           DropdownMenuItem(value: val, child: Text("$val")))
                       .toList(),
@@ -316,7 +267,7 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
             ElevatedButton(
               onPressed: submitReminderToServer,
               child: const Text("Set Reminder"),
-            )
+            ),
           ],
         ),
       ),

@@ -200,8 +200,7 @@ double _extractSleepHours(dynamic symptomCheck) {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Questionnaire Data Visualization'),
-        backgroundColor: Colors.blue[800],
+        title: const Text('Questionnaire Data Visualisation'),
         leading: IconButton(
           icon: const Icon(Icons.home),
           onPressed: () {

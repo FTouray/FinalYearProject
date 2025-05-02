@@ -1,6 +1,6 @@
 from django.urls import path
 from .views import ( MedicationListView, MedicationReminderListView, bad_days_view, 
-    chat_with_virtual_coach, combined_glucose_timeline, create_category, create_comment, create_thread, delete_medication, exercise_step, 
+    chat_with_virtual_coach, combined_glucose_timeline, complete_questionnaire, create_category, create_comment, create_thread, delete_medication, exercise_step, 
     chat_history, fetch_medications_from_openfda, get_ai_health_trends, get_all_ai_health_trends, get_insights_summary_with_ai, get_last_synced_workout, get_predictive_feedback, get_quizset_quizzes, get_user_profile, get_user_profile_detail, glucose_prediction_view, latest_fitness_entry,
     get_medication_reminders, leaderboard, list_ai_recommendations,
     get_saved_medications, list_all_quizsets_and_progress, list_comments_for_thread, list_forum_categories, list_past_insights, list_quiz_attempts, list_threads_by_category, list_user_achievements, maybe_retrain_model, react_to_comment, submit_quiz, today_fitness_summary, meal_step, glucose_step, glycaemic_response_main,
@@ -49,6 +49,7 @@ urlpatterns = [
     path("questionnaire/meal-step/", meal_step, name="meal-step"),
     path("questionnaire/exercise-step/", exercise_step, name="exercise-step"),
     path("questionnaire/review/", review_answers, name="review-answers"),
+    path("questionnaire/complete/", complete_questionnaire, name="complete-questionnaire"),
     path("questionnaire/data-visualization/", questionnaire_data_visualization, name="data-visualization"),
 
     # Insights

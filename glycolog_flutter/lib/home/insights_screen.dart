@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:glycolog/home/personal_trends_widget.dart';
 import 'package:glycolog/questionnaire/data_visualization.dart';
 import 'package:glycolog/utils.dart';
 import 'package:flutter/material.dart';
@@ -22,11 +23,13 @@ class _InsightsScreenState extends State<InsightsScreen> {
   bool isLoading = true;
   final String? apiUrl = dotenv.env['API_URL'];
   String _selectedUnit = 'mg/dL';
+  List<Map<String, dynamic>> predictiveFeedback = [];
 
   @override
   void initState() {
     super.initState();
     _loadUnitAndFetchInsights();
+    fetchPredictiveFeedback();
   }
 
   Future<void> _loadUnitAndFetchInsights() async {
@@ -76,6 +79,56 @@ class _InsightsScreenState extends State<InsightsScreen> {
     }
   }
 
+  Future<void> fetchPredictiveFeedback() async {
+    final token = await AuthService().getAccessToken();
+    if (token == null) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    final glucoseUnit = prefs.getString('selectedUnit') ?? 'mg/dL';
+
+    final res = await http.get(
+      Uri.parse('$apiUrl/predictive-feedback/'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Glucose-Unit': glucoseUnit,
+      },
+    );
+
+    if (res.statusCode == 200) {
+      final data = json.decode(res.body);
+      final List<Map<String, dynamic>> allRaw = List<Map<String, dynamic>>.from(
+          data['predictive_feedback']['all'] ?? []);
+      final now = DateTime.now();
+      final filtered = allRaw.where((item) {
+        final timestamp = DateTime.tryParse(item['timestamp'] ?? '');
+        return timestamp != null && now.difference(timestamp).inDays <= 30;
+      }).toList();
+
+      setState(() {
+        predictiveFeedback = filtered;
+      });
+    }
+  }
+
+  String determinePriority(String text) {
+    text = text.toLowerCase();
+    if (text.contains("frequent") ||
+        text.contains("consistent") ||
+        text.contains("persistent") ||
+        text.contains("high glycaemic index") ||
+        text.contains("elevated glucose")) {
+      return "High";
+    } else if (text.contains("may") ||
+        text.contains("linked") ||
+        text.contains("might") ||
+        text.contains("suggest")) {
+      return "Medium";
+    } else {
+      return "Low";
+    }
+  }
+
+
 Future<void> generatePdf() async {
     final pdf = pw.Document();
     final trend = insightsData!['trend'];
@@ -85,6 +138,17 @@ Future<void> generatePdf() async {
         List<Map<String, dynamic>>.from(trend['ai_summary_items'] ?? []);
     summaryItems.sort((a, b) => (b['score'] ?? 0).compareTo(a['score'] ?? 0));
     final formattedGlucose = await formatGlucoseDynamic(avgGlucose);
+
+    final List<Map<String, dynamic>> structuredFeedback = predictiveFeedback
+        .map((item) => {
+              "text": item["text"],
+              "priority": determinePriority(item["text"] ?? ""),
+            })
+        .toList();
+    structuredFeedback.sort((a, b) {
+      const order = {"High": 0, "Medium": 1, "Low": 2};
+      return order[a['priority']]!.compareTo(order[b['priority']]!);
+    });
 
     pw.Widget divider() => pw.Divider(thickness: 0.8, color: PdfColors.grey300);
 
@@ -105,8 +169,9 @@ Future<void> generatePdf() async {
           pw.SizedBox(height: 8),
           pw.Bullet(text: "Glucose Average: $formattedGlucose $_selectedUnit"),
           pw.Bullet(text: "Steps: ${trend['avg_steps']}"),
-          //pw.Bullet(text: "Sleep: ${trend['avg_sleep_hours']} hrs"),
-          pw.Bullet(text: "Heart Rate: ${(trend['avg_heart_rate'] ?? 0).toDouble().toStringAsFixed(2)} bpm"),
+          pw.Bullet(
+              text:
+                  "Heart Rate: ${(trend['avg_heart_rate'] ?? 0).toDouble().toStringAsFixed(2)} bpm"),
           pw.Bullet(
               text: "Exercise Sessions: ${trend['total_exercise_sessions']}"),
           pw.SizedBox(height: 12),
@@ -134,6 +199,20 @@ Future<void> generatePdf() async {
                   pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
           pw.SizedBox(height: 6),
           pw.Text(aiInsight, style: pw.TextStyle(fontSize: 13)),
+          pw.SizedBox(height: 12),
+          divider(),
+
+          pw.SizedBox(height: 10),
+          pw.Text("🧠 AI Coach - Predictive Insights",
+              style:
+                  pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+          pw.SizedBox(height: 6),
+          if (structuredFeedback.isNotEmpty)
+            ...structuredFeedback.map((item) => pw.Bullet(
+                  text: "(${item['priority']}) ${item['text']}",
+                ))
+          else
+            pw.Text("No predictive insights available."),
           pw.SizedBox(height: 12),
           divider(),
 
@@ -180,6 +259,7 @@ Future<void> generatePdf() async {
                     _buildTrendCard(insightsData!['trend']),
                     const SizedBox(height: 20),
                     _buildAIInsight(insightsData!['ai_insight']),
+                    PersonalTrendsWidget(),
                     const SizedBox(height: 20),
                     _buildFocusAreas(insightsData!),
                     const SizedBox(height: 20),
@@ -190,7 +270,7 @@ Future<void> generatePdf() async {
                     ),
                     TextButton.icon(
                       icon: const Icon(Icons.bar_chart),
-                      label: const Text("View Data Visualization"),
+                      label: const Text("View Data Visualisation"),
                       onPressed: () {
                         Navigator.push(
                           context,
@@ -204,6 +284,54 @@ Future<void> generatePdf() async {
 
                   ],
                 ),
+    );
+  }
+Widget _buildPredictiveSection(List<Map<String, dynamic>> items) {
+    return Card(
+      color: Colors.teal.shade50,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "🧠 AI Coach - Predictive Insights",
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            const SizedBox(height: 10),
+            ...items.take(5).map((item) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8.0),
+                  child: Text("• ${item['text']}",
+                      style: const TextStyle(fontSize: 14)),
+                )),
+            if (items.length > 5)
+              TextButton(
+                child: const Text("Show More"),
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (_) => AlertDialog(
+                      title: const Text("All Predictive Insights"),
+                      content: SizedBox(
+                        width: double.maxFinite,
+                        child: ListView(
+                          children: items
+                              .map((item) => Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 4.0),
+                                    child: Text("• ${item['text']}"),
+                                  ))
+                              .toList(),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+          ],
+        ),
+      ),
     );
   }
 

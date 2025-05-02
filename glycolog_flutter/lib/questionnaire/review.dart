@@ -57,6 +57,29 @@ class ReviewScreenState extends State<ReviewScreen> {
     }
   }
 
+  Future<void> _completeSession() async {
+    final token = await AuthService().getAccessToken();
+    if (token == null) return;
+
+    final apiUrl = dotenv.env['API_URL'];
+    final res = await http.post(
+      Uri.parse('$apiUrl/questionnaire/complete/'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (!mounted) return;
+
+    if (res.statusCode != 200) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to complete session.')),
+      );
+    }
+  }
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -137,7 +160,8 @@ class ReviewScreenState extends State<ReviewScreen> {
                       }),
                       const SizedBox(height: 30),
                       ElevatedButton(
-                        onPressed: () {
+                        onPressed: () async {
+                          await _completeSession(); 
                           Navigator.pushReplacementNamed(
                               context, '/data-visualization');
                         },
@@ -150,7 +174,7 @@ class ReviewScreenState extends State<ReviewScreen> {
                           ),
                         ),
                         child: const Text(
-                          'View Data Visualization',
+                          'View Data Visualisation',
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 18,
@@ -161,7 +185,8 @@ class ReviewScreenState extends State<ReviewScreen> {
                       const SizedBox(height: 20),
                       ElevatedButton(
                         onPressed: () {
-                          Navigator.pop(context);
+                          Navigator.pushReplacementNamed(
+                              context, '/symptom-step');
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.grey,

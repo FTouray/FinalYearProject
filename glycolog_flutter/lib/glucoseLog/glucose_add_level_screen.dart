@@ -292,7 +292,12 @@ class AddGlucoseLevelScreenState extends State<AddGlucoseLevelScreen> {
         _pickedImage = null; // Clear the picked image after saving
       });
       // Navigate to the main glucose log page
-      Navigator.pushReplacementNamed(context, '/glucose-log');
+      if (!mounted) return;
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        '/glucose-log',
+        (route) => false,
+      );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to add glucose log. Please try again.')),

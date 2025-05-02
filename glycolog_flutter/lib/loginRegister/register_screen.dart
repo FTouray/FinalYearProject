@@ -79,10 +79,30 @@ class RegisterScreenState extends State<RegisterScreen> {
         SharedPreferences prefs = await SharedPreferences.getInstance();
         await prefs.setString('access_token', accessToken);
 
+        if (!mounted) return; 
+
+        if (context.mounted) {
+                Navigator.pushReplacementNamed(context, '/login');
+              } 
       } else {
         final data = json.decode(response.body);
         setState(() {
-          errorMessage = data['error'] ?? 'Registration failed. Try again.';
+          if (data['error'] != null) {
+            errorMessage = data['error'];
+          } else if (data is Map && data.isNotEmpty) {
+            final firstKey = data.keys.first;
+            final firstError = data[firstKey];
+
+            if (firstError is List && firstError.isNotEmpty) {
+              errorMessage = firstError.first;
+            } else if (firstError is String) {
+              errorMessage = firstError;
+            } else {
+              errorMessage = 'Registration failed. Please try again.';
+            }
+          } else {
+            errorMessage = 'Registration failed. Please try again.';
+          }
         });
       }
     } catch (e) {

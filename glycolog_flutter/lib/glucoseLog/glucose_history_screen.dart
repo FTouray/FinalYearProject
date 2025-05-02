@@ -6,6 +6,7 @@ import 'dart:convert';
 import 'glucose_detail_screen.dart';
 import 'package:glycolog/utils.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:intl/intl.dart';
 
 class GlucoseLogHistoryScreen extends StatefulWidget {
   const GlucoseLogHistoryScreen({super.key});
@@ -56,7 +57,9 @@ class GlucoseLogHistoryScreenState extends State<GlucoseLogHistoryScreen> {
         if (response.statusCode == 200) {
           final data = json.decode(response.body);
           setState(() {
-            glucoseLogs = List<Map<String, dynamic>>.from(data['logs'] ?? []);
+            glucoseLogs = List<Map<String, dynamic>>.from(data['logs'] ?? [])
+              ..sort((a, b) => DateTime.parse(b['timestamp'])
+                  .compareTo(DateTime.parse(a['timestamp'])));
             if (measurementUnit == 'mmol/L') {
               for (var log in glucoseLogs) {
                 log['glucose_level'] = convertToMmolL(log['glucose_level']);
@@ -103,7 +106,7 @@ class GlucoseLogHistoryScreenState extends State<GlucoseLogHistoryScreen> {
     }
 
     setState(() {
-      filteredLogs = glucoseLogs.where((log) {
+      filteredLogs = List<Map<String, dynamic>>.from(glucoseLogs).where((log) {
         final logDate = DateTime.parse(log['timestamp']);
         final logLevel = log['glucose_level'];
 
@@ -114,7 +117,7 @@ class GlucoseLogHistoryScreenState extends State<GlucoseLogHistoryScreen> {
         }
         if (_endDate != null) {
           dateFilter = dateFilter &&
-              (logDate.isBefore(_endDate!) ||
+              (logDate.isBefore(_endDate!.add(const Duration(days: 1))) ||
                   logDate.isAtSameMomentAs(_endDate!));
         }
 
@@ -157,6 +160,18 @@ class GlucoseLogHistoryScreenState extends State<GlucoseLogHistoryScreen> {
       });
     }
   }
+
+  void _clearFilters() {
+    setState(() {
+      _levelFilterController.clear();
+      _selectedFilterType = 'equal';
+      _startDate = null;
+      _endDate = null;
+      filteredLogs = glucoseLogs;
+      errorMessage = null;
+    });
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -203,25 +218,35 @@ class GlucoseLogHistoryScreenState extends State<GlucoseLogHistoryScreen> {
                   const SizedBox(height: 20),
 
                   // Apply Filters Button
-                  Center(
-                    child: ElevatedButton(
-                      onPressed: _applyFilters,
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 30, vertical: 15),
-                        backgroundColor: Colors.blue[800],
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12.0),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      ElevatedButton(
+                        onPressed: _applyFilters,
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 12),
+                          backgroundColor: Colors.blue[800],
                         ),
+                        child: const Text('Apply Filters',
+                            style: TextStyle(color: Colors.white)),
                       ),
-                      child: const Text(
-                        'Apply Filters',
-                        style: TextStyle(fontSize: 18, color: Colors.white),
+                      const SizedBox(width: 16),
+                      OutlinedButton(
+                        onPressed: _clearFilters,
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 12),
+                          side: const BorderSide(color: Colors.blue),
+                        ),
+                        child: const Text('Clear Filters'),
                       ),
-                    ),
+                    ],
                   ),
 
+
                   const SizedBox(height: 20),
+
 
                   // Filtered Glucose Logs
                   Expanded(
@@ -282,7 +307,7 @@ class GlucoseLogHistoryScreenState extends State<GlucoseLogHistoryScreen> {
           child: ListTile(
             title: Text(
               _startDate != null
-                  ? 'From: ${_startDate!.toLocal()}'.split(' ')[0]
+                  ? 'From: ${DateFormat('yyyy-MM-dd').format(_startDate!)}'
                   : 'From: Select Date',
               style: const TextStyle(color: Colors.black87, fontSize: 16),
             ),
@@ -294,10 +319,11 @@ class GlucoseLogHistoryScreenState extends State<GlucoseLogHistoryScreen> {
           child: ListTile(
             title: Text(
               _endDate != null
-                  ? 'To: ${_endDate!.toLocal()}'.split(' ')[0]
+                  ? 'To: ${DateFormat('yyyy-MM-dd').format(_endDate!)}'
                   : 'To: Select Date',
               style: const TextStyle(color: Colors.black87, fontSize: 16),
             ),
+
             trailing: const Icon(Icons.calendar_today),
             onTap: () => _selectDate(context, isStart: false),
           ),

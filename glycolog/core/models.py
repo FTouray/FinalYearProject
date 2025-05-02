@@ -259,30 +259,6 @@ class ExerciseCheck(models.Model):
         return f"ExerciseCheck for {self.session.user.username} ({self.created_at})"
 
 
-# Model to store questions asked to determine why user if feeling unwell and their response
-class FollowUpQuestion(models.Model):
-    feeling_check = models.ForeignKey(
-        FeelingCheck, on_delete=models.CASCADE, related_name="follow_up_questions"
-    )
-    question = models.TextField()
-    response = models.TextField(blank=True, null=True)
-
-    def __str__(self):
-        return f"Follow-up for {self.feeling_check} - {self.question[:30]}..."
-
-# Model to store insights generated based on user activity
-class Insight(models.Model):
-    user = models.ForeignKey(
-        CustomUser, on_delete=models.CASCADE, related_name="insights"
-    )
-    feeling_check = models.ForeignKey(
-        FeelingCheck, on_delete=models.SET_NULL, null=True, blank=True
-    )
-    insight = models.TextField()
-    timestamp = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f"Insight for {self.user.username} - {self.timestamp.strftime('%d/%m/%Y %H:%M:%S')}"
 
 # Virtual health coach model to provide personalised health guidance
 class VirtualHealthCoach(models.Model):

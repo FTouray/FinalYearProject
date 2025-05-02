@@ -142,10 +142,10 @@ class _ForumHomeScreenState extends State<ForumHomeScreen> {
       },
       body: Scaffold(
         appBar: AppBar(
-          title: const Text("💬 Community Forum"),
+          automaticallyImplyLeading: false, 
           actions: [
-            IconButton(
-                icon: const Icon(Icons.refresh), onPressed: fetchCategories),
+        IconButton(
+            icon: const Icon(Icons.refresh), onPressed: fetchCategories),
           ],
         ),
         body: Padding(

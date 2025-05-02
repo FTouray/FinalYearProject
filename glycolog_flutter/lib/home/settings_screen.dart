@@ -305,16 +305,6 @@ class SettingsScreenState extends State<SettingsScreen> {
             _buildTargetRangeField(
                 _targetMaxController, 'Maximum ($_selectedUnit)'),
             const Divider(),
-            _buildSectionTitle('Notifications'),
-            SwitchListTile(
-              secondary: const Icon(Icons.notifications, color: Colors.blue),
-              title: const Text('Enable Glucose Level Notifications'),
-              value: _notificationsEnabled,
-              onChanged: (value) =>
-                  setState(() => _notificationsEnabled = value),
-              activeColor: Colors.blue[800],
-            ),
-            const Divider(),
             _buildSectionTitle('Theme Settings'),
             SwitchListTile(
               secondary: const Icon(Icons.dark_mode, color: Colors.black),
@@ -331,7 +321,7 @@ class SettingsScreenState extends State<SettingsScreen> {
                 },
                 icon: const Icon(Icons.save, color: Colors.white),
                 label: const Text(
-                  'Save All Settings',
+                  'Save All Changes',
                   style: TextStyle(fontSize: 18, color: Colors.white),
                 ),
                 style: ElevatedButton.styleFrom(

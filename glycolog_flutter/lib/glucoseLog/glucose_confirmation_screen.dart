@@ -97,7 +97,7 @@ class GlucoseLogConfirmationScreen extends StatelessWidget {
               children: [
                 ElevatedButton(
                   onPressed: () {
-                    Navigator.pop(context); // Go back to edit
+                    Navigator.pop(context, false); // Go back to edit
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.grey[400], // Edit button color

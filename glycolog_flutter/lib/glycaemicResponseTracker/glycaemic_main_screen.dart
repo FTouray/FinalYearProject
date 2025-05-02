@@ -173,7 +173,7 @@ Future<void> fetchUnwellDays() async {
                     child: Column(
                       children: [
                         Text(
-                          "Glycaemic Response Overview",
+                          "Glycaemic Index Overview",
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,

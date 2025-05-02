@@ -147,12 +147,13 @@ def log_glucose(request):
         if serializer.is_valid():
             serializer.save()
             
-            recent = GlucoseLog.objects.filter(user=request.user).order_by("-timestamp")[:10]
-            values = [log.glucose_level for log in recent]
+            recent_qs = GlucoseLog.objects.filter(user=request.user).order_by("-timestamp")[:10]
+            recent_ids = [g.id for g in recent_qs]  
+            values = [g.glucose_level for g in recent_qs]
             if len(values) >= 5:
                 avg = sum(values) / len(values)
-                prev_avg = GlucoseLog.objects.filter(user=request.user).exclude(id__in=[g.id for g in recent]).aggregate(Avg("glucose_level"))["glucose_level__avg"]
-                if prev_avg and abs(avg - prev_avg) > 20:  # or some threshold
+                prev_avg = GlucoseLog.objects.filter(user=request.user).exclude(id__in=recent_ids).aggregate(Avg("glucose_level"))["glucose_level__avg"]
+                if prev_avg and abs(avg - prev_avg) > 20:
                     call_command("retrain_single_user_model", user_id=request.user.id)
                 
             return Response({"message": "Glucose log created successfully"}, status=status.HTTP_201_CREATED)
@@ -168,7 +169,7 @@ def glucose_log_history(request):
     Supports filtering by date range and glucose level.
     """
     user = request.user  # Get the current authenticated user
-    logs = GlucoseLog.objects.filter(user=user)  # Get all logs for the user
+    logs = GlucoseLog.objects.filter(user=user).order_by('-timestamp') # Get all logs for the user
 
     # Retrieve filter parameters from the request
     start_date = parse_date(request.GET.get("start_date"))
@@ -259,6 +260,11 @@ def glycaemic_response_main(request):
     # Calculate last, average, and graph points for glycaemic response
     last_log = logs[0].gi_level if logs else None
     average_log = sum(log.gi_level for log in logs) / len(logs) if logs else None
+    
+    all_meals_chronological = Meal.objects.filter(user=user).order_by("timestamp")
+    meal_id_map = {
+        meal.mealId: index + 1 for index, meal in enumerate(all_meals_chronological)
+    }
 
     # Retrieve all meal logs for the user
     all_meal_logs = Meal.objects.filter(user=user).order_by("-timestamp")
@@ -289,7 +295,7 @@ def glycaemic_response_main(request):
         "all_meal_logs": [
             {
                 "mealId": meal.mealId,
-                "user_meal_id": meal.user_meal_id,
+                "user_meal_id": meal_id_map.get(meal.mealId),
                 "name": meal.name,
                 "timestamp": meal.timestamp,
                 "total_glycaemic_index": meal.total_glycaemic_index,
@@ -344,8 +350,6 @@ def meal_log_history(request):
     )  # Get all meals for the user
 
     # Retrieve filter parameters from the request
-    # start_date = parse_date(request.GET.get("start_date"))
-    # end_date = parse_date(request.GET.get("end_date"))
     start_date = request.GET.get("start_date")
     end_date = request.GET.get("end_date")
 
@@ -558,17 +562,35 @@ def review_answers(request):
         "meal_check": MealCheckSerializer(session.meal_check.all(), many=True).data,
         "exercise_check": ExerciseCheckSerializer(session.exercise_check.all(), many=True).data,
     }
+    
+    return Response(data)
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def complete_questionnaire(request):
+    user = request.user
+    session = QuestionnaireSession.objects.filter(user=user, completed=False).last()
+
+    if not session:
+        return Response({"error": "No active questionnaire session."}, status=404)
 
     session.completed = True
     session.save()
-    
-    return Response(data)
+    return Response({"message": "Session marked as complete."})
+
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def questionnaire_data_visualization(request):
     user = request.user
     range_param = request.query_params.get("range", "last_10")  # Default to "last_10"
+    
+    all_completed_sessions = QuestionnaireSession.objects.filter(user=user, completed=True).order_by("created_at")
+    
+    session_id_map = {
+        session.id: index + 1
+        for index, session in enumerate(all_completed_sessions)
+    }
 
     # Filter sessions based on the range
     if range_param == "last_7":
@@ -592,14 +614,14 @@ def questionnaire_data_visualization(request):
         return Response(
             {"error": "Invalid range parameter provided."}, status=400
         )
-
+    
     # Get the latest session date for "is_latest" flag
     latest_session_date = sessions.aggregate(Max("created_at"))["created_at__max"]
 
     # Prepare session data
     data = [
         {
-            "session_id": session.id,
+            "session_id": session_id_map.get(session.id), 
             "date": session.created_at.strftime("%Y-%m-%d %H:%M:%S"),
             "is_latest": session.created_at == latest_session_date,
             "feeling_check": session.feeling_check.feeling if session.feeling_check else None,

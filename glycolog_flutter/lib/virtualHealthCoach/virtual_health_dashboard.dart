@@ -596,7 +596,7 @@ Widget _buildGraph(String title, String metric, Color color) {
         case 'steps':
           return 'steps';
         default:
-          return '';
+          return 'metric';
       }
     }
 
@@ -606,17 +606,14 @@ Widget _buildGraph(String title, String metric, Color color) {
     };
 
     final List<String> sortedDates = allDates.toList()
-      ..sort((a, b) => b.compareTo(a)); // reverse order
-
+      ..sort((a, b) => b.compareTo(a));
     final Map<String, int> dateToX = {
       for (int i = 0; i < sortedDates.length; i++) sortedDates[i]: i,
     };
 
     final List<FlSpot> spots = sortedDates.map((date) {
-      final entry = history.firstWhere(
-        (e) => e['date'] == date,
-        orElse: () => {},
-      );
+      final entry =
+          history.firstWhere((e) => e['date'] == date, orElse: () => {});
       final value =
           (entry[metric] is num) ? (entry[metric] as num).toDouble() : 0.0;
       return FlSpot(dateToX[date]!.toDouble(), value);
@@ -624,170 +621,167 @@ Widget _buildGraph(String title, String metric, Color color) {
 
     final yValues = spots.map((e) => e.y).toList();
     final maxY =
-        yValues.isNotEmpty ? yValues.reduce((a, b) => a > b ? a : b) : 100;
-    final chartHeight = (maxY > 200) ? 400.0 : (maxY > 100 ? 350.0 : 300.0);
-    const double extraVerticalSpace = 100;
-    final double panelHeight = chartHeight + extraVerticalSpace;
+        (yValues.isNotEmpty ? yValues.reduce((a, b) => a > b ? a : b) : 100)
+            .ceilToDouble();
+    final chartHeight = 300 + (maxY * 1.0).clamp(0, 250); // scales with data
 
-    final List<VerticalLine> unwellLines = _badDays
-        .where(dateToX.containsKey)
-        .map(
-          (date) => VerticalLine(
-            x: dateToX[date]!.toDouble(),
-            color: Colors.red.withValues(alpha: 0.35),
-            strokeWidth: 3,
-            dashArray: [6, 4],
-            label: VerticalLineLabel(
-              show: true,
-              alignment: Alignment.topRight,
-              style: const TextStyle(fontSize: 10, color: Colors.red),
-              labelResolver: (_) => 'Unwell',
-            ),
+
+    final unwellLines = _badDays.where(dateToX.containsKey).map((date) {
+      return VerticalLine(
+        x: dateToX[date]!.toDouble(),
+        color: Colors.red.withAlpha(80),
+        strokeWidth: 2,
+        dashArray: [6, 4],
+        label: VerticalLineLabel(
+          show: true,
+          alignment: Alignment.topRight,
+          labelResolver: (_) => 'Unwell',
+          style: const TextStyle(fontSize: 10, color: Colors.red),
+        ),
+      );
+    }).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 24),
+        Center(
+          child: Text(
+            title,
+            style: const TextStyle(
+                fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blue),
           ),
-        )
-        .toList();
-
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 12),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title,
-                style:
-                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-            const SizedBox(height: 10),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: SizedBox(
-                width: (sortedDates.length * 50).toDouble().clamp(300, 1200),
-                height: panelHeight,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: Text("Y Axis (${getYAxisLabel(metric)})",
-                          style: const TextStyle(fontWeight: FontWeight.bold)),
-                    ),
-                    SizedBox(
-                      height: chartHeight,
-                      child: LineChart(
-                        LineChartData(
-                          clipData: FlClipData.none(),
-                          extraLinesData:
-                              ExtraLinesData(verticalLines: unwellLines),
-                          lineTouchData: LineTouchData(
-                            handleBuiltInTouches: true,
-                            touchTooltipData: LineTouchTooltipData(
-                              getTooltipColor: (_) =>
-                                  Colors.grey.withValues(alpha: 0.8),
-                              tooltipRoundedRadius: 8,
-                              tooltipMargin: 12,
-                              fitInsideHorizontally: true,
-                              fitInsideVertically: true,
-                              getTooltipItems: (touchedSpots) {
-                                return touchedSpots.map((spot) {
-                                  final date = sortedDates[spot.x.toInt()];
-                                  final entry = history.firstWhere(
-                                    (e) => e['date'] == date,
-                                    orElse: () => {'date': date},
-                                  );
-                                  final hasData = entry.containsKey(metric) && entry[metric] != null;
-                                  final value = hasData ? (entry[metric] as num).toDouble() : 0.0;
-                                  final yLabel = getYAxisLabel(metric);
-
-                                  return LineTooltipItem(
-                                    hasData
-                                        ? "Activity: ${entry['activity_type']?.toString().capitalize() ?? 'Workout'}\n"
-                                          "Date: $date\n"
-                                          "${metric.replaceAll('_', ' ').capitalize()}: ${value.toStringAsFixed(1)} $yLabel"
-                                        : "Date: $date\nNo workout recorded.",
-                                    const TextStyle(color: Colors.white),
-                                  );
-                                }).toList();
-                              },
-                            ),
-                          ),
-                          titlesData: FlTitlesData(
-                            bottomTitles: AxisTitles(
-                              sideTitles: SideTitles(
-                                showTitles: true,
-                                reservedSize: 42,
-                                interval: 1,
-                                getTitlesWidget: (value, _) {
-                                  final index = value.toInt();
-                                  if (index < 0 ||
-                                      index >= sortedDates.length) {
-                                    return const SizedBox();
-                                  }
-
-                                  final date = sortedDates[index];
-                                  final formatted = () {
-                                    try {
-                                      final parts = date.split("-");
-                                      return "${parts[2]}/${parts[1]}"; // dd/MM
-                                    } catch (_) {
-                                      return "";
-                                    }
-                                  }();
-
-                                  final isUnwell = _badDays.contains(date);
-
-                                  return Column(
-                                    children: [
-                                      if (isUnwell)
-                                        const Icon(Icons.circle,
-                                            color: Colors.red, size: 6),
-                                      Text(formatted,
-                                          style: const TextStyle(fontSize: 10)),
-                                    ],
-                                  );
-                                },
-                              ),
-                            ),
-                            leftTitles: AxisTitles(
-                              sideTitles: SideTitles(
-                                  showTitles: true, reservedSize: 40),
-                            ),
-                            topTitles: AxisTitles(
-                              sideTitles: SideTitles(showTitles: false),
-                            ),
-                            rightTitles: AxisTitles(
-                              sideTitles: SideTitles(showTitles: false),
-                            ),
-                          ),
-                          borderData: FlBorderData(show: true),
-                          gridData: FlGridData(show: true),
-                          minY: 0,
-                          maxY: maxY + 10,
-                          lineBarsData: [
-                            LineChartBarData(
-                              spots: spots,
-                              isCurved: true,
-                              color: color,
-                              dotData: FlDotData(show: true),
-                              belowBarData: BarAreaData(show: false),
-                            ),
-                          ],
+        ),
+        const SizedBox(height: 12),
+        Container(
+          margin: const EdgeInsets.symmetric(vertical: 8),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16.0),
+            boxShadow: [
+              BoxShadow(
+                blurRadius: 8,
+                color: Colors.grey.shade300,
+                spreadRadius: 3,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: SizedBox(
+              width: (sortedDates.length * 60).clamp(300, 1200).toDouble(),
+              height: chartHeight.toDouble(),
+              child: Padding(
+                padding: const EdgeInsets.only(top: 16.0),
+              child: LineChart(
+                LineChartData(
+                  minY: 0,
+                  maxY: maxY + 10,
+                  clipData: FlClipData.none(),
+                  gridData: FlGridData(show: true),
+                  borderData: FlBorderData(show: true),
+                  extraLinesData: ExtraLinesData(verticalLines: unwellLines),
+                  titlesData: FlTitlesData(
+                    leftTitles: AxisTitles(
+                      axisNameWidget: Text(getYAxisLabel(metric),
+                          style: const TextStyle(fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis,
+                      ),
+                      axisNameSize: 28,
+                      sideTitles: SideTitles(
+                          showTitles: true,
+                          reservedSize: 42,
+                          getTitlesWidget: (value, meta) {
+                            final text = value >= 1000
+                                ? "${(value / 1000).toStringAsFixed(1)}k"
+                                : value.toInt().toString();
+                            return Text(
+                              text,
+                              style: const TextStyle(fontSize: 10),
+                            );
+                          },
                         ),
+                    ),
+                    bottomTitles: AxisTitles(
+                      axisNameWidget: const Text("Date",
+                          style: TextStyle(fontWeight: FontWeight.bold)),
+                      axisNameSize: 35,
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 42,
+                        interval: 1,
+                        getTitlesWidget: (value, _) {
+                          final index = value.toInt();
+                          if (index < 0 || index >= sortedDates.length)
+                            return const SizedBox();
+                          final date = sortedDates[index];
+                          final parts = date.split("-");
+                          final formatted = (parts.length == 3)
+                              ? "${parts[2]}/${parts[1]}"
+                              : date;
+                          final isUnwell = _badDays.contains(date);
+                          return Column(
+                            children: [
+                              if (isUnwell)
+                                const Icon(Icons.circle,
+                                    color: Colors.red, size: 6),
+                              Text(formatted,
+                                  style: const TextStyle(fontSize: 10)),
+                            ],
+                          );
+                        },
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    const Center(
-                      child: Text("X Axis (Date)",
-                          style: TextStyle(fontWeight: FontWeight.bold)),
+                    topTitles:
+                        AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    rightTitles:
+                        AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  ),
+                  lineTouchData: LineTouchData(
+                    handleBuiltInTouches: true,
+                    touchTooltipData: LineTouchTooltipData(
+                      fitInsideHorizontally: true,
+                      fitInsideVertically: true,
+                      getTooltipColor: (_) => Colors.grey.withAlpha(180),
+                      tooltipRoundedRadius: 8,
+                      getTooltipItems: (touchedSpots) {
+                        return touchedSpots.map((spot) {
+                          final date = sortedDates[spot.x.toInt()];
+                          final entry = history.firstWhere(
+                              (e) => e['date'] == date,
+                              orElse: () => {});
+                          final val = entry[metric];
+                          return LineTooltipItem(
+                            val != null
+                                ? "$metric: ${val.toString()} ${getYAxisLabel(metric)}\nDate: $date"
+                                : "Date: $date",
+                            const TextStyle(color: Colors.white),
+                          );
+                        }).toList();
+                      },
+                    ),
+                  ),
+                  lineBarsData: [
+                    LineChartBarData(
+                      spots: spots,
+                      isCurved: true,
+                      barWidth: 3,
+                      color: color,
+                      dotData: FlDotData(show: true),
+                      belowBarData: BarAreaData(show: false),
                     ),
                   ],
                 ),
               ),
             ),
-          ],
-        ),
-      ),
+            ),
+            ),
+          ),
+      ],
     );
   }
+
 
 Widget _buildTodaySummary() {
     if (todayData == null || todayData!.isEmpty) {
@@ -1020,8 +1014,7 @@ Widget _buildTodaySummary() {
       },
       body: Scaffold(
         appBar: AppBar(
-          title: const Text("Fitness Summary Dashboard"),
-          backgroundColor: Colors.blue[800],
+          automaticallyImplyLeading: false, 
           actions: [
             IconButton(
               icon: isSyncing
