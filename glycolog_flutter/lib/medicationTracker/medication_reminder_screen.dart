@@ -382,7 +382,7 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 24, vertical: 12),
-                        backgroundColor: Colors.teal,
+                        backgroundColor: Colors.blueAccent,
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8)),
                       ),
@@ -401,7 +401,7 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
   Widget _buildSectionTitle(IconData icon, String title) {
     return Row(
       children: [
-        Icon(icon, color: Colors.teal),
+        Icon(icon, color: Colors.blue),
         const SizedBox(width: 8),
         Text(
           title,
