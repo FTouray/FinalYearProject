@@ -145,14 +145,15 @@ def log_glucose(request):
         serializer = GlucoseLogSerializer(data=data, context={'request': request})  # Pass the request context
 
         if serializer.is_valid():
+            print("Serializer valid. Creating log...")
             serializer.save()
             
             recent_qs = GlucoseLog.objects.filter(user=request.user).order_by("-timestamp")[:10]
-            recent_ids = [g.id for g in recent_qs]  
+            recent_ids = [g.logID for g in recent_qs]  
             values = [g.glucose_level for g in recent_qs]
             if len(values) >= 5:
                 avg = sum(values) / len(values)
-                prev_avg = GlucoseLog.objects.filter(user=request.user).exclude(id__in=recent_ids).aggregate(Avg("glucose_level"))["glucose_level__avg"]
+                prev_avg = GlucoseLog.objects.filter(user=request.user).exclude(logID__in=recent_ids).aggregate(Avg("glucose_level"))["glucose_level__avg"]
                 if prev_avg and abs(avg - prev_avg) > 20:
                     call_command("retrain_single_user_model", user_id=request.user.id)
                 
