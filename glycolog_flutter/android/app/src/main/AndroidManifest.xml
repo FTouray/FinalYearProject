@@ -49,7 +49,7 @@
     <application
         android:label="Glycolog"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@drawable/app_icon1">
         <activity
             android:name=".MainActivity"
             android:exported="true"

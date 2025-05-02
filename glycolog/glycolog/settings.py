@@ -9,7 +9,7 @@ https://docs.djangoproject.com/en/5.1/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.1/ref/settings/
 """
-import firebase_admin
+from datetime import timedelta
 from firebase_admin import credentials
 from pathlib import Path
 import os
@@ -183,4 +183,13 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'core.tasks.retrain_all_user_models_task',
         'schedule': crontab(hour=3, minute=0, day_of_week='sun'),
     },
+}
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(days=365),     # valid for 1 year
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=730),    # valid for 2 years
+    "ROTATE_REFRESH_TOKENS": False,
+    "BLACKLIST_AFTER_ROTATION": False,
+    "AUTH_HEADER_TYPES": ("Bearer",),
+    "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
 }

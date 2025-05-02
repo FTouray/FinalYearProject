@@ -158,6 +158,7 @@ class GlucoseLogHistoryScreenState extends State<GlucoseLogHistoryScreen> {
           _endDate = pickedDate;
         }
       });
+      _applyFilters();
     }
   }
 
