@@ -24,6 +24,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
   final String? apiUrl = dotenv.env['API_URL'];
   String _selectedUnit = 'mg/dL';
   List<Map<String, dynamic>> predictiveFeedback = [];
+  List<String> predictedSymptoms = [];
 
   @override
   void initState() {

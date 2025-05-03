@@ -90,7 +90,6 @@ class OnboardingScreenState extends State<OnboardingScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Setup Your Preferences'),
-        backgroundColor: Colors.blue[800],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),

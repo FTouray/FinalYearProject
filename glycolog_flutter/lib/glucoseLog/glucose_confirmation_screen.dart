@@ -28,7 +28,6 @@ class GlucoseLogConfirmationScreen extends StatelessWidget {
             fontWeight: FontWeight.bold,
           ),
         ),
-        backgroundColor: Colors.blue[800],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),

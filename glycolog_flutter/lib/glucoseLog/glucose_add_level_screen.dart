@@ -316,7 +316,6 @@ class AddGlucoseLevelScreenState extends State<AddGlucoseLevelScreen> {
             fontWeight: FontWeight.bold,
           ),
         ),
-        backgroundColor: Colors.blue[800],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),

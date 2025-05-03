@@ -117,7 +117,6 @@ class MealLogHistoryScreenState extends State<MealLogHistoryScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Meal Log History'),
-        backgroundColor: Colors.blue[800],
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())

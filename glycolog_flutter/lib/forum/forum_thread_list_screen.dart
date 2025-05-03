@@ -76,7 +76,6 @@ class _ForumThreadListScreenState extends State<ForumThreadListScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.categoryName),
-        backgroundColor: Colors.blueAccent,
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())

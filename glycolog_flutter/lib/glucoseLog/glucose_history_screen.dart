@@ -179,7 +179,6 @@ class GlucoseLogHistoryScreenState extends State<GlucoseLogHistoryScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Glucose Log History'),
-        backgroundColor: Colors.blue[800],
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())

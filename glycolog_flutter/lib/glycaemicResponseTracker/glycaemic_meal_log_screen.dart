@@ -190,7 +190,6 @@ class MealSelectionScreenState extends State<MealSelectionScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Select Meal Items'),
-          backgroundColor: Colors.blue,
         ),
         body: _categories.isEmpty
             ? Center(

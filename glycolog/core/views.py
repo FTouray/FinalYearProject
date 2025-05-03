@@ -6,6 +6,7 @@ import json
 from django.utils import timezone
 from django.http import JsonResponse
 from django.utils.dateparse import parse_time, parse_datetime
+import joblib
 import pandas as pd
 from django.db.models import Max
 import requests
@@ -1815,6 +1816,48 @@ def get_predictive_feedback(request):
         'trend': [f['text'] for f in feedback_data if f['type'] == 'trend'],
         'all': feedback_data
     }
+    
+    model_path = os.path.join(settings.BASE_DIR, "ml_models", f"user_model_{user.id}.pkl")
+    summary['predicted_symptoms'] = []
+
+    if os.path.exists(model_path):
+        try:
+            model = joblib.load(model_path)
+
+            # Use the most recent complete session
+            last_session = QuestionnaireSession.objects.filter(user=user, completed=True).order_by("-created_at").first()
+            if last_session:
+                symptom = last_session.symptom_check.first()
+                glucose = last_session.glucose_check.first()
+                meal = last_session.meal_check.first()
+                exercise = last_session.exercise_check.first()
+
+                if all([symptom, glucose, meal, exercise]):
+                    X = [{
+                        "glucose_level": glucose.glucose_level,
+                        "weighted_gi": meal.weighted_gi,
+                        "skipped_meals": len(meal.skipped_meals),
+                        "exercise_duration": exercise.exercise_duration,
+                        "stress": int(symptom.stress or 0),
+                        "avg_glucose_3d": GlucoseLog.objects.filter(
+                            user=user, timestamp__gte=now() - timedelta(days=3)
+                        ).aggregate(avg=Avg("glucose_level")).get("avg") or 0,
+                        "total_skipped_meals": MealCheck.objects.filter(
+                            session__user=user, created_at__lt=last_session.created_at
+                        ).exclude(skipped_meals=[]).count(),
+                        "hour_of_day": last_session.created_at.hour,
+                        "day_of_week": last_session.created_at.weekday(),
+                    }]
+
+                    input_df = pd.DataFrame(X)
+                    predictions = model.predict(input_df)
+                    predicted_symptoms = [
+                        SYMPTOMS[i] for i, val in enumerate(predictions[0]) if val == 1
+                    ]
+                    summary['predicted_symptoms'] = predicted_symptoms
+        except Exception as e:
+            print(f"⚠️ Error predicting with model: {e}")
+            summary['predicted_symptoms'] = ["Error loading model"]
 
     return Response({'predictive_feedback': summary})
 

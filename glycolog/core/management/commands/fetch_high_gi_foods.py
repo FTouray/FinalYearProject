@@ -37,19 +37,18 @@ class Command(BaseCommand):
             except ValueError:
                 carbs = None
 
-            # Check if the GI value is 70 or above
-            if gi_value >= 70:
+            
                 # Get or create the food category
-                category, created = FoodCategory.objects.get_or_create(name=category_name)
+            category, created = FoodCategory.objects.get_or_create(name=category_name)
 
                 # Create the food item
-                FoodItem.objects.update_or_create(
-                    name=food_name,
-                    defaults={
-                        'glycaemic_index': gi_value,
-                        'carbs': carbs,
-                        'category': category
-                    }
-                )
+            FoodItem.objects.update_or_create(
+                name=food_name,
+                defaults={
+                    'glycaemic_index': gi_value,
+                    'carbs': carbs,
+                    'category': category
+                }
+            )
 
         self.stdout.write(self.style.SUCCESS('Successfully fetched and saved high GI foods'))

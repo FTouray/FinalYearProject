@@ -159,7 +159,6 @@ class ForumThreadScreenState extends State<ForumThreadScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Thread Discussion"),
-        backgroundColor: Colors.blueAccent,
       ),
       body: Column(
         children: [

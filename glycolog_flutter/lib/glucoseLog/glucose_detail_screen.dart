@@ -11,8 +11,6 @@ class LogDetailsScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Log Details'),
-        backgroundColor:
-            Colors.blue[800], // Consistent blue theme for the app bar
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),

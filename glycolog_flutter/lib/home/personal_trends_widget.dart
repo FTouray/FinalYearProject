@@ -19,6 +19,8 @@ class PersonalTrendsWidgetState extends State<PersonalTrendsWidget> {
   bool loading = true;
   final String? apiUrl = dotenv.env['API_URL'];
   late ConfettiController _confettiController;
+  List<String> predictedSymptoms = [];
+
 
   @override
   void initState() {
@@ -70,6 +72,8 @@ class PersonalTrendsWidgetState extends State<PersonalTrendsWidget> {
         'trend': feedbackData['trend'] ?? [],
         'all': allRaw,
       };
+      predictedSymptoms =
+            List<String>.from(feedbackData['predicted_symptoms'] ?? []);
       loading = false;
     });
 
@@ -209,6 +213,51 @@ class PersonalTrendsWidgetState extends State<PersonalTrendsWidget> {
                 const SizedBox(height: 8),
                 _buildSection("✅ Positive Improvements", positive,
                     Icons.thumb_up_alt_outlined, Colors.green, (_) => "Low"),
+                    if (predictedSymptoms.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Row(
+                    children: const [
+                      Icon(Icons.health_and_safety,
+                          color: Colors.indigo, size: 20),
+                      SizedBox(width: 6),
+                      Text(
+                        "🔮 Predicted Symptoms",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                          color: Colors.indigo,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  ...predictedSymptoms
+                      .take(showAll ? predictedSymptoms.length : 3)
+                      .map((symptom) => Padding(
+                            padding: const EdgeInsets.only(bottom: 8.0),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text("• ",
+                                    style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold)),
+                                Expanded(
+                                    child: Text(symptom,
+                                        style: const TextStyle(fontSize: 14))),
+                              ],
+                            ),
+                          )),
+                  if (predictedSymptoms.length > 3)
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton(
+                        onPressed: () => setState(() => showAll = !showAll),
+                        child: Text(showAll ? "See Less" : "See More"),
+                      ),
+                    ),
+                ],
+
                 _buildGroupedSection(
                   "📈 Trends & Patterns",
                   sortedTrends,

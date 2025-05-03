@@ -66,7 +66,6 @@ class _ForumCreateThreadScreenState extends State<ForumCreateThreadScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text("📝 Create Thread"),
-        backgroundColor: Colors.blueAccent,
       ),
       body: Padding(
         padding: const EdgeInsets.all(20.0),

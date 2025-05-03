@@ -18,7 +18,6 @@ class MealDetailScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Meal Details"),
-        backgroundColor: Colors.blue[800], // Match the color scheme
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
