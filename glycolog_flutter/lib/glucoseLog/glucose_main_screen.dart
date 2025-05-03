@@ -179,7 +179,7 @@ class GlucoseLogScreenState extends State<GlucoseLogScreen> {
     }).toList();
   }
 
- Future<void> fetchFullGlucoseTimeline() async {
+  Future<void> fetchFullGlucoseTimeline() async {
     String? token = await AuthService().getAccessToken();
     final apiUrl = dotenv.env['API_URL'];
 
@@ -230,11 +230,13 @@ class GlucoseLogScreenState extends State<GlucoseLogScreen> {
             for (int i = 0; i < last30Entries.length; i++) {
               final entry = last30Entries[i];
               final date = DateTime.parse(entry.key);
-              final avg = entry.value.reduce((a, b) => a + b) / entry.value.length;
+              final avg =
+                  entry.value.reduce((a, b) => a + b) / entry.value.length;
 
               final x = (last30Entries.length - 1 - i).toDouble();
 
-              print("➡️ i: $i, Reversed x: $x, Date: ${date.toIso8601String()}, Avg: ${avg.toStringAsFixed(2)}");
+              print(
+                  "➡️ i: $i, Reversed x: $x, Date: ${date.toIso8601String()}, Avg: ${avg.toStringAsFixed(2)}");
 
               fullGlucoseGraphData.add(FlSpot(x, avg));
               fullGlucoseLogs.add({
@@ -256,7 +258,7 @@ class GlucoseLogScreenState extends State<GlucoseLogScreen> {
     }
   }
 
-Future<void> fetchGlucosePredictions() async {
+  Future<void> fetchGlucosePredictions() async {
     String? token = await AuthService().getAccessToken();
     final apiUrl = dotenv.env['API_URL'];
 
@@ -328,7 +330,7 @@ Future<void> fetchGlucosePredictions() async {
           : lastLog;
 
       // Re-filter today's logs for the graph
-      glucoseLogs = filterLogsForToday(glucoseLogs); 
+      glucoseLogs = filterLogsForToday(glucoseLogs);
       // Update the graph data points
       graphData = getGraphData();
 
@@ -397,8 +399,10 @@ Future<void> fetchGlucosePredictions() async {
         ),
         color: Colors.blue, // Line color
         barWidth: 3,
-        belowBarData:
-            BarAreaData(show: true, color: Colors.blue.withValues(alpha: 0.3),),
+        belowBarData: BarAreaData(
+          show: true,
+          color: Colors.blue.withValues(alpha: 0.3),
+        ),
         showingIndicators: List.generate(spots.length, (index) => index),
       )
     ];
@@ -407,7 +411,8 @@ Future<void> fetchGlucosePredictions() async {
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
-    final bool showGlucoseAlert = glucosePredictions.isNotEmpty && isPredictionSpikeLikely();
+    final bool showGlucoseAlert =
+        glucosePredictions.isNotEmpty && isPredictionSpikeLikely();
 
     return BaseScaffoldScreen(
       selectedIndex: 0,
@@ -498,20 +503,20 @@ Future<void> fetchGlucosePredictions() async {
 
                   const SizedBox(height: 30),
                   // Glucose Log Today Title
-                 const Padding(
-                  padding: EdgeInsets.only(bottom: 8.0),
-                  child: Center(
-                    child: Text(
-                      "📈 Glucose Today",
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.blue,
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: 8.0),
+                    child: Center(
+                      child: Text(
+                        "📈 Glucose Today",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue,
+                        ),
                       ),
                     ),
                   ),
-                ),
 
                   // Graph Section (Glucose Today)
                   AspectRatio(
@@ -639,8 +644,7 @@ Future<void> fetchGlucosePredictions() async {
 
                   const SizedBox(height: 30),
 
-                  
-                buildTimelineGlucoseGraph(screenWidth),
+                  buildTimelineGlucoseGraph(screenWidth),
 
                   const SizedBox(height: 30),
 
@@ -1124,8 +1128,6 @@ Future<void> fetchGlucosePredictions() async {
       child: child,
     );
   }
-
-
 }
 
 // Widget to display circular data points with click functionality
@@ -1165,7 +1167,8 @@ class CircleDisplay extends StatelessWidget {
               child: icon != null
                   ? Icon(icon, size: 40, color: Colors.white)
                   : Text(
-                      formattedValue ?? value.toString(), // Use formatted value if provided
+                      formattedValue ??
+                          value.toString(), // Use formatted value if provided
                       style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,

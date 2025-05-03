@@ -1779,7 +1779,6 @@ def get_predictive_feedback(request):
     user = request.user
     all_feedback = PredictiveFeedback.objects.filter(user=user).order_by('-timestamp')
 
-    # Read preferred unit from headers (default to mg/dL)
     preferred_unit = request.headers.get('Glucose-Unit', 'mg/dL')
 
     def convert_value(val):
@@ -1790,7 +1789,7 @@ def get_predictive_feedback(request):
             return val
 
     def convert_units(text):
-        # Look for patterns like <=130, >=180, =110
+        import re
         pattern = r'([<>=]=?)\s*(\d+(?:\.\d+)?)'
 
         def replacer(match):
@@ -1814,17 +1813,56 @@ def get_predictive_feedback(request):
     summary = {
         'positive': [f['text'] for f in feedback_data if f['type'] in ('improvement', 'shap') and f['text'].startswith("✅")],
         'trend': [f['text'] for f in feedback_data if f['type'] == 'trend'],
-        'all': feedback_data
+        'all': feedback_data,
+        'predicted_symptoms': []
     }
-    
+
+    def format_glucose(g):
+        return f"{round(g / 18.01559, 1)} mmol/L" if preferred_unit == 'mmol/L' else f"{int(round(g))} mg/dL"
+
+    def generate_predicted_symptom_reason(symptom, features):
+        glucose = features.get("avg_glucose_3d", 0)
+        exercise = features.get("exercise_duration", 0)
+        skipped = features.get("skipped_meals", 0)
+        stress = features.get("stress", 0)
+
+        high_glucose = glucose > (150 if preferred_unit == 'mg/dL' else 8.3)
+        low_exercise = exercise < 10
+        skipped_meal = skipped > 0
+        stressed = stress > 0
+
+        reasons = []
+        if high_glucose:
+            reasons.append("after several days of elevated glucose levels")
+        if low_exercise:
+            reasons.append("with minimal physical activity")
+        if skipped_meal:
+            reasons.append("when meals were skipped")
+        if stressed:
+            reasons.append("during stressful periods")
+
+        prefix = f"You tend to feel {symptom.lower()} " + " and ".join(reasons) + "." if reasons else f"{symptom} is predicted based on recent patterns."
+
+        data_points = []
+        if high_glucose:
+            data_points.append(f"your 3-day average glucose is {format_glucose(glucose)}")
+        if low_exercise:
+            data_points.append(f"you’ve exercised for only {exercise} minutes")
+        if skipped_meal:
+            data_points.append(f"{skipped} meal(s) were skipped")
+        if stressed:
+            data_points.append("you’ve reported high stress")
+
+        suffix = " " + " and ".join(data_points).capitalize() + "." if data_points else ""
+        return prefix + suffix
+
+    # Load model and generate explanations
     model_path = os.path.join(settings.BASE_DIR, "ml_models", f"user_model_{user.id}.pkl")
-    summary['predicted_symptoms'] = []
 
     if os.path.exists(model_path):
         try:
             model = joblib.load(model_path)
 
-            # Use the most recent complete session
             last_session = QuestionnaireSession.objects.filter(user=user, completed=True).order_by("-created_at").first()
             if last_session:
                 symptom = last_session.symptom_check.first()
@@ -1833,7 +1871,7 @@ def get_predictive_feedback(request):
                 exercise = last_session.exercise_check.first()
 
                 if all([symptom, glucose, meal, exercise]):
-                    X = [{
+                    feature_dict = {
                         "glucose_level": glucose.glucose_level,
                         "weighted_gi": meal.weighted_gi,
                         "skipped_meals": len(meal.skipped_meals),
@@ -1847,19 +1885,26 @@ def get_predictive_feedback(request):
                         ).exclude(skipped_meals=[]).count(),
                         "hour_of_day": last_session.created_at.hour,
                         "day_of_week": last_session.created_at.weekday(),
-                    }]
+                    }
 
-                    input_df = pd.DataFrame(X)
+                    input_df = pd.DataFrame([feature_dict])
                     predictions = model.predict(input_df)
-                    predicted_symptoms = [
-                        SYMPTOMS[i] for i, val in enumerate(predictions[0]) if val == 1
+
+                    summary['predicted_symptoms'] = [
+                        {
+                            "symptom": SYMPTOMS[i],
+                            "reason": generate_predicted_symptom_reason(SYMPTOMS[i], feature_dict)
+                        }
+                        for i in range(len(SYMPTOMS))
+                        if predictions[0][i] == 1
                     ]
-                    summary['predicted_symptoms'] = predicted_symptoms
+
         except Exception as e:
             print(f"⚠️ Error predicting with model: {e}")
-            summary['predicted_symptoms'] = ["Error loading model"]
+            summary['predicted_symptoms'] = [{"symptom": "Error", "reason": "Model loading failed."}]
 
     return Response({'predictive_feedback': summary})
+
 
 @receiver(post_save, sender=QuestionnaireSession)
 def trigger_retraining(sender, instance, created, **kwargs):
