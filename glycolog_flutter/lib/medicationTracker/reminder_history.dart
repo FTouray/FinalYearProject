@@ -11,7 +11,7 @@ class ReminderHistoryScreen extends StatefulWidget {
 
 class _ReminderHistoryScreenState extends State<ReminderHistoryScreen> {
   final DeviceCalendarPlugin _calendarPlugin = DeviceCalendarPlugin();
-  Map<String, List<Event>> groupedEvents = {}; // Grouped by title
+  Map<String, List<Event>> groupedEvents = {};
   bool isLoading = true;
 
   @override
@@ -71,30 +71,39 @@ class _ReminderHistoryScreenState extends State<ReminderHistoryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Past Reminders")),
+      appBar: AppBar(title: const Text("Reminder History")),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : groupedEvents.isEmpty
               ? const Center(child: Text("No past reminders found."))
-              : ListView(
-                  children: groupedEvents.entries.map((entry) {
-                    return Card(
-                      margin: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 6),
-                      child: ExpansionTile(
-                        leading: const Icon(Icons.medication),
-                        title: Text(entry.key,
-                            style:
-                                const TextStyle(fontWeight: FontWeight.bold)),
-                        children: entry.value.map((event) {
-                          return ListTile(
-                            leading: const Icon(Icons.history, size: 20),
-                            title: Text(formatDateTime(event.start!)),
-                          );
-                        }).toList(),
-                      ),
-                    );
-                  }).toList(),
+              : Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: ListView(
+                    children: groupedEvents.entries.map((entry) {
+                      return Card(
+                        elevation: 3,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10)),
+                        margin: const EdgeInsets.symmetric(vertical: 8),
+                        child: ExpansionTile(
+                          leading:
+                              const Icon(Icons.medication, color: Colors.teal),
+                          title: Text(
+                            entry.key,
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 16),
+                          ),
+                          children: entry.value.map((event) {
+                            return ListTile(
+                              leading:
+                                  const Icon(Icons.history, color: Colors.grey),
+                              title: Text(formatDateTime(event.start!)),
+                            );
+                          }).toList(),
+                        ),
+                      );
+                    }).toList(),
+                  ),
                 ),
     );
   }

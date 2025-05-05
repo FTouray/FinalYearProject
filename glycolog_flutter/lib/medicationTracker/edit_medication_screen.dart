@@ -54,11 +54,11 @@ class _EditMedicationScreenState extends State<EditMedicationScreen> {
       }),
     );
 
+    if (!mounted) return;
+
     if (response.statusCode == 200) {
-      if (!mounted) return;
       Navigator.pop(context, true);
     } else {
-      if (!mounted) return;
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text("Failed to update")));
     }
@@ -91,66 +91,118 @@ class _EditMedicationScreenState extends State<EditMedicationScreen> {
       headers: {'Authorization': 'Bearer $token'},
     );
 
+    if (!mounted) return;
+
     if (response.statusCode == 200) {
-      if (!mounted) return;
       Navigator.pop(context, true);
     } else {
-      if (!mounted) return;
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text("Delete failed")));
     }
+  }
+
+  Widget _buildSectionTitle(IconData icon, String title) {
+    return Row(
+      children: [
+        Icon(icon, color: Colors.blue),
+        const SizedBox(width: 8),
+        Text(
+          title,
+          style: const TextStyle(
+              fontSize: 18, fontWeight: FontWeight.bold, color: Colors.teal),
+        ),
+      ],
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text("Edit Medication")),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            TextField(
-              controller: nameController,
-              decoration: const InputDecoration(labelText: "Medication Name"),
-            ),
-            TextField(
-              controller: dosageController,
-              decoration: const InputDecoration(labelText: "Dosage"),
-            ),
-            TextField(
-              controller: frequencyController,
-              decoration: const InputDecoration(labelText: "Frequency"),
-            ),
-            ListTile(
-              title: const Text("Last Taken"),
-              subtitle: Text(
-                lastTaken != null
-                    ? lastTaken!.toLocal().toString().split(' ')[0]
-                    : "Not set",
+            _buildSectionTitle(Icons.edit, "Medication Info"),
+            const SizedBox(height: 8),
+            Card(
+              elevation: 2,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  children: [
+                    TextField(
+                      controller: nameController,
+                      decoration:
+                          const InputDecoration(labelText: "Medication Name"),
+                    ),
+                    TextField(
+                      controller: dosageController,
+                      decoration: const InputDecoration(labelText: "Dosage"),
+                    ),
+                    TextField(
+                      controller: frequencyController,
+                      decoration: const InputDecoration(labelText: "Frequency"),
+                    ),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text("Last Taken"),
+                      subtitle: Text(
+                        lastTaken != null
+                            ? lastTaken!.toLocal().toString().split(' ')[0]
+                            : "Not set",
+                      ),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.calendar_today),
+                        onPressed: () async {
+                          final picked = await showDatePicker(
+                            context: context,
+                            initialDate: lastTaken ?? DateTime.now(),
+                            firstDate: DateTime(2000),
+                            lastDate: DateTime.now(),
+                          );
+                          if (picked != null) {
+                            setState(() => lastTaken = picked);
+                          }
+                        },
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              trailing: IconButton(
-                icon: const Icon(Icons.calendar_today),
-                onPressed: () async {
-                  final picked = await showDatePicker(
-                    context: context,
-                    initialDate: lastTaken ?? DateTime.now(),
-                    firstDate: DateTime(2000),
-                    lastDate: DateTime.now(),
-                  );
-                  if (picked != null) {
-                    setState(() => lastTaken = picked);
-                  }
-                },
+            ),
+            const SizedBox(height: 24),
+            Center(
+              child: ElevatedButton.icon(
+                onPressed: saveChanges,
+                icon: const Icon(Icons.save),
+                label: const Text("Save Changes"),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blueAccent,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                ),
               ),
             ),
-            const SizedBox(height: 20),
-            ElevatedButton(onPressed: saveChanges, child: const Text("Save")),
-            const SizedBox(height: 10),
-            ElevatedButton(
-              onPressed: deleteMedication,
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-              child:
-                  const Text("Delete", style: TextStyle(color: Colors.white)),
+            const SizedBox(height: 12),
+            Center(
+              child: ElevatedButton.icon(
+                onPressed: deleteMedication,
+                icon: const Icon(Icons.delete_forever),
+                label: const Text("Delete Medication"),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
             ),
           ],
         ),

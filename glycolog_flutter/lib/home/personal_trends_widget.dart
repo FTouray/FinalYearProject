@@ -73,8 +73,9 @@ class PersonalTrendsWidgetState extends State<PersonalTrendsWidget> {
         'all': allRaw,
       };
       final rawSymptoms = feedbackData['predicted_symptoms'] ?? [];
-        predictedSymptoms = List<String>.from(rawSymptoms.map((s) =>
-            s is Map ? "${s['symptom']} — ${s['reason']}" : s.toString()));
+        predictedSymptoms = List<String>.from(rawSymptoms
+            .map((s) => s is Map ? s['reason'] ?? "" : s.toString()));
+
 
       loading = false;
     });
@@ -236,38 +237,20 @@ class PersonalTrendsWidgetState extends State<PersonalTrendsWidget> {
                   ...predictedSymptoms
                       .take(showAll ? predictedSymptoms.length : 3)
                       .map((symptomInfo) {
-                    final parts = symptomInfo.split(" — ");
-                    final symptom = parts.first.trim();
-                    final reason = parts.length > 1 ? parts.last.trim() : "";
-
-                    final match = RegExp(r'(.*?)(\.? You|\.? Your|\.? [A-Z])')
-                        .firstMatch(reason);
-                    final mainPart =
-                        match != null ? match.group(1) ?? reason : reason;
-                    final details = reason.replaceFirst(mainPart, "").trim();
-
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 12.0),
-                      child: Column(
+                      child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text("⚠️ $symptom",
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.bold, fontSize: 15)),
-                          const SizedBox(height: 4),
-                          Text("Be careful — $mainPart.",
-                              style: const TextStyle(fontSize: 14)),
-                          if (details.isNotEmpty)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 2.0),
-                              child: Text(
-                                details,
-                                style: const TextStyle(
-                                    fontSize: 13,
-                                    fontStyle: FontStyle.italic,
-                                    color: Colors.black87),
-                              ),
+                          const Text("• ",
+                              style: TextStyle(
+                                  fontSize: 14, fontWeight: FontWeight.bold)),
+                          Expanded(
+                            child: Text(
+                              symptomInfo,
+                              style: const TextStyle(fontSize: 14),
                             ),
+                          ),
                         ],
                       ),
                     );
