@@ -132,36 +132,40 @@ class HealthSyncService {
       final end = w.dateTo;
       final duration = end.difference(start).inMinutes;
 
+      final graceStart = start.subtract(const Duration(hours: 1));
+      final graceEnd = end.add(const Duration(hours: 1));
+
       final steps = grouped[HealthDataType.STEPS]
-              ?.where(
-                  (p) => p.dateFrom.isAfter(start) && p.dateTo.isBefore(end))
+              ?.where((p) =>
+                  p.dateFrom.isBefore(graceEnd) && p.dateTo.isAfter(graceStart))
               .fold(
                   0, (sum, p) => sum + _extractNumericValue(p.value).toInt()) ??
           0;
 
       final hrValues = grouped[HealthDataType.HEART_RATE]
-              ?.where(
-                  (p) => p.dateFrom.isAfter(start) && p.dateTo.isBefore(end))
+              ?.where((p) =>
+                  p.dateFrom.isBefore(graceEnd) && p.dateTo.isAfter(graceStart))
               .map((p) => _extractNumericValue(p.value))
               .toList() ??
           [];
+
       final avgHR = hrValues.isNotEmpty
           ? (hrValues.reduce((a, b) => a + b) / hrValues.length).round()
           : 0;
 
-      // Calories burned (rounded to nearest int)
+
       final calories = grouped[HealthDataType.ACTIVE_ENERGY_BURNED]
-              ?.where(
-                  (p) => p.dateFrom.isAfter(start) && p.dateTo.isBefore(end))
+              ?.where((p) =>
+                  p.dateFrom.isBefore(graceEnd) && p.dateTo.isAfter(graceStart))
               .fold(0.0, (sum, p) => sum + _extractNumericValue(p.value)) ??
           0.0;
 
-      // Distance (converted to kilometers, 2 decimals)
       final distanceMeters = grouped[HealthDataType.DISTANCE_DELTA]
-              ?.where(
-                  (p) => p.dateFrom.isAfter(start) && p.dateTo.isBefore(end))
+              ?.where((p) =>
+                  p.dateFrom.isBefore(graceEnd) && p.dateTo.isAfter(graceStart))
               .fold(0.0, (sum, p) => sum + _extractNumericValue(p.value)) ??
           0.0;
+
       final distanceKm =
           double.parse((distanceMeters / 1000).toStringAsFixed(2));
 
@@ -176,10 +180,7 @@ class HealthSyncService {
         "distance_km": distanceKm,
       };
 
-      // If it's the last workout in the list, attach sleep info
-      if (w == workouts.last) {
-        data["sleep_hours"] = sleepHours;
-      }
+    
 
       return data;
     }).toList();

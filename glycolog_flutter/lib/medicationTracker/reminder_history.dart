@@ -25,16 +25,18 @@ class _ReminderHistoryScreenState extends State<ReminderHistoryScreen> {
     final allKeys =
         prefs.getKeys().where((key) => key.startsWith('eventId_med'));
 
-    final calendarResult = await _calendarPlugin.retrieveCalendars();
-    final calendarId = calendarResult.data?.first.id;
-    if (calendarId == null) return;
-
     final now = DateTime.now();
     final Map<String, List<Event>> tempMap = {};
 
     for (final key in allKeys) {
-      final eventId = prefs.getString(key);
-      if (eventId == null) continue;
+      final storedValue = prefs.getString(key);
+      if (storedValue == null || !storedValue.contains('|')) continue;
+
+      final parts = storedValue.split('|');
+      if (parts.length != 2) continue;
+
+      final calendarId = parts[0];
+      final eventId = parts[1];
 
       final result = await _calendarPlugin.retrieveEvents(
         calendarId,
@@ -56,7 +58,8 @@ class _ReminderHistoryScreenState extends State<ReminderHistoryScreen> {
     }
 
     tempMap.forEach(
-        (key, list) => list.sort((a, b) => b.start!.compareTo(a.start!)));
+      (key, list) => list.sort((a, b) => b.start!.compareTo(a.start!)),
+    );
 
     setState(() {
       groupedEvents = tempMap;

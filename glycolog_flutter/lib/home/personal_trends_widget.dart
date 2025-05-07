@@ -210,7 +210,7 @@ class PersonalTrendsWidgetState extends State<PersonalTrendsWidget> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  "📊 Personal Trends & AI Insights",
+                  "📊 Symptom Insights",
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                 ),
                 const SizedBox(height: 8),
@@ -218,22 +218,7 @@ class PersonalTrendsWidgetState extends State<PersonalTrendsWidget> {
                     Icons.thumb_up_alt_outlined, Colors.green, (_) => "Low"),
                     if (predictedSymptoms.isNotEmpty) ...[
                   const SizedBox(height: 12),
-                  Row(
-                    children: const [
-                      Icon(Icons.health_and_safety,
-                          color: Colors.indigo, size: 20),
-                      SizedBox(width: 6),
-                      Text(
-                        "🔮 Predicted Symptoms",
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15,
-                          color: Colors.indigo,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
+                  
                   ...predictedSymptoms
                       .take(showAll ? predictedSymptoms.length : 3)
                       .map((symptomInfo) {
@@ -265,14 +250,14 @@ class PersonalTrendsWidgetState extends State<PersonalTrendsWidget> {
                     ),
                 ],
 
+                // _buildGroupedSection(
+                //   "📈 Trends & Patterns",
+                //   sortedTrends,
+                //   Icons.trending_up,
+                //   Colors.deepPurple,
+                // ),
                 _buildGroupedSection(
-                  "📈 Trends & Patterns",
-                  sortedTrends,
-                  Icons.trending_up,
-                  Colors.deepPurple,
-                ),
-                _buildGroupedSection(
-                  "🧠 AI Coach Insights",
+                  "Feedback",
                   processedShap,
                   Icons.psychology_alt_outlined,
                   Colors.teal,

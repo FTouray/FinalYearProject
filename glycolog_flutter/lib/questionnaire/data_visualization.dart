@@ -25,6 +25,7 @@ class QuestionnaireVisualizationScreenState
   String _selectedRange = "Last 10 Sessions";
   double thresholdWellness = 3.0;
   final String? apiUrl = dotenv.env['API_URL']; 
+  
 
   @override
 void initState() {
@@ -232,6 +233,21 @@ double _extractSleepHours(dynamic symptomCheck) {
                                 fontSize: 18, fontWeight: FontWeight.bold),
                           ),
                           _buildLatestSummary(),
+                          const SizedBox(height: 16),
+                          Center(
+                            child: ElevatedButton.icon(
+                              icon: const Icon(Icons.psychology_alt_outlined),
+                              label: const Text("View Personal AI Insights"),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.blueAccent,
+                                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              ),
+                              onPressed: () {
+                                Navigator.of(context).pushNamed('/insights');
+                              },
+                            ),
+                          ),
                           const SizedBox(height: 40),
                           _buildLineChartSection(),
                           const SizedBox(height: 45),
@@ -1121,24 +1137,40 @@ double _extractSleepHours(dynamic symptomCheck) {
         touchTooltipData: LineTouchTooltipData(
           tooltipPadding: const EdgeInsets.all(8),
           tooltipMargin: 8,
+          fitInsideHorizontally: true,
+          fitInsideVertically: true,
           getTooltipItems: (spots) {
-            return spots.map((spot) {
-              final dataIndex = spot.spotIndex;
-              final data = _questionnaireData[dataIndex];
-              return LineTooltipItem(
-                'Session ${data['session_id']}\n'
-                'Glucose: ${data['glucose_check']?[0] ?? 'N/A'}\n'
-                'Sleep: ${data['sleep_hours']?.toStringAsFixed(1) ?? 'N/A'} hrs\n'
-                'Exercise: ${data['exercise_duration']?.toStringAsFixed(1) ?? 'N/A'} mins\n'
-                'Meal GI: ${data['meal_data']?['weighted_gi']?.toStringAsFixed(1) ?? 'N/A'}',
-                const TextStyle(color: Colors.white),
-              );
-            }).toList();
-          },
+              return spots.map((spot) {
+                // Only show tooltip once, e.g., for the first (glucose) line
+                if (spot.barIndex != 0) return null;
+
+                final dataIndex = spot.spotIndex;
+                final data = _questionnaireData[dataIndex];
+
+                final symptoms = (data['symptoms'] as List<dynamic>?) ?? [];
+                final symptomDetails = symptoms.isEmpty
+                    ? 'None'
+                    : symptoms
+                        .map((s) =>
+                            '${s['symptom'] ?? 'Unknown'} (${s['severity'] ?? 0})')
+                        .join(', ');
+
+                return LineTooltipItem(
+                  'Session ${data['session_id']}\n'
+                  'Glucose: ${data['glucose_check']?[0] ?? 'N/A'}\n'
+                  'Sleep: ${data['sleep_hours']?.toStringAsFixed(1) ?? 'N/A'} hrs\n'
+                  'Exercise: ${data['exercise_duration']?.toStringAsFixed(1) ?? 'N/A'} mins\n'
+                  'Meal GI: ${data['meal_data']?['weighted_gi']?.toStringAsFixed(1) ?? 'N/A'}\n'
+                  'Symptoms: $symptomDetails',
+                  const TextStyle(color: Colors.white),
+                );
+              }).toList();
+            }
         ),
       ),
     );
   }
+
 
   Widget _buildSymptomGroupedBarChart() {
     // Extract unique symptoms across all sessions
@@ -1256,6 +1288,8 @@ double _extractSleepHours(dynamic symptomCheck) {
                 ),
                 barTouchData: BarTouchData(
                   touchTooltipData: BarTouchTooltipData(
+                    fitInsideHorizontally: true,
+                    fitInsideVertically: true,
                     getTooltipColor: (touchedSpot) =>
                         Colors.blueGrey.withValues(alpha: 0.8),
                     getTooltipItem: (group, groupIndex, rod, rodIndex) {

@@ -168,7 +168,8 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
     }
 
     final now = DateTime.now();
-    final dayOffset = (daysOfWeek.indexOf(selectedDay) - now.weekday + 7) % 7;
+    final selectedDayIndex = daysOfWeek.indexOf(selectedDay) + 1; 
+    final dayOffset = (selectedDayIndex - now.weekday + 7) % 7;
     final scheduledDate = now.add(Duration(days: dayOffset));
 
     final startDate = DateTime(
@@ -222,7 +223,7 @@ class _MedicationReminderScreenState extends State<MedicationReminderScreen> {
 
     final result = await _calendarPlugin.createOrUpdateEvent(event);
     if (result?.isSuccess == true && result?.data != null) {
-      await prefs.setString(eventKey, result!.data!);
+      await prefs.setString(eventKey, "$_selectedCalendarId|${result!.data}");
       print("✅ Event created with ID: ${result.data}");
     } else {
       print("❌ Failed to create event: ${result?.errors}");

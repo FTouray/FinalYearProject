@@ -192,7 +192,6 @@ List<Map<String, dynamic>> _mapTrend(Map<String, dynamic> trend,
         result.add({
           "date": date,
           "activity_type": "sleep_summary",
-          "sleep_hours": sleepHours,
         });
       }
     });
@@ -724,10 +723,16 @@ Widget _buildGraph(String title, String metric, Color color) {
                           return Column(
                             children: [
                               if (isUnwell)
-                                const Icon(Icons.circle,
-                                    color: Colors.red, size: 6),
-                              Text(formatted,
-                                  style: const TextStyle(fontSize: 10)),
+                                const Icon(Icons.circle, color: Colors.red, size: 6),
+                              Transform.rotate(
+                                  angle:
+                                      -0.5,
+                                  child: Text(
+                                    formatted,
+                                    style: const TextStyle(fontSize: 10),
+                                  ),
+                                ),
+
                             ],
                           );
                         },

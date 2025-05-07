@@ -182,10 +182,6 @@ Future<void> _setup() async {
               ),
             ),
 
-            // 🧠 AI-driven health reflections
-            PersonalTrendsWidget(),
-            const SizedBox(height: 16),
-
             const Text(
               "🩺 Quick Actions",
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),

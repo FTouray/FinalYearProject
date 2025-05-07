@@ -180,7 +180,7 @@ Future<void> generatePdf() async {
 
           // AI Summary Items
           pw.SizedBox(height: 10),
-          pw.Text("Key AI Recommendations",
+          pw.Text("Recommendations",
               style:
                   pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
           pw.SizedBox(height: 8),
@@ -189,13 +189,13 @@ Future<void> generatePdf() async {
                   text: "[${item['score']}] ${item['text']}",
                 ))
           else
-            pw.Text("No AI highlights available."),
+            pw.Text("No recommendations available."),
           pw.SizedBox(height: 12),
           divider(),
 
           // Full AI Text
           pw.SizedBox(height: 10),
-          pw.Text("Full AI Summary",
+          pw.Text("Full Summary",
               style:
                   pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
           pw.SizedBox(height: 6),
@@ -204,7 +204,7 @@ Future<void> generatePdf() async {
           divider(),
 
           pw.SizedBox(height: 10),
-          pw.Text("🧠 AI Coach - Predictive Insights",
+          pw.Text("Predictive Insights",
               style:
                   pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
           pw.SizedBox(height: 6),
@@ -418,7 +418,7 @@ Widget _buildPredictiveSection(List<Map<String, dynamic>> items) {
                     ),                    
                     const Divider(height: 24),
                     const Text(
-                      "💡 AI Highlights",
+                      "💡 Highlights",
                       style:
                           TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                     ),
@@ -520,7 +520,7 @@ Widget _buildPredictiveSection(List<Map<String, dynamic>> items) {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text("🧠 AI Coach Summary",
+                const Text("🧠 Coach Summary",
                     style:
                         TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
                 const SizedBox(height: 10),

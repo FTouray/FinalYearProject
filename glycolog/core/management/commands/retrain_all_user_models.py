@@ -1,3 +1,4 @@
+from django.conf import settings
 import pandas as pd
 import joblib
 import os
@@ -10,7 +11,7 @@ from core.models import (
     CustomUser, QuestionnaireSession, SymptomCheck, GlucoseCheck,
     MealCheck, ExerciseCheck, GlucoseLog, PredictiveFeedback
 )
-from core.ml_utils import explain_predicted_symptoms, generate_trend_insights, SYMPTOMS 
+from core.ml_utils import explain_symptom_causes, generate_trend_insights, SYMPTOMS 
 
 def parse_symptoms(symptom_data):
     if isinstance(symptom_data, dict):
@@ -38,7 +39,8 @@ class Command(BaseCommand):
 
     def handle_single_user(self, user, model_version):
         sessions = QuestionnaireSession.objects.filter(user=user).prefetch_related(
-            'symptom_check', 'glucose_check', 'meal_check', 'exercise_check')
+            'symptom_check', 'glucose_check', 'meal_check', 'exercise_check'
+        )
 
         data = []
         for session in sessions:
@@ -52,7 +54,7 @@ class Command(BaseCommand):
 
             symptoms_dict = parse_symptoms(symptom.symptoms)
             recent_glucose_logs = GlucoseLog.objects.filter(
-                user=user, timestamp__gte=now() - timedelta(days=3))
+                user=user, timestamp__range=(session.created_at - timedelta(days=3), session.created_at))
             avg_glucose = recent_glucose_logs.aggregate(avg=Avg('glucose_level')).get('avg') or 0
 
             past_sessions = sessions.filter(created_at__lt=session.created_at)
@@ -77,24 +79,46 @@ class Command(BaseCommand):
             data.append(entry)
 
         if len(data) < 10:
-            self.stdout.write(f"❌ Not enough data for {user.username} ({len(data)} entries)")
+            self.stdout.write(f"❌ Not enough data for {user.username} ({len(data)} entries) — skipping model training")
             return
 
         df = pd.DataFrame(data)
         X = df.drop(columns=SYMPTOMS)
-        Y = df[SYMPTOMS]
+        symptom_columns = [s for s in SYMPTOMS if df[s].sum() > 0]
+        Y = df[symptom_columns]
 
-        model = MultiOutputClassifier(RandomForestClassifier(n_estimators=100, random_state=42))
-        model.fit(X, Y)
+        symptom_models = {}
+        for symptom in symptom_columns:
+            clf = RandomForestClassifier(random_state=42)
+            clf.fit(X, Y[symptom])
+            symptom_models[symptom] = clf
 
+        # Ensure directory exists
         os.makedirs("ml_models", exist_ok=True)
-        model_path = f"ml_models/user_model_{user.id}.pkl"
-        joblib.dump(model, model_path)
-        self.stdout.write(f"✅ Model saved to {model_path}")
 
-        explanations = explain_predicted_symptoms(user, model_path, n_sessions=3)
+        # Clean up old model files
+        for fname in os.listdir("ml_models"):
+            if fname.startswith(f"user_model_{user.id}"):
+                os.remove(os.path.join("ml_models", fname))
+
+        # Save new models
+        model_path = f"ml_models/user_model_{user.id}.pkl"
+        joblib.dump(symptom_models, model_path)
+
+        meta_path = f"ml_models/user_model_{user.id}_meta.pkl"
+        joblib.dump(symptom_columns, meta_path)
+
+
+        self.stdout.write(f"✅ Per-symptom models saved to {model_path}")
+
+        # Generate SHAP-based feedback
+        explanations = explain_symptom_causes(user, n_sessions=7, glucose_unit='mmol/L')
         shap_count = 0
         for result in explanations:
+            if "model failed" in result.get("reason", "").lower():
+                self.stdout.write("❌ Skipping failed model insight.")
+                continue
+    
             if not PredictiveFeedback.objects.filter(user=user, insight=result['reason']).exists():
                 PredictiveFeedback.objects.create(
                     user=user,
@@ -106,25 +130,27 @@ class Command(BaseCommand):
                 self.stdout.write(f"✅ Saved: {result['reason']}")
             else:
                 self.stdout.write(f"⚠️ Skipped duplicate: {result['reason']}")
-
         self.stdout.write(f"📈 Total SHAP insights saved: {shap_count}")
 
+        # Generate trend insights
+        if len(data) >= 5:
+            trend_texts = generate_trend_insights(user, df, sessions)
+            trend_count = 0
+            for text in trend_texts:
+                if not PredictiveFeedback.objects.filter(user=user, insight=text).exists():
+                    PredictiveFeedback.objects.create(
+                        user=user,
+                        insight=text,
+                        model_version=model_version,
+                        feedback_type="trend"
+                    )
+                    trend_count += 1
+                    self.stdout.write(f"💡 Saved trend insight: {text}")
+                else:
+                    self.stdout.write(f"⚠️ Skipped duplicate trend: {text}")
 
-        trend_texts = generate_trend_insights(user, df, sessions)
-        trend_count = 0
-        for text in trend_texts:
-            if not PredictiveFeedback.objects.filter(user=user, insight=text).exists():
-                PredictiveFeedback.objects.create(
-                    user=user,
-                    insight=text,
-                    model_version=model_version,
-                    feedback_type="trend"
-                )
-                trend_count += 1
-                self.stdout.write(f"💡 Saved trend insight: {text}")
-            else:
-                self.stdout.write(f"⚠️ Skipped duplicate trend: {text}")
-
-        self.stdout.write(self.style.SUCCESS(
-            f"✅ Trained and saved predictive feedback for {user.username} — SHAP: {shap_count}, Trends: {trend_count}"
-        ))
+            self.stdout.write(self.style.SUCCESS(
+                f"✅ Trained and saved predictive feedback for {user.username} — SHAP: {shap_count}, Trends: {trend_count}"
+            ))
+        else:
+            self.stdout.write("ℹ️ Skipping trend analysis due to insufficient data.")

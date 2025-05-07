@@ -21,7 +21,7 @@ from core.fitness_ai import generate_ai_recommendation, generate_health_trends
 from core.services.ocr_service import extract_text_from_image, parse_dosage_info
 from core.services.openfda_service import fetch_openfda_drug_details, search_openfda_drugs
 from core.prediction.glucose_prediction import predict_glucose
-from core.ml_utils import explain_predicted_symptoms
+from core.ml_utils import explain_symptom_causes
 from .serializers import ChatMessageSerializer, CommentSerializer, ExerciseCheckSerializer, FoodCategorySerializer, FoodItemSerializer, ForumCategorySerializer, ForumThreadSerializer, GlucoseCheckSerializer, GlucoseLogSerializer, MealCheckSerializer, MealSerializer, MedicationReminderSerializer, MedicationSerializer, PredictiveFeedbackSerializer, QuestionnaireSessionSerializer, RegisterSerializer, LoginSerializer, SettingsSerializer, SymptomCheckSerializer
 from .models import AIHealthTrend, AIRecommendation, Achievement, ChatMessage, Comment, CommentReaction, CustomUser, ExerciseCheck, FeelingCheck, FitnessActivity, FoodCategory, FoodItem, ForumCategory, ForumThread, GlucoseCheck, GlucoseLog, GlycaemicResponseTracker, Meal, MealCheck, Medication, MedicationReminder, PersonalInsight, PredictiveFeedback, QuestionnaireSession, Quiz, QuizAttempt, QuizSet, SymptomCheck, UserProfile, UserProgress  
 from django.contrib.auth import get_user_model
@@ -156,8 +156,6 @@ def log_glucose(request):
             if len(values) >= 5:
                 avg = sum(values) / len(values)
                 prev_avg = GlucoseLog.objects.filter(user=request.user).exclude(logID__in=recent_ids).aggregate(Avg("glucose_level"))["glucose_level__avg"]
-                if prev_avg and abs(avg - prev_avg) > 20:
-                    call_command("retrain_single_user_model", user_id=request.user.id)
                 
             return Response({"message": "Glucose log created successfully"}, status=status.HTTP_201_CREATED)
         else:
@@ -659,7 +657,6 @@ def get_dashboard_summary(request):
             trend_summary[date_str] = {
                 "steps": 0,
                 "heart_rate": [],
-                "sleep_hours": None,
                 "calories_burned": 0,
                 "distance_km": 0,
                 "activities": [],
@@ -687,16 +684,6 @@ def get_dashboard_summary(request):
                 "distance_km": activity.distance_km or 0,
                 "heart_rate": activity.heart_rate,
             })
-
-        # If no sleep yet, and this is a sleep fallback, set it
-        if trend_summary[date_str]["sleep_hours"] is None and activity.is_fallback:
-            if "sleep" in activity.activity_type.lower():
-                trend_summary[date_str]["sleep_hours"] = activity.total_sleep_hours or 0.0
-
-        # Also allow sleep from non-fallback if available (preferred)
-        elif trend_summary[date_str]["sleep_hours"] is None and not activity.is_fallback:
-            if "sleep" in activity.activity_type.lower():
-                trend_summary[date_str]["sleep_hours"] = activity.total_sleep_hours or 0.0
 
         trend_summary[date_str]["activities"].append(entry)
 
@@ -746,7 +733,6 @@ def get_dashboard_summary(request):
             "activity_type": latest_fitness.activity_type if latest_fitness else None,
             "steps": latest_fitness.steps if latest_fitness else None,
             "heart_rate": latest_fitness.heart_rate if latest_fitness else None,
-            "sleep_hours": latest_fitness.total_sleep_hours if latest_fitness else None,
             "distance_km": latest_fitness.distance_km if latest_fitness else None,
             "calories_burned": latest_fitness.calories_burned if latest_fitness else None,
             "start_time": latest_fitness.start_time.isoformat() if latest_fitness else None,
@@ -933,7 +919,6 @@ def log_health_entry(request):
                 "duration_minutes": data.get("duration_minutes"),
                 "steps": data.get("steps"),
                 "heart_rate": data.get("heart_rate"),
-                "total_sleep_hours": data.get("sleep_hours"),
                 "calories_burned": data.get("calories_burned"),
                 "distance_km": data.get("distance_km"),
                 "source": "Phone",
@@ -1791,14 +1776,14 @@ def get_predictive_feedback(request):
 
     def convert_units(text):
         import re
-        pattern = r'([<>=]=?)\s*(\d+(?:\.\d+)?)'
+        pattern = r'(\d+(?:\.\d+)?)\s*mg/dL'
 
         def replacer(match):
-            op = match.group(1)
-            value = match.group(2)
+            value = float(match.group(1))
             converted = convert_value(value)
             rounded = round(converted, 1) if preferred_unit == 'mmol/L' else int(round(converted))
-            return f"{op} {rounded}"
+            unit = 'mmol/L' if preferred_unit == 'mmol/L' else 'mg/dL'
+            return f"{rounded} {unit}"
 
         return re.sub(pattern, replacer, text)
 
@@ -1819,20 +1804,25 @@ def get_predictive_feedback(request):
     }
 
     model_path = os.path.join(settings.BASE_DIR, "ml_models", f"user_model_{user.id}.pkl")
-    explanation_results = explain_predicted_symptoms(user, model_path, n_sessions=3)
-    summary["predicted_symptoms"] = explanation_results
+    explanation_results = explain_symptom_causes(user, n_sessions=10)
+    for result in explanation_results:
+        converted = convert_units(result["reason"])
+        summary["predicted_symptoms"].append({
+            "symptom": result["symptom"],
+            "reason": converted
+        })
 
     return Response({'predictive_feedback': summary})
-
 
 @receiver(post_save, sender=QuestionnaireSession)
 def trigger_retraining(sender, instance, created, **kwargs):
     if created:
         user = instance.user
         total_sessions = QuestionnaireSession.objects.filter(user=user).count()
-        if total_sessions % 5 == 0:  # retrain every 5 sessions
+        if total_sessions % 5 == 0:
             from django.core.management import call_command
             call_command("retrain_single_user_model", user_id=user.id)
+
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
